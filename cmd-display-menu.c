@@ -540,7 +540,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	sc.lc = lc;
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'd');
-	sc.flags = (SPAWN_FLOATING|SPAWN_MODAL|SPAWN_FLOATOVERZOOM);
+	sc.flags = (SPAWN_FLOATING|SPAWN_MODAL|SPAWN_ALWAYS_ON_TOP);
 
 	if (count != 1 || *args_string(args, 0) != '\0')
 		args_to_vector(args, &sc.argc, &sc.argv);

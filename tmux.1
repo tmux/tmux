@@ -3449,6 +3449,11 @@ is either unspecified or equal to
 .Ar src\-pane ,
 .Ar src\-pane
 is returned to its previous position in the layout.
+Its previous allocation is restored if the tiled layout has not changed and
+there is enough space.
+Otherwise, a neighbouring tiled allocation is split, leaving the other tiles
+unchanged as far as space permits.
+The neighbour is chosen using the same preference as when a tiled pane is closed.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
@@ -4045,8 +4050,12 @@ above the layout and above any panes behind it in the stacking order) and
 unzoomed (its normal position).
 Zooming a tiled pane floats it and gives its tiled space to the other panes.
 Unzooming restores its tiled position or its previous floating rectangle.
-If the tiled layout has not changed, the pane regains its previous allocation.
-Otherwise, space is shared equally among the panes in its layout group.
+If the tiled layout has not changed and there is enough space, the pane regains
+its previous allocation.
+Otherwise, a neighbouring tiled allocation is split, leaving the other tiles
+unchanged as far as space permits.
+Floating a tiled pane gives its space to the same neighbour as closing it would;
+this does not automatically redistribute tiles evenly.
 Floating panes retain their places in the tiled layout without taking any
 tiled space; a window may contain only floating panes.
 Any number of panes may be zoomed, with ordinary floating panes above or

@@ -478,8 +478,9 @@ window_switch_free(struct window_mode_entry *wme)
 	u_int				 i;
 
 	if (data->zoomed == 0 &&
-	    window_unzoom_pane(wme->wp, 1) == 0)
+	    window_unzoom_pane(wme->wp, 1) == 0) {
 		server_redraw_window(wme->wp->window);
+	}
 
 	for (i = 0; i < data->item_size; i++)
 		window_switch_free_item(data->item_list[i]);

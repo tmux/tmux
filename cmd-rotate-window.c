@@ -41,6 +41,7 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	.exec = cmd_rotate_window_exec
 };
 
+/* Tiled positions saved during rotation; geometry is in window coordinates. */
 struct cmd_rotate_window_slot {
 	struct layout_cell	*lc;
 	int			 xoff;
@@ -60,7 +61,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane		*wp, *zwp = NULL, **all, **tiled;
 	struct window_pane		**rotated;
 	struct cmd_rotate_window_slot	*slots;
-	u_int				 i, j, n = 0, nt = 0;
+	u_int				 i, j, n, nt = 0;
 	int				 active = -1;
 
 	if (args_has(args, 'Z'))
@@ -71,8 +72,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	 * Only tiled panes rotate. Floating panes keep their place in the
 	 * list and their cell.
 	 */
-	TAILQ_FOREACH(wp, &w->panes, entry)
-		n++;
+	n = window_count_panes(w, 1);
 	all = xcalloc(n, sizeof *all);
 	tiled = xcalloc(n, sizeof *tiled);
 	rotated = xcalloc(n, sizeof *rotated);
@@ -123,10 +123,10 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (active != -1) {
 		wp = rotated[active];
-		window_set_active_pane(w, wp, 1);
-		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		if (zwp != NULL)
 			window_zoom_move(zwp, wp);
+		window_set_active_pane(w, wp, 1);
+		cmd_find_from_winlink_pane(current, wl, wp, 0);
 	}
 	redraw_invalidate_scene(w);
 	server_redraw_window(w);

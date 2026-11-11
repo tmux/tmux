@@ -91,7 +91,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	dst_zoomed = (args_has(args, 'Z') && (window_zoomed_pane(dst_w) != NULL));
+	dst_zoomed = args_has(args, 'Z') && window_zoomed_pane(dst_w) != NULL;
 
 	if (args_has(args, 'D')) {
 		if (window_pane_is_floating(dst_wp)) {
@@ -119,9 +119,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	src_zoomed = (args_has(args, 'Z') && (window_zoomed_pane(src_w) != NULL));
+	src_zoomed = args_has(args, 'Z') && window_zoomed_pane(src_w) != NULL;
 
-	if (src_wp == dst_wp)
+	if (src_wp == NULL || src_wp == dst_wp)
 		goto out;
 
 	server_client_remove_pane(src_wp);
@@ -183,10 +183,17 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			window_set_active_pane(src_w, tmp_wp, 1);
 		}
 	} else {
+		/*
+		 * Keep the same pane active, unless the swap has covered it
+		 * with a zoomed pane: activating it would unzoom. With
+		 * -Z the zoom moves to the active pane afterwards instead.
+		 */
 		if (src_w->active == src_wp)
 			window_set_active_pane(src_w, dst_wp, 1);
-		if (dst_w->active == dst_wp)
+		if (dst_w->active == dst_wp &&
+		    (args_has(args, 'Z') || window_pane_is_visible(src_wp))) {
 			window_set_active_pane(dst_w, src_wp, 1);
+		}
 	}
 	if (src_w != dst_w) {
 		window_pane_stack_remove(&src_w->last_panes, src_wp);

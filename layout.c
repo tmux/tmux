@@ -201,18 +201,19 @@ void
 layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff, int yoff)
 {
 	struct layout_cell	*parent = lc->parent;
+	int			 sx_changed, sy_changed;
 
-	if (lc->g.sx != sx || lc->g.sy != sy) {
-		if ((lc->type == LAYOUT_LEFTRIGHT && lc->g.sx != sx) ||
-		    (lc->type == LAYOUT_TOPBOTTOM && lc->g.sy != sy)) {
-			lc->generation++;
-		}
-		if (parent != NULL &&
-		    (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc)) &&
-		    ((parent->type == LAYOUT_LEFTRIGHT && lc->g.sx != sx) ||
-		    (parent->type == LAYOUT_TOPBOTTOM && lc->g.sy != sy))) {
-			parent->generation++;
-		}
+	sx_changed = lc->g.sx != sx;
+	sy_changed = lc->g.sy != sy;
+	if ((lc->type == LAYOUT_LEFTRIGHT && sx_changed) ||
+	    (lc->type == LAYOUT_TOPBOTTOM && sy_changed)) {
+		lc->generation++;
+	}
+	if (parent != NULL &&
+	    ((parent->type == LAYOUT_LEFTRIGHT && sx_changed) ||
+	    (parent->type == LAYOUT_TOPBOTTOM && sy_changed)) &&
+	    (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))) {
+		parent->generation++;
 	}
 	lc->g.sx = sx;
 	lc->g.sy = sy;
@@ -251,10 +252,11 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
-	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
-	int	is_floating = lc->flags & LAYOUT_CELL_FLOATING;
+	int	tiled;
 
-	return is_leaf && !is_floating;
+	tiled = lc->type == LAYOUT_WINDOWPANE &&
+	    (~lc->flags & LAYOUT_CELL_FLOATING);
+	return (tiled);
 }
 
 int
@@ -510,9 +512,8 @@ int
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
-	int			 old_xoff, old_yoff, changed = 0;
+	int			 old_xoff, old_yoff, xoff, yoff, changed = 0;
 	u_int			 old_sx, old_sy, sx, sy;
-	int			 xoff, yoff;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->layout_cell == NULL || wp == skip)
@@ -2089,7 +2090,7 @@ layout_grow_cell(struct window *w, struct layout_cell *lc,
 	}
 }
 
-/* Restore a tiled allocation, sharing the group equally if it has changed. */
+/* Restore a tiled allocation, or split its neighbour if it has changed. */
 void
 layout_insert_tile(struct window *w, struct layout_cell *lc)
 {
@@ -2135,7 +2136,7 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	}
 	lc->flags &= ~LAYOUT_CELL_FLOATING;
 
-	/* Collapsing and expanding an unchanged group preserves its children. */
+	/* An unchanged group keeps its child allocations when expanded. */
 	if (unchanged &&
 	    ((lc->type == LAYOUT_LEFTRIGHT && lc->g.sx == lc->saved.g.sx) ||
 	    (lc->type == LAYOUT_TOPBOTTOM && lc->g.sy == lc->saved.g.sy))) {
@@ -2145,8 +2146,6 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	/* Unwinding unchanged removals also restores the earlier revisions. */
 	if (unchanged)
 		parent->generation = lc->saved.previous;
-	else {
+	else
 		parent->generation++;
-		layout_spread_cell(w, parent);
-	}
 }

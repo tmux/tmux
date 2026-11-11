@@ -362,8 +362,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		}
 		if (sc->flags & SPAWN_FLOATING)
 			new_wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
-		if (sc->flags & SPAWN_FLOATOVERZOOM)
-			new_wp->flags |= PANE_FLOATOVERZOOM;
+		if (sc->flags & SPAWN_ALWAYS_ON_TOP)
+			new_wp->flags |= PANE_ALWAYS_ON_TOP;
 	}
 
 	/*
@@ -761,7 +761,7 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	sc.environ = env;
 	sc.idx = -1;
 	sc.cwd = _PATH_TMP;
-	sc.flags = SPAWN_FLOATING|SPAWN_MODAL|SPAWN_FLOATOVERZOOM;
+	sc.flags = SPAWN_FLOATING|SPAWN_MODAL|SPAWN_ALWAYS_ON_TOP;
 
 	wp = spawn_pane(&sc, &cause);
 	free(cmd);

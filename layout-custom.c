@@ -322,7 +322,7 @@ char *
 layout_dump_visible(struct window *w, int flags)
 {
 	struct window_pane	*zwp = window_zoomed_pane(w), *wp;
-	struct layout_cell	*root, *lc, *lcnext;
+	struct layout_cell	*root, *lc;
 	char			*out;
 
 	if (zwp == NULL) {
@@ -337,8 +337,9 @@ layout_dump_visible(struct window *w, int flags)
 		if (wp == zwp)
 			break;
 		if (!window_pane_is_unzoomed_float(wp) ||
-		    !window_pane_is_visible(wp))
+		    !window_pane_is_visible(wp)) {
 			continue;
+		}
 		if (root->type == LAYOUT_WINDOWPANE) {
 			lc = layout_create_cell(root);
 			layout_set_size(lc, w->sx, w->sy, 0, 0);
@@ -355,13 +356,7 @@ layout_dump_visible(struct window *w, int flags)
 	}
 	out = layout_dump(w, root, flags);
 
-	if (root->type != LAYOUT_WINDOWPANE) {
-		TAILQ_FOREACH_SAFE(lc, &root->cells, entry, lcnext) {
-			TAILQ_REMOVE(&root->cells, lc, entry);
-			free(lc);
-		}
-	}
-	free(root);
+	layout_free_cell(root, 0);
 	return (out);
 }
 
@@ -406,8 +401,7 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	else
 		return (-1);
 
-	/* Store the normal rectangle so fullscreen can be reversed after loading. */
-	memcpy(&g, &lc->g, sizeof g);
+	/* Save the normal rectangle for unzooming after loading. */
 	wp = lc->wp;
 	if (wp != NULL && wp->layout_cell == lc &&
 	    (wp->flags & PANE_ZOOMED)) {
@@ -415,7 +409,8 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 			memcpy(&g, &lc->saved.g, sizeof g);
 		else
 			memcpy(&g, &lc->fg, sizeof g);
-	}
+	} else
+		memcpy(&g, &lc->g, sizeof g);
 	if (g.sx == 0)
 		g.sx = PANE_MINIMUM;
 	if (g.sy == 0)

@@ -775,13 +775,13 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
 
-	if (wp == w->active) {
+	if (w->modal != NULL && wp != w->modal)
+		return (0);
+	if (wp == w->active && window_pane_is_visible(wp)) {
 		if (raise && window_pane_is_unzoomed_float(wp))
 			window_raise_pane(wp);
 		return (0);
 	}
-	if (w->modal != NULL && wp != w->modal)
-		return (0);
 	if (!window_pane_is_visible(wp)) {
 		/*
 		 * The pane is covered by a zoomed pane. A tiled pane that is
@@ -914,8 +914,9 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		 */
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
 			if (!window_pane_is_visible(wp) ||
-			    window_pane_is_unzoomed_float(wp))
+			    window_pane_is_unzoomed_float(wp)) {
 				continue;
+			}
 
 			window_pane_full_size_offset(wp, &xoff, &yoff, &sx,
 			    &sy);
@@ -1021,9 +1022,10 @@ window_raise_pane(struct window_pane *wp)
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
 		if (wp1 == w->modal)
 			continue;
-		if ((wp1->flags & PANE_FLOATOVERZOOM) &&
-		    (~wp->flags & PANE_FLOATOVERZOOM))
+		if ((wp1->flags & PANE_ALWAYS_ON_TOP) &&
+		    (~wp->flags & PANE_ALWAYS_ON_TOP)) {
 			continue;
+		}
 		break;
 	}
 	if (wp1 == NULL)
@@ -1050,8 +1052,8 @@ window_lower_pane(struct window_pane *wp)
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
 		if (wp1 == w->modal)
 			continue;
-		if (wp->flags & PANE_FLOATOVERZOOM) {
-			if (~wp1->flags & PANE_FLOATOVERZOOM)
+		if (wp->flags & PANE_ALWAYS_ON_TOP) {
+			if (~wp1->flags & PANE_ALWAYS_ON_TOP)
 				break;
 		} else if (!window_pane_is_floating(wp1))
 			break;
@@ -1231,8 +1233,8 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	if (~flags & SPAWN_FLOATING)
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	else {
-		if (flags & SPAWN_FLOATOVERZOOM)
-			wp->flags |= PANE_FLOATOVERZOOM;
+		if (flags & SPAWN_ALWAYS_ON_TOP)
+			wp->flags |= PANE_ALWAYS_ON_TOP;
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 		if (~flags & SPAWN_MODAL)
 			window_raise_pane(wp);
@@ -1266,9 +1268,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 	}
 
 	if (wp == w->active) {
-		if (wp == w->modal) {
+		if (wp == w->modal)
 			w->modal = NULL;
-		}
 		w->active = window_get_top_pane(w, wp);
 		if (w->active != NULL) {
 			window_pane_stack_remove(&w->last_panes, w->active);
@@ -1461,7 +1462,7 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'Z';
 	if (window_pane_is_floating(wp))
 		flags[pos++] = 'F';
-	if (wp->flags & PANE_FLOATOVERZOOM)
+	if (wp->flags & PANE_ALWAYS_ON_TOP)
 		flags[pos++] = 'A';
 	if (wp == w->modal)
 		flags[pos++] = 'O';
@@ -2406,7 +2407,7 @@ window_pane_find_tiled_leaf(struct layout_cell *lc, enum layout_type type,
 	return (NULL);
 }
 
-/* Follow a fullscreen tile's retained position to its nearest tiled neighbour. */
+/* Find a tiled neighbour using a fullscreen pane's retained position. */
 static struct window_pane *
 window_pane_find_tiled_neighbour(struct window_pane *wp, enum layout_type type,
     int forward)
@@ -2454,7 +2455,8 @@ window_pane_find_up(struct window_pane *wp)
 	if (wp == NULL)
 		return (NULL);
 	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
-		best = window_pane_find_tiled_neighbour(wp, LAYOUT_TOPBOTTOM, 0);
+		best = window_pane_find_tiled_neighbour(wp,
+		    LAYOUT_TOPBOTTOM, 0);
 		return (best);
 	}
 	w = wp->window;
@@ -2519,7 +2521,8 @@ window_pane_find_down(struct window_pane *wp)
 	if (wp == NULL)
 		return (NULL);
 	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
-		best = window_pane_find_tiled_neighbour(wp, LAYOUT_TOPBOTTOM, 1);
+		best = window_pane_find_tiled_neighbour(wp,
+		    LAYOUT_TOPBOTTOM, 1);
 		return (best);
 	}
 	w = wp->window;
@@ -2584,7 +2587,8 @@ window_pane_find_left(struct window_pane *wp)
 	if (wp == NULL)
 		return (NULL);
 	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
-		best = window_pane_find_tiled_neighbour(wp, LAYOUT_LEFTRIGHT, 0);
+		best = window_pane_find_tiled_neighbour(wp,
+		    LAYOUT_LEFTRIGHT, 0);
 		return (best);
 	}
 	w = wp->window;
@@ -2640,7 +2644,8 @@ window_pane_find_right(struct window_pane *wp)
 	if (wp == NULL)
 		return (NULL);
 	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
-		best = window_pane_find_tiled_neighbour(wp, LAYOUT_LEFTRIGHT, 1);
+		best = window_pane_find_tiled_neighbour(wp,
+		    LAYOUT_LEFTRIGHT, 1);
 		return (best);
 	}
 	w = wp->window;

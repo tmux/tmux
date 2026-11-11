@@ -2774,13 +2774,15 @@ static void *
 format_cb_pane_unzoomed_height(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
+	char			*value;
 	int			 xoff, yoff;
 	u_int			 sx, sy;
 
 	if (wp == NULL || wp->layout_cell == NULL)
 		return (NULL);
 	layout_get_pane_geometry(wp, 1, &xoff, &yoff, &sx, &sy);
-	return (format_printf("%u", sy));
+	value = format_printf("%u", sy);
+	return (value);
 }
 
 /* Callback for pane_unzoomed_width. */
@@ -2788,13 +2790,15 @@ static void *
 format_cb_pane_unzoomed_width(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
+	char			*value;
 	int			 xoff, yoff;
 	u_int			 sx, sy;
 
 	if (wp == NULL || wp->layout_cell == NULL)
 		return (NULL);
 	layout_get_pane_geometry(wp, 1, &xoff, &yoff, &sx, &sy);
-	return (format_printf("%u", sx));
+	value = format_printf("%u", sx);
+	return (value);
 }
 
 /* Callback for pane_width. */

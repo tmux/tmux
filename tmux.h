@@ -1382,7 +1382,7 @@ struct window_pane {
 #define PANE_ACTIVITY 0x40000
 #define PANE_CLOSEONCLICK 0x80000
 #define PANE_CAPTUREALLKEYS 0x100000
-#define PANE_FLOATOVERZOOM 0x200000
+#define PANE_ALWAYS_ON_TOP 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
 #define PANE_UTMP 0x800000
 
@@ -1626,8 +1626,8 @@ struct layout_geometry {
 /* Saved tiled allocation; g.sx is UINT_MAX if no rectangle was saved. */
 struct layout_saved {
 	struct layout_geometry	 g;		/* previous tiled rectangle */
-	u_int			 generation;	/* parent's revision after removal */
-	u_int			 previous;	/* parent's revision before removal */
+	u_int			 generation;	/* parent revision after removal */
+	u_int			 previous;	/* parent revision before removal */
 };
 
 /* Layout cells queue. */
@@ -1644,9 +1644,9 @@ struct layout_cell {
 	struct layout_cell	*parent;
 
 	struct layout_geometry	 g;
-	struct layout_geometry	 fg; /* saved floating pane */
+	struct layout_geometry	 fg;	/* saved floating rectangle */
 	struct layout_saved	 saved;
-	u_int			 generation; /* revision of tiled allocations */
+	u_int			 generation;	/* revision of tiled allocations */
 
 	struct window_pane	*wp;
 	struct layout_cells	 cells;
@@ -2632,7 +2632,7 @@ struct spawn_context {
 #define SPAWN_HORIZONTAL 0x200
 #define SPAWN_SPLIT 0x400
 #define SPAWN_MODAL 0x800
-#define SPAWN_FLOATOVERZOOM 0x1000
+#define SPAWN_ALWAYS_ON_TOP 0x1000
 };
 
 /* Paste buffer. */

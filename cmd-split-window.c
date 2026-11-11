@@ -141,9 +141,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_ZOOM;
 	}
 	if (args_has(args, 'O'))
-		flags |= SPAWN_MODAL|SPAWN_FLOATOVERZOOM;
+		flags |= SPAWN_MODAL|SPAWN_ALWAYS_ON_TOP;
 	if (is_floating && args_has(args, 'A'))
-		flags |= SPAWN_FLOATOVERZOOM;
+		flags |= SPAWN_ALWAYS_ON_TOP;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))

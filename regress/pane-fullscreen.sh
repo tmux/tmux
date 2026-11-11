@@ -76,19 +76,22 @@ run resize-pane -Z -t "$C"
 run resize-window -x 60 -y 18
 check "$C" '#{pane_width}:#{pane_height}:#{window_width}' '60:18:60'
 run resize-pane -aZ
-check "$A" '#{pane_width}' 20
-for p in "$B" "$C"; do
-	check "$p" '#{pane_width}' 19
+width=2
+for p in "$A" "$B" "$C"; do
+	check "$p" '#{pane_floating_flag}:#{pane_height}' '0:18'
+	part=$(run display-message -p -t "$p" '#{pane_width}')
+	[ "$part" -ge 1 ] || fail 'restored pane below its minimum width'
+	width=$((width + part))
 done
+[ "$width" -eq 60 ] || fail 'restored panes do not fill the resized window'
 run resize-window -x 80 -y 24
 
-# A changed group is shared equally when a fullscreen tile returns.
+# Restoring after changes splits the neighbour and preserves the other tiles.
 run resize-pane -Z -t "$C"
 run resize-pane -x 40 -t "$B"
+width=$(run display-message -p -t "$A" '#{pane_width}')
 run resize-pane -Z -t "$C"
-for p in "$A" "$B" "$C"; do
-	check "$p" '#{pane_width}' 26
-done
+check "$A" '#{pane_width}' "$width"
 
 # A float can sit between fullscreen panes, then be raised above both.
 run resize-pane -Z -t "$A"
@@ -119,6 +122,23 @@ check "$B" '#{pane_active}' 1
 $TMUX move-pane -X 10 -t "$B" 2>/dev/null && fail 'moved fullscreen pane'
 $TMUX resize-pane -x 20 -t "$B" 2>/dev/null && fail 'resized fullscreen pane'
 check "$B" '#{pane_width}:#{pane_height}' '80:24'
+
+# Named stacking operations and numeric z-indices leave fullscreen intact.
+for position in front back forward backward forward-loop backward-loop; do
+	run move-pane -t "$B" -P "$position"
+	check "$B" '#{pane_zoomed_flag}:#{pane_width}:#{pane_height}' '1:80:24'
+done
+run move-pane -t "$B" -z 0
+check "$B" '#{pane_zoomed_flag}:#{pane_width}:#{pane_height}' '1:80:24'
+
+# A geometry position remains forbidden when an ignored -z is also supplied.
+for position in centre center bottom-right; do
+	$TMUX move-pane -t "$B" -P "$position" 2>/dev/null &&
+	    fail 'repositioned fullscreen pane'
+	$TMUX move-pane -t "$B" -P "$position" -z 0 2>/dev/null &&
+	    fail '-z allowed repositioning a fullscreen pane'
+	check "$B" '#{pane_zoomed_flag}:#{pane_width}:#{pane_height}' '1:80:24'
+done
 run split-window -d -t "$B"
 check "$B" '#{pane_floating_flag}:#{pane_zoomed_flag}' '0:0'
 

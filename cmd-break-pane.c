@@ -152,7 +152,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	is_floating = window_pane_is_floating(wp);
-	memcpy(&floating, &wp->layout_cell->g, sizeof floating);
+	if (is_floating)
+		memcpy(&floating, &wp->layout_cell->g, sizeof floating);
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);

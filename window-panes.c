@@ -241,12 +241,13 @@ window_panes_get_geometry(struct layout_cell *lc, struct layout_cell *root,
     u_int osx, u_int osy, u_int dsx, u_int dsy, u_int *xp, u_int *yp,
     u_int *sxp, u_int *syp)
 {
-	struct window_pane	*wp = lc->wp;
+	struct window_pane	*wp;
 	int			 status;
 	u_int			 x, y, sx, sy, x2, y2;
 
 	if (lc == NULL || osx == 0 || osy == 0 || dsx == 0 || dsy == 0)
 		return (0);
+	wp = lc->wp;
 
 	if (osx <= dsx && osy <= dsy) {
 		x = lc->g.xoff;
@@ -487,8 +488,9 @@ window_panes_clip_floating_pane(struct layout_cell *lc, u_int osx, u_int osy,
 	int	x, y, x2, y2, bx, by, bx2, by2;
 
 	if (!window_panes_get_floating_borders(lc, osx, osy, dsx, dsy, &x, &y,
-	    &x2, &y2))
+	    &x2, &y2)) {
 		return (1);
+	}
 
 	bx = *xp;
 	by = *yp;
@@ -679,8 +681,9 @@ window_panes_draw_floating_border(struct screen_write_ctx *ctx,
 	if (dsx == 0 || dsy == 0)
 		return;
 	if (!window_panes_get_floating_borders(lc, osx, osy, dsx, dsy, &x, &y,
-	    &x2, &y2))
+	    &x2, &y2)) {
 		return;
+	}
 
 	map = xcalloc(dsx, dsy);
 	window_panes_mark_hline(map, dsx, dsy, x, x2 + 1, y);
@@ -712,8 +715,9 @@ window_panes_clear_floating_area(struct screen_write_ctx *ctx,
 	int			x, y, x2, y2, xx, yy;
 
 	if (!window_panes_get_floating_borders(lc, osx, osy, dsx, dsy, &x, &y,
-	    &x2, &y2))
+	    &x2, &y2)) {
 		return;
+	}
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (x < 0)
@@ -860,11 +864,13 @@ window_panes_draw_pane(struct window_panes_modedata *data,
 	u_int			 pane, x, y, sx, sy;
 
 	if (!window_panes_get_geometry(lc, root, osx, osy, dsx, dsy, &x, &y,
-	    &sx, &sy))
+	    &sx, &sy)) {
 		return;
+	}
 	if (!window_panes_clip_floating_pane(lc, osx, osy, dsx, dsy, &x, &y,
-	    &sx, &sy))
+	    &sx, &sy)) {
 		return;
+	}
 	if (window_pane_index(wp, &pane) != 0)
 		return;
 	window_panes_add_area(data, wp, x, y, sx, sy);
@@ -1036,8 +1042,8 @@ window_panes_free(struct window_mode_entry *wme)
 
 	evtimer_del(&data->timer);
 
-	if (data->zoomed == 0 && window_unzoom_pane(wme->wp, 1) == 0)
-		server_redraw_window(w);
+	if (data->zoomed == 0)
+		window_unzoom_pane(wme->wp, 1);
 	server_redraw_window(w);
 	server_redraw_window_borders(w);
 	server_status_window(w);

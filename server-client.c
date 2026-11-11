@@ -750,8 +750,9 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			if (!window_pane_is_visible(fwp))
 				continue;
 			if (window_pane_is_unzoomed_float(fwp) &&
-			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
+			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE) {
 				continue;
+			}
 			if (window_pane_scrollbar_reserve(fwp)) {
 				sb_w = fwp->scrollbar_style.width;
 				sb_pad = fwp->scrollbar_style.pad;
