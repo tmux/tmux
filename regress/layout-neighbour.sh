@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Closing and floating prefer the preceding tiled sibling, falling forward
-# only when necessary. Preserve unrelated allocations in custom layouts.
+# Closing, floating and retiling prefer the preceding tiled sibling, falling
+# forward when necessary. Preserve unrelated tiled and floating rectangles.
 
 . ./regress-common.inc
 
@@ -74,17 +74,38 @@ remove()
 	esac
 }
 
+# Retiling splits the donor, and floating again gives it the space back.
+check_retile()
+{
+	released=$(geometry)
+	donor_size=$(run display -p -t "$2" "$dimension")
+	untouched_geometry=$(rectangle "$3")
+	run join-pane -d -s "$1" -t "$1"
+	check "$1" '#{pane_floating_flag}' 0
+	part=$(run display -p -t "$1" "$dimension")
+	remainder=$(run display -p -t "$2" "$dimension")
+	[ "$((part + remainder + 1))" -eq "$donor_size" ] ||
+	    fail 'retiling did not split the expected donor'
+	[ "$(rectangle "$3")" = "$untouched_geometry" ] ||
+	    fail 'retiling changed an unrelated tile'
+	run break-pane -Wd -s "$1"
+	[ "$(geometry)" = "$released" ] ||
+	    fail 'floating after retiling changed the released layout'
+}
+
 for axis in h v; do
 	if [ "$axis" = h ]; then
 		cross=v
 		dimension='#{pane_width}'
 		cross_geometry='#{pane_top},#{pane_height}'
 		other_size=60
+		window_size=121
 	else
 		cross=h
 		dimension='#{pane_height}'
 		cross_geometry='#{pane_left},#{pane_width}'
 		other_size=40
+		window_size=81
 	fi
 	for operation in close exit float; do
 		# A temporary split must return space to the pane it split.
@@ -113,7 +134,30 @@ for axis in h v; do
 			    fail "$position: wrong recipient for released space"
 			[ "$(rectangle "$untouched")" = "$other" ] ||
 			    fail "$position: unrelated allocation changed"
+			if [ "$operation" = float ]; then
+				check_retile "$target" "$recipient" "$untouched"
+			fi
 		done
+
+		# Already-floating siblings on both sides of B keep their rectangles.
+		three_panes
+		F=$(run new-pane -dP -F '#{pane_id}' -t "$A" -x 20 -y 8 'exec cat') || exit 1
+		G=$(run new-pane -dP -F '#{pane_id}' -t "$B" -x 18 -y 6 'exec cat') || exit 1
+		first_float=$(rectangle "$F")
+		second_float=$(rectangle "$G")
+		other=$(rectangle "$C")
+		old=$(run display -p -t "$A" "$dimension")
+		space=$(run display -p -t "$B" "$dimension")
+		remove "$B"
+		wait_for_output "$((old + space + 1))" \
+		    $TMUX display -p -t "$A" "$dimension" ||
+		    fail 'floating sibling blocked the preceding tile'
+		[ "$(rectangle "$C")" = "$other" ] || fail 'following allocation changed'
+		if [ "$operation" = float ]; then
+			check_retile "$B" "$A" "$C"
+		fi
+		[ "$(rectangle "$F")" = "$first_float" ] || fail 'preceding float moved'
+		[ "$(rectangle "$G")" = "$second_float" ] || fail 'following float moved'
 
 		# Loaded nested layouts retain their internal split and unrelated tiles.
 		three_panes
@@ -133,6 +177,23 @@ for axis in h v; do
 		check "$A" "$cross_geometry" "$first_cross"
 		check "$D" "$cross_geometry" "$second_cross"
 		[ "$(rectangle "$C")" = "$other" ] || fail 'loaded layout changed unrelated tile'
+
+		# Skip a preceding subtree of floats and a following floating leaf.
+		three_panes
+		D=$(run split-window -dP -F '#{pane_id}' -"$cross" -t "$A" 'exec cat') || exit 1
+		run break-pane -Wd -s "$A"
+		run break-pane -Wd -s "$D"
+		F=$(run new-pane -dP -F '#{pane_id}' -t "$B" -x 20 -y 8 'exec cat') || exit 1
+		first_float=$(rectangle "$A")
+		second_float=$(rectangle "$D")
+		following_float=$(rectangle "$F")
+		remove "$B"
+		wait_for_output "$window_size" \
+		    $TMUX display -p -t "$C" "$dimension" ||
+		    fail 'following tile did not absorb the collapsed group'
+		[ "$(rectangle "$A")" = "$first_float" ] || fail 'first float moved'
+		[ "$(rectangle "$D")" = "$second_float" ] || fail 'second float moved'
+		[ "$(rectangle "$F")" = "$following_float" ] || fail 'following float moved'
 	done
 done
 
