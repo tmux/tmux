@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.307 2026/10/30 12:24:28 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.308 2026/11/12 14:03:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2392,6 +2392,9 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 	struct tty_ctx			 ttyctx;
 	struct visible_ranges		*r;
 	struct visible_range		*ri;
+
+	if (TAILQ_EMPTY(&cl->items))
+		return (0);
 
 	if (wp != NULL) {
 		wsx = wp->window->sx;

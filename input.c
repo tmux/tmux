@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.283 2026/11/12 09:39:30 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.284 2026/11/12 14:03:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1254,7 +1254,7 @@ input_print(struct input_ctx *ictx)
 	utf8_set(&ictx->cell.cell.data, ictx->ch);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
 
-	utf8_copy(&ictx->last, &ictx->cell.cell.data);
+	memcpy(&ictx->last, &ictx->cell.cell.data, sizeof ictx->last);
 	ictx->flags |= INPUT_LAST;
 
 	ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
