@@ -592,6 +592,7 @@ monitor_parse(const char *value, char **name, enum monitor_type *type, int *id,
     char **format)
 {
 	char	*copy, *what, *split;
+	int	 n;
 
 	copy = xstrdup(value);
 	*id = -1;
@@ -608,14 +609,16 @@ monitor_parse(const char *value, char **name, enum monitor_type *type, int *id,
 
 	if (strcmp(what, "%*") == 0)
 		*type = MONITOR_ALL_PANES;
-	else if (sscanf(what, "%%%d", id) == 1 && *id >= 0)
-		*type = MONITOR_PANE;
 	else if (strcmp(what, "@*") == 0)
 		*type = MONITOR_ALL_WINDOWS;
-	else if (sscanf(what, "@%d", id) == 1 && *id >= 0)
-		*type = MONITOR_WINDOW;
 	else if (*what == '\0')
 		*type = MONITOR_SESSION;
+	else if (sscanf(what, "%%%d%n", id, &n) == 1 && what[n] == '\0' &&
+	    *id >= 0)
+		*type = MONITOR_PANE;
+	else if (sscanf(what, "@%d%n", id, &n) == 1 && what[n] == '\0' &&
+	    *id >= 0)
+		*type = MONITOR_WINDOW;
 	else
 		goto fail;
 	*name = xstrdup(copy);
