@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.534 2026/11/10 10:36:22 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.535 2026/11/12 11:26:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3183,12 +3183,17 @@ server_client_get_cwd(struct client *c, struct session *s)
 static uint64_t
 server_client_control_flags(struct client *c, const char *next)
 {
+	u_int	pause_age;
+	int	n;
+
 	if (strcmp(next, "pause-after") == 0) {
 		c->pause_age = 0;
 		return (CLIENT_CONTROL_PAUSEAFTER);
 	}
-	if (sscanf(next, "pause-after=%u", &c->pause_age) == 1) {
-		c->pause_age *= 1000;
+	if (sscanf(next, "pause-after=%u%n", &pause_age, &n) == 1 &&
+	    next[n] == '\0' &&
+	    pause_age <= UINT_MAX / 1000) {
+		c->pause_age = pause_age * 1000;
 		return (CLIENT_CONTROL_PAUSEAFTER);
 	}
 	if (strcmp(next, "no-output") == 0)

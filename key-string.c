@@ -1,4 +1,4 @@
-/* $OpenBSD: key-string.c,v 1.79 2026/11/09 12:30:38 nicm Exp $ */
+/* $OpenBSD: key-string.c,v 1.80 2026/11/12 11:26:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -211,15 +211,17 @@ static key_code
 key_string_search_table(const char *string)
 {
 	u_int	i, user;
+	int	n;
 
 	for (i = 0; i < nitems(key_string_table); i++) {
 		if (strcasecmp(string, key_string_table[i].string) == 0)
 			return (key_string_table[i].key);
 	}
 
-	if (sscanf(string, "User%u", &user) == 1 && user <= KEYC_NUSER)
+	if (sscanf(string, "User%u%n", &user, &n) == 1 &&
+	    string[n] == '\0' &&
+	    user <= KEYC_NUSER)
 		return (KEYC_USER + user);
-
 	return (KEYC_UNKNOWN);
 }
 
