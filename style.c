@@ -70,7 +70,7 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 {
 	struct style	saved;
 	const char	delimiters[] = " ,\n", *errstr;
-	char		tmp[256], *found;
+	char		tmp[MAX_HYPERLINK_URI + 32], *found;
 	int		value;
 	size_t		end;
 	u_int		n;
@@ -307,7 +307,7 @@ style_tostring(struct style *sy)
 	struct grid_cell	*gc = &sy->gc;
 	int			 off = 0;
 	const char		*comma = "", *tmp = "", *uri;
-	static char		 s[2048];
+	static char		 s[MAX_HYPERLINK_URI + 2048];
 	char			 b[21];
 
 	*s = '\0';

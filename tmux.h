@@ -115,6 +115,9 @@ struct winlink;
 #define WINDOW_MINIMUM PANE_MINIMUM
 #define WINDOW_MAXIMUM 10000
 
+/* Maximum length of a hyperlink URI. */
+#define MAX_HYPERLINK_URI 4096
+
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
 
