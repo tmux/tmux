@@ -41,7 +41,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.description = "Create a floating pane.",
 	.alias = "newp",
 
-	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:NOp:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:NOp:PR:"
+	    "s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
 	.usage = "[-AbCDdEfhIkKLMNOPvWZ] [-B border-lines] "
 		 "[-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "

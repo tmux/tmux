@@ -588,7 +588,7 @@ complete:
 	if (sc->flags & SPAWN_RESPAWN)
 		return (new_wp);
 
-	/* Zoom restricted panes before activation to preserve existing zooms. */
+	/* Zoom restricted panes first, preserving existing zooms. */
 	if ((sc->flags & SPAWN_ZOOM) &&
 	    (new_wp->flags & PANE_NEVER_ABOVE_ZOOM) && w->modal == NULL) {
 		window_zoom(new_wp);

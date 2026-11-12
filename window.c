@@ -1030,14 +1030,15 @@ window_constrain_pane_stacking(struct window_pane *wp)
 			}
 		}
 	} else if (wp->flags & PANE_NEVER_ABOVE_ZOOM) {
-		/* The last fullscreen pane sets the limit for raising a float. */
+		/* Keep the float below the last fullscreen pane. */
 		TAILQ_FOREACH_REVERSE(other, &w->z_index,
 		    window_panes_zindex, zentry) {
 			if (other == wp)
 				return;
 			if (other->flags & PANE_ZOOMED) {
 				TAILQ_REMOVE(&w->z_index, wp, zentry);
-				TAILQ_INSERT_AFTER(&w->z_index, other, wp, zentry);
+				TAILQ_INSERT_AFTER(&w->z_index, other, wp,
+				    zentry);
 				return;
 			}
 		}
