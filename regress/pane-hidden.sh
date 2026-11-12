@@ -279,6 +279,58 @@ run rotate-window -Z
 check "$A" '#{pane_hidden_flag}' 0
 check "$B" '#{pane_hidden_flag}' 0
 
+# Hidden tiles and floating panes retain their positions during rotation.
+reset
+C=$(run split-window -dPF '#{pane_id}' -t "$B") || exit 1
+F=$(run new-pane -bdPF '#{pane_id}' -t "$B" -x20 -y8) || exit 1
+run resize-pane -h -t "$B"
+fmt='#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}'
+ga=$(run display-message -p -t "$A" "$fmt") || exit 1
+gb=$(run display-message -p -t "$B" "$fmt") || exit 1
+gc=$(run display-message -p -t "$C" "$fmt") || exit 1
+for active in "$A" "$F"; do
+	run select-pane -t "$active"
+	float=$(run display-message -p -t "$F" "#{pane_z}:$fmt") || exit 1
+	if [ "$active" = "$A" ]; then
+		next=$C
+	else
+		next=$F
+	fi
+	run rotate-window -U
+	got=$(run list-panes -F '#{pane_id}' | paste -sd ' ' -)
+	[ "$got" = "$C $F $B $A" ] || fail "rotated order: $got"
+	geometry "$C" "$ga"
+	geometry "$A" "$gc"
+	geometry "$B" "$gb"
+	hidden "$B" 1
+	check "$next" '#{pane_active}' 1
+	check "$F" "#{pane_z}:$fmt" "$float"
+	run rotate-window -D
+	got=$(run list-panes -F '#{pane_id}' | paste -sd ' ' -)
+	[ "$got" = "$A $F $B $C" ] || fail "restored order: $got"
+	geometry "$A" "$ga"
+	geometry "$B" "$gb"
+	geometry "$C" "$gc"
+	hidden "$B" 1
+	check "$active" '#{pane_active}' 1
+	check "$F" "#{pane_z}:$fmt" "$float"
+done
+
+# Excluding hidden tiles can leave one or no tiles eligible for rotation.
+run break-pane -Wd -s "$C"
+fmt="#{pane_id}:#{pane_hidden_flag}:#{pane_floating_flag}:#{pane_active}:$fmt"
+for count in one none; do
+	if [ "$count" = none ]; then
+		run resize-pane -h -t "$A"
+	fi
+	before=$(run list-panes -F "$fmt") || exit 1
+	for direction in -U -D; do
+		run rotate-window "$direction"
+		after=$(run list-panes -F "$fmt") || exit 1
+		[ "$after" = "$before" ] || fail "$count-tile rotation changed state"
+	done
+done
+
 # Hiding every pane, then showing and closing them one by one, leaves the last
 # pane hidden as the only pane in the window; showing it must not crash.
 reset
