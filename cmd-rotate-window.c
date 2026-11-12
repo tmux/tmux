@@ -41,9 +41,10 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	.exec = cmd_rotate_window_exec
 };
 
-/* Tiled positions saved during rotation; geometry is in window coordinates. */
+/* A tiled pane and its original position, in window coordinates. */
 struct cmd_rotate_window_slot {
-	struct layout_cell	*lc;
+	struct window_pane	*wp; /* original pane */
+	struct layout_cell	*lc; /* original tiled position */
 	int			 xoff;
 	int			 yoff;
 	u_int			 sx;
@@ -58,11 +59,10 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct winlink			*wl = target->wl;
 	struct window			*w = wl->window;
-	struct window_pane		*wp, *zwp = NULL, **all, **tiled;
-	struct window_pane		**rotated;
-	struct cmd_rotate_window_slot	*slots;
-	u_int				 i, j, n, nt = 0;
-	int				 active = -1;
+	struct window_pane		*wp, *zwp = NULL, **all;
+	struct layout_cell		*active = NULL;
+	struct cmd_rotate_window_slot	*slots, *slot;
+	u_int				 i, j, n, nt = 0, offset = 1;
 
 	if (args_has(args, 'Z'))
 		zwp = window_zoomed_pane(w);
@@ -74,8 +74,6 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	 */
 	n = window_count_panes(w, 1);
 	all = xcalloc(n, sizeof *all);
-	tiled = xcalloc(n, sizeof *tiled);
-	rotated = xcalloc(n, sizeof *rotated);
 	slots = xcalloc(n, sizeof *slots);
 
 	n = 0;
@@ -83,46 +81,45 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 		all[n++] = wp;
 		if (!layout_cell_is_tiled(wp->layout_cell))
 			continue;
-		tiled[nt] = wp;
-		slots[nt].lc = wp->layout_cell;
-		slots[nt].xoff = wp->xoff;
-		slots[nt].yoff = wp->yoff;
-		slots[nt].sx = wp->sx;
-		slots[nt].sy = wp->sy;
+		slot = &slots[nt];
+		slot->wp = wp;
+		slot->lc = wp->layout_cell;
+		slot->xoff = wp->xoff;
+		slot->yoff = wp->yoff;
+		slot->sx = wp->sx;
+		slot->sy = wp->sy;
 		if (wp == w->active)
-			active = nt;
+			active = wp->layout_cell;
 		nt++;
 	}
-	for (i = 0; i < nt; i++) {
-		if (args_has(args, 'D'))
-			rotated[i] = tiled[(i + nt - 1) % nt];
-		else
-			rotated[i] = tiled[(i + 1) % nt];
-	}
+	if (nt != 0 && args_has(args, 'D'))
+		offset = nt - 1;
 
 	/* Put the rotated panes back into the tiled places in the list. */
 	for (i = 0; i < n; i++)
 		TAILQ_REMOVE(&w->panes, all[i], entry);
 	for (i = j = 0; i < n; i++) {
-		if (layout_cell_is_tiled(all[i]->layout_cell))
-			wp = rotated[j++];
-		else
-			wp = all[i];
+		wp = all[i];
+		if (layout_cell_is_tiled(wp->layout_cell)) {
+			wp = slots[(j + offset) % nt].wp;
+			j++;
+		}
 		TAILQ_INSERT_TAIL(&w->panes, wp, entry);
 	}
 
 	/* Each rotated pane takes over the cell of the place it moved to. */
 	for (i = 0; i < nt; i++) {
-		wp = rotated[i];
-		wp->layout_cell = slots[i].lc;
-		wp->layout_cell->wp = wp;
-		wp->xoff = slots[i].xoff;
-		wp->yoff = slots[i].yoff;
-		window_pane_resize(wp, slots[i].sx, slots[i].sy);
+		slot = &slots[i];
+		wp = slots[(i + offset) % nt].wp;
+		wp->layout_cell = slot->lc;
+		slot->lc->wp = wp;
+		wp->xoff = slot->xoff;
+		wp->yoff = slot->yoff;
+		window_pane_resize(wp, slot->sx, slot->sy);
 	}
 
-	if (active != -1) {
-		wp = rotated[active];
+	if (active != NULL) {
+		wp = active->wp;
 		if (zwp != NULL)
 			window_zoom_move(zwp, wp);
 		window_set_active_pane(w, wp, 1);
@@ -132,8 +129,6 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	server_redraw_window(w);
 
 	free(all);
-	free(tiled);
-	free(rotated);
 	free(slots);
 
 	return (CMD_RETURN_NORMAL);
