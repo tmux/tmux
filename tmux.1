@@ -6750,8 +6750,11 @@ section.
 .It Ic window-pane-status-format Ar string
 Set the format in which the window pane is displayed in the status line window
 pane list.
-With the default mouse bindings, clicking a pane entry selects it and shows it
-if hidden; clicking the active visible pane's entry hides it.
+With the default mouse bindings, clicking an inactive pane's entry selects it
+and shows it if hidden.
+Clicking the active visible pane's entry hides it and selects the visible pane
+at the front of the stacking order.
+This works for both separate single clicks and rapid successive clicks.
 The
 .Ql [_]
 button cycles the desktop as described under

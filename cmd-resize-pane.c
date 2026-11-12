@@ -53,21 +53,22 @@ const struct cmd_entry cmd_resize_pane_entry = {
 };
 
 /*
- * Show the desktop: hide every pane above the layout, remembering which, or if
- * any were hidden like that show just those again: floating panes first, then
- * zoomed panes.
+ * Cycle tiled "desktop" visibility: hide floating and zoomed panes,
+ * then restore ordinary floating panes, then zoomed panes. Skip empty
+ * steps and leave independently hidden panes hidden.
+ *
+ * There is no cycle counter: PANE_DESKTOP_UNHIDE marks panes to restore.
+ * Restore marked ordinary floating panes first, then marked zoomed panes
+ * on the next call. Unhiding clears the marker. With no marked panes,
+ * hide and mark the visible floating and zoomed panes, leaving the modal
+ * pane visible.
  */
 static void
-cmd_resize_pane_desktop(struct window *w)
+cmd_resize_pane_show_desktop(struct window *w)
 {
 	struct window_pane	*wp;
 	int			 shown = 0, zoomed;
 
-	/*
-	 * Panes hidden by an earlier call are marked. Show the marked panes
-	 * that are not zoomed first, then the zoomed ones on the next call; if
-	 * none are left hide every floating and zoomed pane.
-	 */
 	for (zoomed = 0; zoomed <= 1 && !shown; zoomed++) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (~wp->flags & PANE_DESKTOP_UNHIDE)
@@ -131,7 +132,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (cmd_resize_pane_mouse_update(self, item));
 
 	if (args_has(args, 'C')) {
-		cmd_resize_pane_desktop(w);
+		cmd_resize_pane_show_desktop(w);
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}

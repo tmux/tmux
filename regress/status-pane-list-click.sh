@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# Clicking a pane in the pane list on the second status line selects it, hides
-# it if it is already the active pane and shows it again if it is hidden. The
-# button at the right hides every floating and zoomed pane and, clicked again,
-# shows just those.
+# Clicking an inactive pane in the second status line selects and unhides it.
+# Clicking the active pane hides it and focuses the exposed top of the stack,
+# whether the clicks are quick or separated by the mouse click timeout.
+# The button at the right cycles desktop visibility.
 
 . ./regress-common.inc
 
@@ -67,18 +67,36 @@ row=12
 entry_b=24
 button=59
 
-# Clicking another pane selects it.
+# Clicking another pane selects it without hiding it.
 check "$a" '#{pane_active}' 1
+check "$b" '#{pane_active}:#{pane_hidden_flag}' '0:0'
 click $entry_b $row
 check "$b" '#{pane_active}:#{pane_hidden_flag}' '1:0'
 
-# Clicking the active pane hides it and the focus moves to a visible pane.
+# A separate click after the timeout hides the active pane.
 click $entry_b $row
-check "$b" '#{pane_hidden_flag}' 1
-check "$b" '#{pane_active}' 0
+check "$b" '#{pane_hidden_flag}:#{pane_active}' '1:0'
+check "$f" '#{pane_active}' 1
 
-# Clicking a hidden pane shows it and selects it.
+# A later single click shows the hidden pane and selects it again.
 click $entry_b $row
+check "$b" '#{pane_hidden_flag}:#{pane_active}' '0:1'
+
+# Two quick clicks on an inactive pane select it, then hide it.
+$TMUX select-pane -t "$a" || fail "select failed"
+seq=$(printf '\033[<0;%s;%sM\033[<0;%s;%sm' \
+    "$entry_b" "$row" "$entry_b" "$row")
+$TMUX2 send-keys -t "$OUTER" -l "$seq$seq" || fail "send-keys failed"
+wait_for_output 1 $TMUX display-message -p -t "$b" '#{pane_hidden_flag}' ||
+    fail 'second quick click did not hide the pane'
+check "$f" '#{pane_active}' 1
+click $entry_b $row
+check "$b" '#{pane_hidden_flag}:#{pane_active}' '0:1'
+
+# Three quick clicks also show the pane again on the third press.
+$TMUX select-pane -t "$a" || fail "select failed"
+$TMUX2 send-keys -t "$OUTER" -l "$seq$seq$seq" || fail "send-keys failed"
+sleep 1
 check "$b" '#{pane_hidden_flag}:#{pane_active}' '0:1'
 
 # The button hides the floating pane but not the tiled ones, then shows it.
