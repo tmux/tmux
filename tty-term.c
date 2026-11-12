@@ -551,17 +551,6 @@ tty_term_free_colours(struct tty_term *term)
 	}
 }
 
-static int
-tty_term_can_build_colours(struct tty_term *term, enum tty_code_code code)
-{
-	const char	*s;
-
-	if (!tty_term_has(term, code))
-		return (0);
-	s = tty_term_string(term, code);
-	return (strstr(s, "%P") == NULL && strstr(s, "%g") == NULL);
-}
-
 static void
 tty_term_build_colours(struct tty_term *term)
 {
@@ -569,8 +558,8 @@ tty_term_build_colours(struct tty_term *term)
 	int	setaf, setab;
 
 	tty_term_free_colours(term);
-	setaf = tty_term_can_build_colours(term, TTYC_SETAF);
-	setab = tty_term_can_build_colours(term, TTYC_SETAB);
+	setaf = tty_term_has(term, TTYC_SETAF);
+	setab = tty_term_has(term, TTYC_SETAB);
 	for (i = 0; i < nitems(term->setaf); i++) {
 		if (setaf) {
 			term->setaf[i] = xstrdup(tty_term_string_i(term,
