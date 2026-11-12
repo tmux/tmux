@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1477 2026/11/12 11:11:27 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1478 2026/11/12 11:19:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1791,6 +1791,8 @@ struct tty_term {
 	char		 acs[UCHAR_MAX + 1][2];
 
 	struct tty_code	*codes;
+	char		*setaf[256];
+	char		*setab[256];
 
 #define TERM_256COLOURS 0x1
 #define TERM_NOAM 0x2
