@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1475 2026/11/10 10:36:22 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1478 2026/11/12 11:19:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1432,6 +1432,10 @@ struct window_pane {
 
 	struct input_ctx *ictx;
 
+	char		*program_state;
+	char		*program_name;
+	char		*program_message;
+
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
 	u_int		 cached_dim;
@@ -1449,6 +1453,7 @@ struct window_pane {
 	struct screen	 base;
 
 	struct screen	 status_screen;
+	u_int		 status_dim;
 	u_int		 status_generation;
 
 	TAILQ_HEAD(, window_mode_entry) modes;
@@ -1462,8 +1467,10 @@ struct window_pane {
 
 	int		 border_gc_set;
 	struct grid_cell border_gc;
+	u_int		 border_dim;
 	int		 active_border_gc_set;
 	struct grid_cell active_border_gc;
+	u_int		 active_border_dim;
 
 	int		 control_bg;
 	int		 control_fg;
@@ -1799,6 +1806,8 @@ struct tty_term {
 	char		 acs[UCHAR_MAX + 1][2];
 
 	struct tty_code	*codes;
+	char		*setaf[256];
+	char		*setab[256];
 
 #define TERM_256COLOURS 0x1
 #define TERM_NOAM 0x2
@@ -3879,6 +3888,7 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
+void		 window_pane_clear_program_status(struct window_pane *, int);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
 		     const char *);
@@ -3948,7 +3958,7 @@ void		 window_get_fill_cell(struct window *, int, struct grid_cell *);
 void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,
-		     struct client *, struct grid_cell *);
+		     struct client *, struct grid_cell *, u_int *);
 int		 window_make_pane_status(struct window_pane *, struct client *,
 		     u_int, struct redraw_span *);
 

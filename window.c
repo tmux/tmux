@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.389 2026/10/21 13:45:20 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.390 2026/11/12 09:39:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1638,6 +1638,7 @@ window_pane_destroy(struct window_pane *wp)
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 	wp->flags |= PANE_DESTROYED;
+	window_pane_clear_program_status(wp, 1);
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
@@ -1984,6 +1985,23 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 
 	prompt_incremental_start(wp->prompt);
 	window_fire_pane_prompt("pane-prompt-opened", wp, type);
+}
+
+/* Clear program status. */
+void
+window_pane_clear_program_status(struct window_pane *wp, int all)
+{
+	if (!all && wp->program_state != NULL) {
+		if (strcmp(wp->program_state, "done") == 0 ||
+		    strcmp(wp->program_state, "error") == 0)
+			return;
+	}
+	free(wp->program_state);
+	free(wp->program_name);
+	free(wp->program_message);
+	wp->program_state = NULL;
+	wp->program_name = NULL;
+	wp->program_message = NULL;
 }
 
 /* Close a pane prompt. */
