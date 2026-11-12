@@ -274,7 +274,8 @@ check_PROGRAMS = \
 	fuzz/format-fuzzer \
 	fuzz/style-fuzzer \
 	fuzz/layout-fuzzer \
-	fuzz/json-fuzzer
+	fuzz/json-fuzzer \
+	fuzz/imsg-frame-fuzzer
 fuzz_input_fuzzer_LDFLAGS = $(FUZZING_LIBS)
 fuzz_input_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
 fuzz_cmd_parse_fuzzer_LDFLAGS = $(FUZZING_LIBS)
@@ -287,6 +288,8 @@ fuzz_layout_fuzzer_LDFLAGS = $(FUZZING_LIBS)
 fuzz_layout_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
 fuzz_json_fuzzer_LDFLAGS = $(FUZZING_LIBS)
 fuzz_json_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
+fuzz_imsg_frame_fuzzer_LDFLAGS = $(FUZZING_LIBS)
+fuzz_imsg_frame_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
 endif
 
 # Install tmux.1 in the right format.
