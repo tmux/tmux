@@ -98,7 +98,8 @@ for mode in before after detached modal; do
 	    '25:7:30:9'
 	run kill-pane -t "$float"
 	run select-pane -t "$base"
-	got=$(run display-message -p -t "$base" '#{window_layout}' | sed 's/"l":[0-9]*,//g')
+	got=$(run display-message -p -t "$base" '#{window_layout}' |
+	    sed 's/"l":[0-9]*,//g')
 	[ "$got" = "$layout" ] || fail 'tiled layout was not restored'
 done
 
@@ -145,10 +146,11 @@ check "$base" '#{pane_z}' 4
 run kill-pane -t "$hidden"
 run kill-pane -t "$back"
 
-# Fullscreen panes cannot be resized; operations on other panes leave zoom alone.
+# Fullscreen panes cannot be resized. Other panes can change without unzooming.
 run resize-pane -Z -t "$float"
 check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:1'
-$TMUX resize-pane -t "$float" -x 25 2>/dev/null && fail 'resized fullscreen pane'
+$TMUX resize-pane -t "$float" -x 25 2>/dev/null &&
+    fail 'resized fullscreen pane'
 check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}:#{pane_width}' \
     '1:1:80'
 run resize-pane -Z -t "$float"

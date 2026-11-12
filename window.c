@@ -2440,8 +2440,10 @@ window_pane_find_tiled_neighbour(struct window_pane *wp, enum layout_type type,
 			for (;;) {
 				if (forward)
 					other = TAILQ_NEXT(other, entry);
-				else
-					other = TAILQ_PREV(other, layout_cells, entry);
+				else {
+					other = TAILQ_PREV(other, layout_cells,
+					    entry);
+				}
 				if (other == NULL)
 					break;
 				found = window_pane_find_tiled_leaf(other, type,

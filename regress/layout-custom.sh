@@ -739,7 +739,8 @@ for flags in '' A mixed; do
 		    "$(raw_layout L:zoom)" "$during"
 		check_ok resize-pane -a -Z -t L:zoom
 		must_equal 'Restored pane placement' \
-		    "$($TMUX display-message -p -t "L:zoom.$pane" '#{pane_floating_flag}')" \
+		    "$($TMUX display-message -p -t "L:zoom.$pane" \
+		    '#{pane_floating_flag}')" \
 		    "$([ "$pane" = 0 ] && echo 0 || echo 1)"
 	done
 	check_ok kill-window -t L:zoom

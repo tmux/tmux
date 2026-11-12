@@ -32,7 +32,8 @@ check()
 # mouse SEQUENCE: send the escape sequence to the inner client.
 mouse()
 {
-	$TMUX2 send-keys -t "$OUTER" -l "$(printf "$1")" || fail "send-keys failed"
+	$TMUX2 send-keys -t "$OUTER" -l "$(printf "$1")" ||
+	    fail "send-keys failed"
 	sleep 1
 }
 
@@ -45,7 +46,8 @@ $TMUX set -g focus-follows-mouse on || exit 1
 $TMUX set -g pane-border-status top || exit 1
 A=$($TMUX display-message -p '#{pane_id}') || exit 1
 X=$($TMUX new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 5 -Y 8 'sleep 100') || exit 1
-Y=$($TMUX new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 45 -Y 8 'sleep 100') || exit 1
+Y=$($TMUX new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 45 -Y 8 \
+    'sleep 100') || exit 1
 
 $TMUX2 new-session -d -x 80 -y 24 "$TMUX attach -t inner" || exit 1
 sleep 1

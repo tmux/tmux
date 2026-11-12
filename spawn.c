@@ -363,8 +363,6 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		}
 		if (sc->flags & SPAWN_FLOATING)
 			new_wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
-		if (sc->flags & SPAWN_ALWAYS_ON_TOP)
-			new_wp->flags |= PANE_ALWAYS_ON_TOP;
 	}
 
 	/*

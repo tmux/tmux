@@ -3453,7 +3453,8 @@ Its previous allocation is restored if the tiled layout has not changed and
 there is enough space.
 Otherwise, a neighbouring tiled allocation is split, leaving the other tiles
 unchanged as far as space permits.
-The neighbour is chosen using the same preference as when a tiled pane is closed.
+The neighbour is chosen using the same preference as when a tiled pane is
+closed.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
@@ -7719,7 +7720,7 @@ The following variables are available, where appropriate:
 .It Li "pane_dead_time" Ta "" Ta "Exit time of process in dead pane"
 .It Li "pane_fg" Ta "" Ta "Pane foreground colour"
 .It Li "pane_flags" Ta "" Ta "Pane flags"
-.It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating, including zoomed panes"
+.It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating or zoomed"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"

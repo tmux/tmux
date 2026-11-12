@@ -264,7 +264,8 @@ $TMUX display-panes -d 0 -t "$p0" || fail "display-panes status failed"
 wait_format "$p0" '#{pane_mode}' 'panes-mode'
 wait_capture 'STATUS-TOP'
 wait_capture "T0:$status_p0_size"
-status_p1_expanded=$($TMUX display-message -p -t "$p1" '#{pane_width}x#{pane_height}')
+status_p1_expanded=$($TMUX display-message -p -t "$p1" \
+    '#{pane_width}x#{pane_height}')
 wait_capture "T1:$status_p1_expanded"
 CAPTURED=$(capture)
 first=$(printf '%s\n' "$CAPTURED" | sed -n '1p')

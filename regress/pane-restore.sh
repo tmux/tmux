@@ -31,8 +31,8 @@ run()
 # Capture visible tiled rectangles without focus or stacking metadata.
 geometry()
 {
-	run list-panes -f '#{!:#{pane_floating_flag}}' \
-	    -F '#{pane_id}:#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
+	run list-panes -f '#{!:#{pane_floating_flag}}' -F \
+	    '#{pane_id}:#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
 }
 
 # Capture a rectangle for comparisons between fresh test windows.
@@ -53,9 +53,12 @@ check()
 reset()
 {
 	stop_server $TMUX || fail 'could not stop previous server'
-	A=$(run new-session -dP -F '#{pane_id}' -x 121 -y 61 'exec cat') || exit 1
-	B=$(run split-window -dP -F '#{pane_id}' -"$axis" -t "$A" -l 40 '') || exit 1
-	C=$(run split-window -dP -F '#{pane_id}' -"$axis" -t "$B" -l 15 '') || exit 1
+	A=$(run new-session -dP -F '#{pane_id}' -x 121 -y 61 \
+	    'exec cat') || exit 1
+	B=$(run split-window -dP -F '#{pane_id}' -"$axis" -t "$A" \
+	    -l 40 '') || exit 1
+	C=$(run split-window -dP -F '#{pane_id}' -"$axis" -t "$B" \
+	    -l 15 '') || exit 1
 }
 
 # Select the neighbours according to the observed closing preference.
@@ -121,16 +124,21 @@ for axis in h v; do
 		reset
 		before=$(geometry)
 		leave
-		[ "$(rectangle "$A")" = "$closed_first" ] || fail 'first tile differs from closing'
-		[ "$(rectangle "$C")" = "$closed_last" ] || fail 'last tile differs from closing'
+		[ "$(rectangle "$A")" = "$closed_first" ] ||
+		    fail 'first tile differs from closing'
+		[ "$(rectangle "$C")" = "$closed_last" ] ||
+		    fail 'last tile differs from closing'
 		released=$(geometry)
 		restore
-		[ "$(geometry)" = "$before" ] || fail 'original allocation was not restored'
+		[ "$(geometry)" = "$before" ] ||
+		    fail 'original allocation was not restored'
 		leave
 		restore
-		[ "$(geometry)" = "$before" ] || fail 'repeated restoration changed sizes'
+		[ "$(geometry)" = "$before" ] ||
+		    fail 'repeated restoration changed sizes'
 		run kill-pane -t "$B"
-		[ "$(geometry)" = "$released" ] || fail 'removal differs from closing'
+		[ "$(geometry)" = "$released" ] ||
+		    fail 'removal differs from closing'
 
 		# Changes while absent invalidate the saved allocation. Only the
 		# neighbour is split; the other tile keeps its adjusted size.
@@ -142,9 +150,11 @@ for axis in h v; do
 		restore
 		check "$B" "$dimension" 15
 		check "$neighbour" "$dimension" 14
-		[ "$(rectangle "$other")" = "$untouched" ] || fail 'unrelated tile changed'
+		[ "$(rectangle "$other")" = "$untouched" ] ||
+		    fail 'unrelated tile changed'
 
-		# Closing the preferred neighbour makes restoration use the other.
+		# Closing the preferred neighbour makes restoration use the
+		# other.
 		reset
 		neighbours
 		leave
@@ -165,7 +175,8 @@ for axis in h v; do
 	F=$(run new-pane -dP -F '#{pane_id}' -t "$B" -x 20 -y 8 '') || exit 1
 	run join-pane -d -s "$F" -t "$F"
 	run break-pane -Wd -s "$F"
-	[ "$(geometry)" = "$before" ] || fail 'new float changed the other allocations'
+	[ "$(geometry)" = "$before" ] ||
+	    fail 'new float changed the other allocations'
 done
 
 exit 0

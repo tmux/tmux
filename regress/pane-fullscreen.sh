@@ -29,7 +29,8 @@ check()
 
 geometry()
 {
-	run list-panes -F '#{pane_id}:#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
+	run list-panes -F \
+	    '#{pane_id}:#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
 }
 
 reset()
@@ -67,7 +68,8 @@ run resize-pane -Z -t "$A"
 run resize-pane -Z -t "$B"
 run resize-pane -Z -t "$C"
 run resize-pane -aZ
-[ "$(geometry)" = "$before" ] || fail 'fullscreen stack changed tiled allocation'
+[ "$(geometry)" = "$before" ] ||
+    fail 'fullscreen stack changed tiled allocation'
 
 # A window with no tiled panes still follows the normal window-size policy.
 run resize-pane -Z -t "$A"
@@ -158,7 +160,8 @@ run resize-pane -Z -t "$A"
 reset
 run resize-pane -Z -t "$A"
 X=$(run new-pane -PF '#{pane_id}' -x 20 -y 8 '') || exit 1
-normal=$(run display-message -p -t "$X" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}')
+normal=$(run display-message -p -t "$X" \
+    '#{pane_left},#{pane_top},#{pane_width},#{pane_height}')
 run resize-pane -Z -t "$X"
 saved=$(run display-message -p '#{window_layout}')
 run select-layout "$saved"

@@ -1140,7 +1140,8 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 				goto fail;
 			if (boolean && zoomed) {
 				lc->flags |= LAYOUT_CELL_ZOOMEDTILED;
-				memcpy(&lc->saved.g, &lc->g, sizeof lc->saved.g);
+				memcpy(&lc->saved.g, &lc->g,
+				    sizeof lc->saved.g);
 			}
 		}
 

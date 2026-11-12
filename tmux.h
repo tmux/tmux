@@ -1633,8 +1633,8 @@ struct layout_geometry {
 /* Saved tiled allocation; g.sx is UINT_MAX if no rectangle was saved. */
 struct layout_saved {
 	struct layout_geometry	 g;		/* previous tiled rectangle */
-	u_int			 generation;	/* parent revision after removal */
-	u_int			 previous;	/* parent revision before removal */
+	u_int			 generation;	/* parent after removal */
+	u_int			 previous;	/* parent before removal */
 };
 
 /* Layout cells queue. */
@@ -1653,7 +1653,7 @@ struct layout_cell {
 	struct layout_geometry	 g;
 	struct layout_geometry	 fg;	/* saved floating rectangle */
 	struct layout_saved	 saved;
-	u_int			 generation;	/* revision of tiled allocations */
+	u_int			 generation;	/* tiled allocation revision */
 
 	struct window_pane	*wp;
 	struct layout_cells	 cells;

@@ -479,10 +479,10 @@ layout_get_pane_geometry(struct window_pane *wp, int layout, int *xoff,
 	 * The layout ignores anything a mode does to the scrollbars while the
 	 * window is zoomed.
 	 */
-	if (layout && (wp->flags & PANE_ZOOMED))
+	if (layout && (wp->flags & PANE_ZOOMED)) {
 		reserve = (!SCREEN_IS_ALTERNATE(&wp->base) &&
 		    w->sb == PANE_SCROLLBARS_ALWAYS);
-	else
+	} else
 		reserve = window_pane_scrollbar_reserve(wp);
 	if (reserve) {
 		sb_w = wp->scrollbar_style.width;
@@ -2071,7 +2071,8 @@ layout_grow_cell(struct window *w, struct layout_cell *lc,
 			break;
 		}
 		if (parent->type == type) {
-			change = layout_resize_pane_grow(w, lc, type, needed, 1);
+			change = layout_resize_pane_grow(w, lc, type,
+			    needed, 1);
 			if (change != 0) {
 				needed -= change;
 				continue;
@@ -2122,7 +2123,8 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 			size = lc->saved.g.sy;
 		available = layout_resize_check(w, neighbour, type);
 		if (unchanged && size < available) {
-			layout_resize_adjust(w, neighbour, type, -(int)(size + 1));
+			layout_resize_adjust(w, neighbour, type,
+			    -(int)(size + 1));
 		} else {
 			layout_split_sizes(neighbour, -1, 0, type, &size,
 			    &other, &old);

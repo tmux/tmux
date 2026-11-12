@@ -27,7 +27,8 @@ run()
 check()
 {
 	got=$(run display-message -p -t "$1" \
-	    '#{pane_floating_flag}:#{pane_zoomed_flag}:#{window_index}') || exit 1
+	    '#{pane_floating_flag}:#{pane_zoomed_flag}:#{window_index}') ||
+	    exit 1
 	[ "$got" = "$2" ] || fail "$3: $1 got '$got', expected '$2'"
 }
 
@@ -51,7 +52,8 @@ checkgeom()
 checkactive()
 {
 	got=$(run display-message -p -t "$1" '#{pane_id}') || exit 1
-	[ "$got" = "$2" ] || fail "$3: window $1 active got '$got', expected '$2'"
+	[ "$got" = "$2" ] ||
+	    fail "$3: window $1 active got '$got', expected '$2'"
 }
 
 # The layout has to survive being read back, which catches a cell that no

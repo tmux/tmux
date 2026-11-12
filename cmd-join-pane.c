@@ -520,12 +520,14 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 			}
 			s = args_get(args, 'P');
 			if (s != NULL) {
-				retval = cmd_join_pane_place(item, dst_wl, dst_wp, s);
+				retval = cmd_join_pane_place(item, dst_wl,
+				    dst_wp, s);
 				return (retval);
 			}
 			s = args_get(args, 'z');
 			if (s != NULL) {
-				retval = cmd_join_pane_zindex(item, dst_wl, dst_wp, s);
+				retval = cmd_join_pane_zindex(item, dst_wl,
+				    dst_wp, s);
 				return (retval);
 			}
 			retval = cmd_join_pane_move(item, args, dst_wl, dst_wp);

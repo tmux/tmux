@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Rotation preserves excluded positions, active position, and resize event order.
+# Rotation preserves excluded positions, active position and resize event order.
 
 . ./regress-common.inc
 
@@ -61,7 +61,8 @@ floats()
 check_floats()
 {
 	got=$(floats) || exit 1
-	[ "$got" = "$floating" ] || fail 'floating positions or stacking changed'
+	[ "$got" = "$floating" ] ||
+	    fail 'floating positions or stacking changed'
 }
 
 # Capture enough state to check rotations with fewer than two tiled panes.
@@ -130,7 +131,8 @@ for active in "$A" "$F1"; do
 	for direction in -U -D; do
 		run rotate-window "$direction"
 		after=$(state) || exit 1
-		[ "$after" = "$before" ] || fail 'one-tile rotation changed state'
+		[ "$after" = "$before" ] ||
+		    fail 'one-tile rotation changed state'
 	done
 done
 
