@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.282 2026/10/29 12:16:08 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.283 2026/11/12 09:39:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -175,6 +175,7 @@ static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
 static void	input_osc_112(struct input_ctx *, const char *);
 static void	input_osc_133(struct input_ctx *, const char *);
+static void	input_osc_7501(struct input_ctx *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -1416,6 +1417,11 @@ input_esc_dispatch(struct input_ctx *ictx)
 
 	switch (entry->type) {
 	case INPUT_ESC_RIS:
+		if (ictx->wp != NULL && ictx->wp->program_state != NULL) {
+			window_pane_clear_program_status(ictx->wp, 1);
+			server_status_window(ictx->wp->window);
+			server_redraw_window_borders(ictx->wp->window);
+		}
 		colour_palette_clear(ictx->palette);
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
@@ -2745,10 +2751,149 @@ input_exit_osc(struct input_ctx *ictx)
 	case 133:
 		input_osc_133(ictx, p);
 		break;
+	case 7501:
+		input_osc_7501(ictx, p);
+		break;
 	default:
 		log_debug("%s: unknown '%u'", __func__, option);
 		break;
 	}
+}
+
+/* Get program status message. */
+static char *
+input_program_message(const char *value)
+{
+	char	 encoded[2737];
+	u_char	 decoded[2049];
+	size_t	 len = strlen(value);
+	int	 size;
+
+	if (len > 2732)
+		return (NULL);
+	memcpy(encoded, value, len);
+	if (strchr(value, '=') == NULL) {
+		while (len % 4 != 0)
+			encoded[len++] = '=';
+	}
+	encoded[len] = '\0';
+
+	size = b64_pton(encoded, decoded, sizeof decoded);
+	if (size == -1 || size > 2048 || memchr(decoded, '\0', size) != NULL)
+		return (NULL);
+	decoded[size] = '\0';
+	return (clean_name(decoded, 1));
+}
+
+/* Parse program status. */
+static void
+input_program_status(struct window_pane *wp, const char *p)
+{
+	char	*copy, *next, *key, *value, *end, *state = NULL, *name = NULL;
+	char	*message = NULL;
+	int	 changed = 0;
+
+	copy = next = xstrdup(p);
+	while ((value = strsep(&next, ":")) != NULL) {
+		key = strsep(&value, "=");
+		while (isspace((u_char)*key))
+			key++;
+		end = key + strlen(key);
+		while (end > key && isspace((u_char)end[-1]))
+			*--end = '\0';
+		if (strcmp(key, "id") == 0)
+			goto out;
+		if (value == NULL)
+			continue;
+
+		while (isspace((u_char)*value))
+			value++;
+		end = value + strlen(value);
+		while (end > value && isspace((u_char)end[-1]))
+			*--end = '\0';
+
+		if (strcmp(key, "state") == 0) {
+			free(state);
+			state = xstrdup(value);
+		} else if (strcmp(key, "app") == 0) {
+			if (strlen(value) > 32)
+				goto out;
+			free(name);
+			name = clean_name(value, 1);
+		} else if (strcmp(key, "msg") == 0) {
+			free(message);
+			message = input_program_message(value);
+			if (message == NULL)
+				goto out;
+		}
+	}
+
+	if (state == NULL)
+		goto out;
+	if (strcmp(state, "idle") != 0 &&
+	    strcmp(state, "working") != 0 &&
+	    strcmp(state, "done") != 0 &&
+	    strcmp(state, "blocked") != 0 &&
+	    strcmp(state, "error") != 0 &&
+	    strcmp(state, "clear") != 0)
+		goto out;
+
+	if (strcmp(state, "clear") == 0) {
+		free(state);
+		state = NULL;
+		free(name);
+		name = NULL;
+		free(message);
+		message = NULL;
+	}
+
+	if (state != NULL && wp->program_state == NULL)
+		changed = 1;
+	else if (state == NULL && wp->program_state != NULL)
+		changed = 1;
+	else if (state != NULL && strcmp(state, wp->program_state) != 0)
+		changed = 1;
+	if (name != NULL && wp->program_name == NULL)
+		changed = 1;
+	else if (name == NULL && wp->program_name != NULL)
+		changed = 1;
+	else if (name != NULL && strcmp(name, wp->program_name) != 0)
+		changed = 1;
+	if (message != NULL && wp->program_message == NULL)
+		changed = 1;
+	else if (message == NULL && wp->program_message != NULL)
+		changed = 1;
+	else if (message != NULL && strcmp(message, wp->program_message) != 0)
+		changed = 1;
+	if (changed) {
+		window_pane_clear_program_status(wp, 1);
+
+		wp->program_state = state;
+		state = NULL;
+		wp->program_name = name;
+		name = NULL;
+		wp->program_message = message;
+		message = NULL;
+
+		server_status_window(wp->window);
+		server_redraw_window_borders(wp->window);
+	}
+
+out:
+	free(state);
+	free(name);
+	free(message);
+	free(copy);
+}
+
+/* Handle the OSC 7501 sequence for root program status. */
+static void
+input_osc_7501(struct input_ctx *ictx, const char *p)
+{
+	if (strcmp(p, "?") == 0)
+		input_reply(ictx, 1, "\033]7501;?\033\\");
+	else if (ictx->wp != NULL)
+		input_program_status(ictx->wp, p);
 }
 
 /* APC string started. */
@@ -3363,6 +3508,11 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			gl->flags |= GRID_LINE_START_PROMPT;
 		}
 		if (wp != NULL) {
+			if (*p == 'A' && wp->program_state != NULL) {
+				window_pane_clear_program_status(wp, 0);
+				server_status_window(wp->window);
+				server_redraw_window_borders(wp->window);
+			}
 			wp->last_prompt_time = time(NULL);
 			events_fire_pane("pane-shell-prompt", wp);
 		}

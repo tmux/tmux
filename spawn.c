@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.59 2026/10/23 06:33:22 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.60 2026/11/12 09:39:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -329,6 +329,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			sc->wp0->fd = -1;
 		}
 		window_pane_reset_mode_all(sc->wp0);
+		window_pane_clear_program_status(sc->wp0, 1);
 		screen_reinit(&sc->wp0->base);
 		if (sc->wp0->ictx != NULL) {
 			input_free(sc->wp0->ictx);

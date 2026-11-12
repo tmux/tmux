@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1475 2026/11/10 10:36:22 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1476 2026/11/12 09:39:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1416,6 +1416,10 @@ struct window_pane {
 	struct event	 sync_timer;
 
 	struct input_ctx *ictx;
+
+	char		*program_state;
+	char		*program_name;
+	char		*program_message;
 
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
@@ -3850,6 +3854,7 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
+void		 window_pane_clear_program_status(struct window_pane *, int);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
 		     const char *);
