@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1476 2026/11/12 09:39:30 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1477 2026/11/12 11:11:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1438,6 +1438,7 @@ struct window_pane {
 	struct screen	 base;
 
 	struct screen	 status_screen;
+	u_int		 status_dim;
 	u_int		 status_generation;
 
 	TAILQ_HEAD(, window_mode_entry) modes;
@@ -1451,8 +1452,10 @@ struct window_pane {
 
 	int		 border_gc_set;
 	struct grid_cell border_gc;
+	u_int		 border_dim;
 	int		 active_border_gc_set;
 	struct grid_cell active_border_gc;
+	u_int		 active_border_dim;
 
 	int		 control_bg;
 	int		 control_fg;
@@ -3924,7 +3927,7 @@ void		 window_get_fill_cell(struct window *, int, struct grid_cell *);
 void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,
-		     struct client *, struct grid_cell *);
+		     struct client *, struct grid_cell *, u_int *);
 int		 window_make_pane_status(struct window_pane *, struct client *,
 		     u_int, struct redraw_span *);
 
