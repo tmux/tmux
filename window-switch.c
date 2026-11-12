@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.7 2026/10/16 17:28:19 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.8 2026/11/12 09:39:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -44,6 +44,7 @@ static enum prompt_result window_switch_prompt_callback(void *, const char *,
 		"#[dim]#{session_name}:#{window_index}#{window_flags}#[default] " \
 		"#[dim]#{pane_current_command}#[default] " \
 	        "#[dim]#{?#{!=:#{pane_title},#{host_short}},#{pane_title},}#[default]" \
+		"#{?pane_program_state, #[dim]#{pane_program_name} #{pane_program_state}#[default],}" \
 	"," \
 		"#{session_name} " \
 		"#[dim]#{session_windows} windows#[default] " \
