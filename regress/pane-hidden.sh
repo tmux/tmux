@@ -4,8 +4,8 @@
 # previous state: tiled, floating and zoomed panes alike.
 #
 # This exercises:
-# - resize-pane -h/-H hiding and showing a tiled pane, with its space given to a neighbour
-#   and returned unchanged when it is shown;
+# - resize-pane -h/-H hiding and showing a tiled pane, with its space given to
+#   a neighbour and returned unchanged when it is shown;
 # - hiding floating and zoomed panes and hiding every pane in a window;
 # - activating a hidden pane showing it, and next/previous skipping hidden
 #   panes;
@@ -123,7 +123,8 @@ same_layout "$A"
 reset
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 Y=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 30 -Y 6 '') || exit 1
-gx=$(run display-message -p -t "$X" '#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}')
+gx=$(run display-message -p -t "$X" \
+    '#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}')
 zx=$(run display-message -p -t "$X" '#{pane_z}')
 run resize-pane -h -t "$X"
 hidden "$X" 1
@@ -261,7 +262,8 @@ for p in "$A" "$B"; do
 	hidden "$p" 0
 done
 check "$A" '#{window_zoomed_flag}' 1
-visible=$(run list-panes -F '#{pane_active}#{pane_zoomed_flag}' | grep -c '^11$')
+visible=$(run list-panes -F '#{pane_active}#{pane_zoomed_flag}' |
+    grep -c '^11$')
 [ "$visible" = 1 ] || fail "active pane is covered after the desktop"
 
 # select-pane -Z moves the zoom to a covered tiled pane without hiding the old
@@ -327,7 +329,8 @@ for count in one none; do
 	for direction in -U -D; do
 		run rotate-window "$direction"
 		after=$(run list-panes -F "$fmt") || exit 1
-		[ "$after" = "$before" ] || fail "$count-tile rotation changed state"
+		[ "$after" = "$before" ] ||
+		    fail "$count-tile rotation changed state"
 	done
 done
 
@@ -546,8 +549,8 @@ hidden "$X" 1
 # Mixed vertical and horizontal splits, including three or more panes side by
 # side. Hiding and showing each pane puts every pane back where it was. Hiding
 # several panes and showing them again in the reverse order they were hidden
-# leaves every pane within two cells of where it was. In the same order the panes
-# have the wrong neighbours when they are shown so their sizes cannot be exact,
+# leaves every pane within two cells of where it was. In the same order the
+# panes have the wrong neighbours when shown so their sizes cannot be exact,
 # but every pane must be back, tiled and not squeezed. Floating panes, including
 # ones that were never tiled, are part of this: they are not moved by hiding
 # other panes and tile somewhere in the layout without squeezing it.
@@ -555,7 +558,8 @@ hidden "$X" 1
 # geom: id, left, top, width and height of every pane, sorted by id.
 geom()
 {
-	run list-panes -F '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}' |
+	run list-panes -F \
+	    '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}' |
 	    sort
 }
 
@@ -569,13 +573,20 @@ $3" | awk -v tol="$4" -v name="$1" '
 			d = $i - seen[$1, i]
 			if (d < 0) d = -d
 			if (d > tol) {
-				printf "%s: %s differs by %d (%s became %s)\n", name, $1, d, seen[$1, 0], $0
+				printf \
+				    "%s: %s differs by %d (%s became %s)\n", \
+				    name, $1, d, seen[$1, 0], $0
 				bad = 1
 			}
 		}
 		next
 	}
-	NF == 5 { seen[$1] = 1; for (i = 2; i <= 5; i++) seen[$1, i] = $i; seen[$1, 0] = $0 }
+	NF == 5 {
+		seen[$1] = 1
+		for (i = 2; i <= 5; i++)
+			seen[$1, i] = $i
+		seen[$1, 0] = $0
+	}
 	END { exit bad }' || fail "layout not restored"
 }
 
@@ -648,7 +659,8 @@ mixed()
 			hidden "$p" 0
 		done
 		if [ "$order" = reverse ]; then
-			near "$name hiding $((n - 1)) panes, $order" "$base" "$(geom)" 2
+			near "$name hiding $((n - 1)) panes, $order" \
+			    "$base" "$(geom)" 2
 		else
 			usable "$name hiding $((n - 1)) panes, $order" "$ids" 1
 		fi
@@ -695,13 +707,15 @@ mixed()
 	for p in $ids; do
 		[ "$p" = "$last" ] && continue
 		build $size $splits
-		f=$(run new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 5 -Y 5 '') || exit 1
+		f=$(run new-pane -dPF '#{pane_id}' -x 20 -y 6 \
+		    -X 5 -Y 5 '') || exit 1
 		run break-pane -d -W -s "$p"
 		run resize-pane -h -t "$last"
 		run resize-pane -H -t "$last"
 		run join-pane -d -s "$p" -t "$p"
 		run join-pane -d -s "$f" -t "$f"
-		usable "$name floating $p, hiding $last, tiling both" "$ids $f" 1
+		usable "$name floating $p, hiding $last, tiling both" \
+		    "$ids $f" 1
 	done
 }
 

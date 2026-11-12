@@ -7,7 +7,7 @@
 # three), each pane command that changes or depends on them is run and the
 # result is compared with what the command should do, using awk to work out the
 # expectation from the state before. This covers:
-# - select-pane, including -Z and moving to the next, last or a directional pane;
+# - select-pane, including -Z and next, last or directional pane selection;
 # - resize-pane -Z (toggle a zoom), -h/-H (hide or show), -a -Z (unzoom all) and
 #   -C (show desktop), which is run once, twice and three times to check
 #   the hide, floats and zoomed panes steps;
@@ -19,8 +19,9 @@
 # by side, and for three panes stacked, in a row or nested.
 #
 # It also checks properties that must hold after every command: the active pane
-# is not hidden if any pane is not, there is one active pane, window_zoomed_flag matches the visible zoomed panes and visible panes have
-# a size. The status line clicks and the cursor are in other tests.
+# is not hidden if any pane is not, there is one active pane,
+# window_zoomed_flag matches the visible zoomed panes and visible panes have
+# a size. Status line clicks and the cursor are covered by other tests.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -41,11 +42,13 @@ cleanup()
 trap cleanup 0
 trap 'exit 1' 1 2 15
 
-FMT='#{pane_id} #{pane_floating_flag} #{pane_zoomed_flag} #{pane_hidden_flag} #{pane_active} #{pane_width} #{pane_height} #{window_zoomed_flag}'
+FMT='#{pane_id} #{pane_floating_flag} #{pane_zoomed_flag} '
+FMT=$FMT'#{pane_hidden_flag} #{pane_active} #{pane_width} '
+FMT=$FMT'#{pane_height} #{window_zoomed_flag}'
 
 # The oracle. The state before is on lines starting B and the state after on
 # lines starting A: id floating zoomed hidden active width height window_zoomed.
-# op is the operation, tgt the target pane, rc the exit status of the command and
+# op is the operation, tgt the target pane and rc the command exit status.
 # mode is "setup" to check that the start state was made as wanted, with want
 # holding floating, zoomed and hidden for each pane in order.
 ORACLE='
@@ -66,7 +69,9 @@ function restoredF(skip,    i, id, want)
 		id = bid[i]
 		if (id == skip || !(id in ina)) continue
 		want = bZ[id] ? normalF(id) : bF[id]
-		if (aF[id] != want) fail("pane " id " restored floating " aF[id] ", wanted " want)
+		if (aF[id] != want)
+			fail("pane " id " restored floating " aF[id] \
+			    ", wanted " want)
 	}
 }
 function sameF(skip,    i, id)
@@ -163,7 +168,8 @@ END {
 			id = bid[i]; p = substr(id, 2) + 0
 			if (bF[id] != w[3 * p + 1] || bZ[id] != w[3 * p + 2] ||
 			    bH[id] != w[3 * p + 3])
-				fail("pane " id " is " bF[id] bZ[id] bH[id] ", wanted " \
+				fail("pane " id " is " bF[id] bZ[id] bH[id] \
+				    ", wanted " \
 				    w[3 * p + 1] w[3 * p + 2] w[3 * p + 3])
 		}
 		exit 0
@@ -184,7 +190,8 @@ END {
 	for (i = 1; i <= na; i++) {
 		id = aid[i]
 		if (aWZ[id] != anyZ)
-			fail("window_zoomed_flag " aWZ[id] " with visible zoomed panes " anyZ)
+			fail("window_zoomed_flag " aWZ[id] \
+			    " with visible zoomed panes " anyZ)
 		if (!aH[id] && (aW[id] < 1 || aT[id] < 1))
 			fail("pane " id " is " aW[id] "x" aT[id])
 	}
@@ -210,13 +217,18 @@ END {
 		if (!aA[T] || aH[T]) fail("target not shown and active")
 		for (i = 1; i <= nb; i++) {
 			id = bid[i]
-			if (aZ[id] && !bZ[id] && id != T) fail("another pane was zoomed")
-			if (aF[id] != bF[id] && aF[id] != (aZ[id] ? 1 : normalF(id)))
-				fail("wrong floating state after transferring zoom")
+			if (aZ[id] && !bZ[id] && id != T)
+				fail("another pane was zoomed")
+			if (aF[id] != bF[id] &&
+			    aF[id] != (aZ[id] ? 1 : normalF(id))) {
+				fail("wrong floating state after " \
+				    "transferring zoom")
+			}
 		}
 	} else if (op == "zoom") {
 		sameF(T)
-		if (aF[T] != (bZ[T] ? normalF(T) : 1)) fail("wrong floating state after zoom")
+		if (aF[T] != (bZ[T] ? normalF(T) : 1))
+			fail("wrong floating state after zoom")
 		if (bZ[T]) {
 			if (aZ[T]) fail("not unzoomed")
 			sameZ(T); sameH("")
@@ -241,7 +253,8 @@ END {
 			id = bid[i]
 			want = (bH[id] + bF[id] + bZ[id] > 0) ? 1 : 0
 			if (aH[id] != want)
-				fail("pane " id " hidden " bH[id] " floating " bF[id] \
+				fail("pane " id " hidden " bH[id] \
+				    " floating " bF[id] \
 				    " zoomed " bZ[id] " became hidden " aH[id])
 		}
 	} else if (op == "desktop2" || op == "desktop3") {
@@ -260,14 +273,19 @@ END {
 		for (i = 1; i <= nb; i++) {
 			id = bid[i]
 			want = bH[id]
-			if (!bH[id] && bZ[id])
-				want = (op == "desktop2") ? (nf > 0) : (nf == 0 || nz == 0)
-			else if (!bH[id] && bF[id])
-				want = (op == "desktop3") ? (nf == 0 || nz == 0) : 0
+			if (!bH[id] && bZ[id]) {
+				want = (op == "desktop2") ?
+				    (nf > 0) : (nf == 0 || nz == 0)
+			} else if (!bH[id] && bF[id]) {
+				want = (op == "desktop3") ?
+				    (nf == 0 || nz == 0) : 0
+			}
 			if (aH[id] != want)
-				fail("pane " id " hidden " bH[id] " floating " bF[id] \
+				fail("pane " id " hidden " bH[id] \
+				    " floating " bF[id] \
 				    " zoomed " bZ[id] " became hidden " aH[id] \
-				    " after " op " (floats " nf ", zooms " nz ")")
+				    " after " op " (floats " nf \
+				    ", zooms " nz ")")
 		}
 	} else if (op == "unzoomall") {
 		restoredF(""); sameH(""); noZoom()
@@ -285,14 +303,17 @@ END {
 	} else if (op == "split") {
 		newPane()
 		want = bZ[T] ? normalF(T) : bF[T]
-		if (aF[created] != want || aF[T] != want) fail("wrong floating state after split")
+		if (aF[created] != want || aF[T] != want)
+			fail("wrong floating state after split")
 		if (aZ[created] || aZ[T]) fail("split pane zoomed")
-		if (aH[created] != bH[T] || aH[T] != bH[T]) fail("wrong hidden state after detached split")
+		if (aH[created] != bH[T] || aH[T] != bH[T])
+			fail("wrong hidden state after detached split")
 		sameF(T); sameZ(T); sameH(T)
 	} else if (op == "newpane") {
 		newPane()
 		if (!aF[created]) fail("new pane is not floating")
-		if (aZ[created] || aH[created]) fail("new pane zoomed or hidden")
+		if (aZ[created] || aH[created])
+			fail("new pane zoomed or hidden")
 		sameF(""); sameZ(""); sameH("")
 	} else if (op == "nextlayout" || op == "tiled" || op == "rotate") {
 		restoredF(""); sameH(""); noZoom()
@@ -375,7 +396,8 @@ run_one()
 	i=0
 	while [ $i -lt "$n" ]; do
 		bits=$(( (s >> (3 * i)) & 7 ))
-		want="$want $(((bits & 1) != 0 || (bits & 2) != 0)) $(((bits >> 1) & 1)) $(((bits >> 2) & 1))"
+		want="$want $(((bits & 1) != 0 || (bits & 2) != 0))"
+		want="$want $(((bits >> 1) & 1)) $(((bits >> 2) & 1))"
 		i=$((i + 1))
 	done
 	set -- "$@" ';' list-panes -F "B $FMT"
@@ -427,7 +449,8 @@ run_one()
 
 	after=$(tm list-panes -F "A $FMT" 2>&1)
 	result=$( (echo "$before"; echo "$after") |
-	    awk -v mode=check -v origins="$s" -v op="$op" -v tgt="$tgt" -v rc="$rc" "$ORACLE")
+	    awk -v mode=check -v origins="$s" -v op="$op" \
+	    -v tgt="$tgt" -v rc="$rc" "$ORACLE")
 	if [ $? -ne 0 ] || [ -n "$result" ]; then
 		echo "FAILED with $n panes, start $(describe "$n" "$s"):"
 		echo "  $result"
@@ -440,8 +463,8 @@ run_one()
 }
 
 PER_PANE="select selectZ zoom hide show break join kill split newpane"
-GLOBAL="desktop desktop2 desktop3 unzoomall nextlayout tiled rotate nextpane lastpane \
-    left right up down resize"
+GLOBAL="desktop desktop2 desktop3 unzoomall nextlayout tiled"
+GLOBAL="$GLOBAL rotate nextpane lastpane left right up down resize"
 
 # Two panes: every state, every operation.
 s=0

@@ -1654,7 +1654,7 @@ struct layout_cell {
 
 	struct layout_geometry	 g;
 	struct layout_geometry	 fg;	/* saved floating rectangle */
-	uint64_t		 hidden_point;	/* hide order; zero when shown */
+	uint64_t		 hidden_point;	/* hide order; zero if shown */
 	struct layout_saved	 saved;
 	u_int			 generation;	/* tiled allocation revision */
 

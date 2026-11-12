@@ -48,7 +48,8 @@ run resize-pane -H
 check "$B" '#{pane_hidden_flag}:#{pane_active}' 0:1
 check "$A" '#{pane_hidden_flag}:#{pane_zoomed_flag}' 1:1
 
-# Selecting the restored tile hid its fullscreen cover; the next call restores it.
+# Selecting the restored tile hid its fullscreen cover. The next call restores
+# it.
 run resize-pane -H
 check "$A" '#{pane_hidden_flag}:#{pane_active}' 0:1
 run resize-pane -H
