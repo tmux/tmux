@@ -51,6 +51,7 @@ struct cmd_rotate_window_slot {
 	u_int			 sy;
 };
 
+/* Rotate tiled panes, keeping focus at the same tiled position. */
 static enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -76,6 +77,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	all = xcalloc(n, sizeof *all);
 	slots = xcalloc(n, sizeof *slots);
 
+	/* Save pane order and the cells and geometry of tiled panes. */
 	n = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		all[n++] = wp;
@@ -118,6 +120,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 		window_pane_resize(wp, slot->sx, slot->sy);
 	}
 
+	/* Keep focus and any saved zoom at the original active tiled cell. */
 	if (active != NULL) {
 		wp = active->wp;
 		if (zwp != NULL)
