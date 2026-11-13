@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.309 2026/11/13 09:24:18 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.310 2026/11/13 09:51:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1576,18 +1576,15 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	screen_write_redraw_pane(ctx, &ttyctx);
 }
 
-/*
- * If the cell at px is padding, it belongs to a tab or wide character that
- * starts to its left and is about to be cut in two by a write, insert, delete
- * or clear. Replace it and its padding with blank cells, keeping the background.
- */
+/* Break up a tab or wide character. */
 static int
 screen_write_clear_padding(struct screen_write_ctx *ctx, u_int px)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
-	struct grid_cell	 gc;
+	struct grid_cell	 gc, blank;
 	u_int			 xx, sx = screen_size_x(s);
+	int			 tab;
 
 	if (px >= sx)
 		return (0);
@@ -1604,13 +1601,25 @@ screen_write_clear_padding(struct screen_write_ctx *ctx, u_int px)
 		}
 	}
 
-	/* Clear it and the padding that follows. */
-	screen_write_clear_cell(ctx, xx, s->cy);
-	while (++xx < sx) {
+	/* If it is a tab, preserve the attributes. */
+	tab = (gc.flags & GRID_FLAG_TAB);
+	if (tab) {
+		memcpy(&blank, &gc, sizeof blank);
+		blank.flags &= ~GRID_FLAG_TAB;
+		utf8_set(&blank.data, ' ');
+	}
+
+	/* Replace it and its padding with spaces. */
+	for (;;) {
+		if (tab)
+			grid_view_set_cell(gd, xx, s->cy, &blank);
+		else
+			screen_write_clear_cell(ctx, xx, s->cy);
+		if (++xx == sx)
+			break;
 		grid_view_get_cell(gd, xx, s->cy, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
-		screen_write_clear_cell(ctx, xx, s->cy);
 	}
 	return (1);
 }
@@ -2803,7 +2812,8 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	struct screen_write_citem	*ci = ctx->item;
 	struct screen_write_cline	*cl = &s->write_list[s->cy];
 	struct grid_cell		 gc;
-	u_int				 xx, bx = 0, bnx = 0;
+	u_int				 px, bx, ex, i;
+	u_int				 start = s->cx, end = start + ci->used;
 
 	if (ci->used == 0)
 		return;
@@ -2814,26 +2824,27 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	log_debug("%s: %u %.*s (at %u,%u)", __func__, ci->used,
 	    (int)ci->used, cl->data + ci->x, s->cx, s->cy);
 
-	if (s->cx != 0) {
-		for (xx = s->cx; xx > 0; xx--) {
-			grid_view_get_cell(s->grid, xx, s->cy, &gc);
-			if (~gc.flags & GRID_FLAG_PADDING)
+	for (i = 0; i < 2; i++) {
+		px = (i == 0 ? start : end);
+		if (px >= screen_size_x(s))
+			continue;
+		grid_view_get_cell(s->grid, px, s->cy, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING)
+			continue;
+		for (bx = px; bx > 0; bx--) {
+			grid_view_get_cell(s->grid, bx - 1, s->cy, &gc);
+			if (~gc.flags & GRID_FLAG_PADDING) {
+				bx--;
 				break;
-			screen_write_clear_cell(ctx, xx, s->cy);
-			log_debug("%s: padding erased (before) at %u (cx %u)",
-			    __func__, xx, s->cx);
-		}
-		if (xx != s->cx) {
-			if (xx == 0)
-				grid_view_get_cell(s->grid, 0, s->cy, &gc);
-			if (gc.data.width > 1 ||
-			    (gc.flags & GRID_FLAG_PADDING)) {
-				screen_write_clear_cell(ctx, xx, s->cy);
-				log_debug("%s: padding erased (before) at %u "
-				    "(cx %u)", __func__, xx, s->cx);
 			}
-			bx = xx;
-			bnx = s->cx - xx;
+		}
+		ex = bx + gc.data.width;
+		screen_write_clear_padding(ctx, px);
+		if (~gc.flags & GRID_FLAG_TAB) {
+			if (bx < start)
+				screen_write_insert_clears(ctx, bx, start - bx);
+			if (ex > end)
+				screen_write_insert_clears(ctx, end, ex - end);
 		}
 	}
 
@@ -2843,20 +2854,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
 	    ci->used);
-	if (bnx != 0)
-		screen_write_insert_clears(ctx, bx, bnx);
-	screen_write_set_cursor(ctx, s->cx + ci->used, -1);
-
-	for (xx = s->cx; xx < screen_size_x(s); xx++) {
-		grid_view_get_cell(s->grid, xx, s->cy, &gc);
-		if (~gc.flags & GRID_FLAG_PADDING)
-			break;
-		screen_write_clear_cell(ctx, xx, s->cy);
-		log_debug("%s: padding erased (after) at %u (cx %u)", __func__,
-		    xx, s->cx);
-	}
-	if (xx != s->cx)
-		screen_write_insert_clears(ctx, s->cx, xx - s->cx);
+	screen_write_set_cursor(ctx, end, -1);
 }
 
 /* Write cell data, collecting if necessary. */

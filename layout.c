@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.105 2026/11/11 12:45:45 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.107 2026/11/13 14:44:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -400,6 +400,33 @@ layout_cell_is_bottom(struct layout_cell *root, struct layout_cell *lc)
 	return (1);
 }
 
+/* Return the space reserved by the scrollbar for a layout cell. */
+static u_int
+layout_cell_scrollbar_size(struct window *w, struct layout_cell *lc)
+{
+	struct window_pane	*wp = lc->wp;
+
+	if (wp == NULL)
+		wp = w->active;
+	return (wp->scrollbar_style.width + wp->scrollbar_style.pad);
+}
+
+/* Smallest size of a pane cell including scrollbar and status. */
+static u_int
+layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
+    struct layout_cell *root, enum layout_type type)
+{
+	u_int			 minimum = PANE_MINIMUM;
+
+	if (type == LAYOUT_LEFTRIGHT) {
+		if (w->sb == PANE_SCROLLBARS_ALWAYS)
+			minimum += layout_cell_scrollbar_size(w, lc);
+	} else if (layout_add_horizontal_border(root, lc,
+	    window_get_pane_status(w)))
+		minimum++;
+	return (minimum);
+}
+
 /*
  * Returns 1 if we need to add an extra line for the pane status line. This is
  * the case for the most upper or lower panes only.
@@ -514,12 +541,8 @@ static u_int
 layout_resize_check(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
-	struct layout_cell	*lcchild, *root = w->layout_root;
-	struct style		*sb_style = &w->active->scrollbar_style;
+	struct layout_cell	*lcchild;
 	u_int			 available, minimum;
-	int			 status;
-
-	status = window_get_pane_status(w);
 
 	/* Floating cells do not take space from the tiled layout. */
 	if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
@@ -527,20 +550,11 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
-		if (type == LAYOUT_LEFTRIGHT) {
+		if (type == LAYOUT_LEFTRIGHT)
 			available = lc->g.sx;
-			if (w->sb == PANE_SCROLLBARS_ALWAYS)
-				minimum = PANE_MINIMUM + sb_style->width +
-				    sb_style->pad;
-			else
-				minimum = PANE_MINIMUM;
-		} else {
+		else
 			available = lc->g.sy;
-			if (layout_add_horizontal_border(root, lc, status))
-				minimum = PANE_MINIMUM + 1;
-			else
-				minimum = PANE_MINIMUM;
-		}
+		minimum = layout_pane_minimum_size(w, lc, w->layout_root, type);
 		if (available > minimum)
 			available -= minimum;
 		else
@@ -1543,69 +1557,80 @@ layout_close_pane(struct window_pane *wp)
 	events_fire_window("window-layout-changed", w);
 }
 
+/* Minimum cell size when spreading; top to bottom counts status lines. */
+static u_int
+layout_spread_minimum(struct window *w, struct layout_cell *lc,
+    enum layout_type type)
+{
+	if (type == LAYOUT_LEFTRIGHT)
+		return (PANE_MINIMUM);
+	return (layout_pane_minimum_size(w, lc, w->layout_root, type));
+}
+
 /* Spread out cells inside a parent cell. */
 int
 layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
-	struct layout_cell	*lc, *root = w->layout_root;
-	u_int			 number, each, size, this, remainder;
-	int			 change, changed, status;
+	struct layout_cell	*lc;
+	u_int			 number, size, this, remainder, total_min, min;
+	u_int			 available, extra;
+	int			 change, changed;
+	enum layout_type	 type = parent->type;
 
 	number = 0;
-	TAILQ_FOREACH (lc, &parent->cells, entry)
+	TAILQ_FOREACH (lc, &parent->cells, entry) {
 		if (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))
 			number++;
+	}
 	if (number <= 1)
 		return (0);
-	status = window_get_pane_status(w);
 
-	if (parent->type == LAYOUT_LEFTRIGHT)
+	if (type == LAYOUT_LEFTRIGHT)
 		size = parent->g.sx;
-	else if (parent->type == LAYOUT_TOPBOTTOM) {
-		if (layout_add_horizontal_border(root, parent, status))
-			size = parent->g.sy - 1;
-		else
-			size = parent->g.sy;
-	} else
+	else if (type == LAYOUT_TOPBOTTOM)
+		size = parent->g.sy;
+	else
 		return (0);
 	if (size < number - 1)
 		return (0);
-	each = (size - (number - 1)) / number;
-	if (each == 0)
-		return (0);
 
 	/*
-	 * Remaining space after assigning that which can be evenly
-	 * distributed.
+	 * Keep every cell at its minimum size, then share leftover space
+	 * evenly.
 	 */
-	remainder = size - (number * (each + 1)) + 1;
+	available = size - (number - 1);
+	total_min = 0;
+	TAILQ_FOREACH (lc, &parent->cells, entry) {
+		if (!layout_cell_is_tiled(lc) &&
+		    !layout_cell_has_tiled_child(lc))
+			continue;
+		total_min += layout_spread_minimum(w, lc, type);
+	}
+	if (available < total_min)
+		return (0);
+	extra = available - total_min;
+	remainder = extra % number;
+	extra = extra / number;
 
 	changed = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry) {
-		if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
+		if (!layout_cell_is_tiled(lc) &&
+		    !layout_cell_has_tiled_child(lc))
 			continue;
-		change = 0;
-		if (parent->type == LAYOUT_LEFTRIGHT) {
-			change = each - (int)lc->g.sx;
-			if (remainder > 0) {
-				change++;
-				remainder--;
-			}
-			layout_resize_adjust(w, lc, LAYOUT_LEFTRIGHT, change);
-		} else if (parent->type == LAYOUT_TOPBOTTOM) {
-			if (layout_add_horizontal_border(root, lc, status))
-				this = each + 1;
-			else
-				this = each;
-			if (remainder > 0) {
-				this++;
-				remainder--;
-			}
-			change = this - (int)lc->g.sy;
-			layout_resize_adjust(w, lc, LAYOUT_TOPBOTTOM, change);
+		min = layout_spread_minimum(w, lc, type);
+		this = min + extra;
+		if (remainder > 0) {
+			this++;
+			remainder--;
 		}
-		if (change != 0)
+		if (type == LAYOUT_LEFTRIGHT)
+			change = this - (int)lc->g.sx;
+		else
+			change = this - (int)lc->g.sy;
+		if (change != 0) {
+			layout_resize_adjust(w, lc, type, change);
 			changed = 1;
+		}
 	}
 	return (changed);
 }

@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1198 2026/11/12 09:39:30 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1199 2026/11/13 09:56:10 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 12 2026 $
+.Dd $Mdocdate: November 13 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3323,7 +3323,7 @@ option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
-.Op Fl kNZ
+.Op Fl kNPZ
 .Op Fl d Ar duration
 .Op Fl s Ar source\-window
 .Op Fl t Ar target\-pane
@@ -3376,6 +3376,9 @@ substituted by the pane ID.
 The default
 .Ar template
 is "select\-pane \-t \[aq]%%\[aq]".
+If
+.Fl P
+is given, the selected pane ID is printed.
 .Tg findw
 .It Xo Ic find\-window
 .Op Fl iCNrTZ

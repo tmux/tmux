@@ -1,4 +1,4 @@
-/* $OpenBSD: hyperlinks.c,v 1.7 2026/11/13 09:24:18 nicm Exp $ */
+/* $OpenBSD: hyperlinks.c,v 1.8 2026/11/13 09:58:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Will <author@will.party>
@@ -42,7 +42,6 @@
  */
 
 #define MAX_HYPERLINKS 5000
-#define MAX_HYPERLINK_URI 1024
 
 static u_int hyperlinks_next_inner = 1;
 static u_int global_hyperlinks_count;

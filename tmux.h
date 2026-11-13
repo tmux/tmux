@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1479 2026/11/13 09:24:18 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1480 2026/11/13 09:58:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -114,6 +114,9 @@ struct winlink;
 /* Minimum and maximum window size. */
 #define WINDOW_MINIMUM PANE_MINIMUM
 #define WINDOW_MAXIMUM 10000
+
+/* Maximum length of a hyperlink URI. */
+#define MAX_HYPERLINK_URI 4096
 
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
