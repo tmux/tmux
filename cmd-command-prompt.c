@@ -177,6 +177,8 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_BSPACE_EXIT;
 	if (args_has(args, 'C'))
 		cdata->flags |= PROMPT_NOFREEZE;
+	if (cdata->flags & PROMPT_INCREMENTAL)
+		window_copy_reset_search(wp);
 	if (pane) {
 		cdata->flags |= PROMPT_ISPANE;
 		window_pane_set_prompt(wp, tc, target, cdata->prompts[0].prompt,
