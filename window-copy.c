@@ -615,7 +615,9 @@ window_copy_common_init(struct window_mode_entry *wme)
 		data->searchregex = 0;
 		data->searchstr = NULL;
 	}
-	data->searchx = data->searchy = data->searcho = -1;
+	data->searchx = -1;
+	data->searchy = -1;
+	data->searcho = -1;
 	data->searchcount = -1;
 	data->searchindex = -1;
 	data->searchall = 1;
@@ -3208,6 +3210,25 @@ window_copy_cmd_search_forward_text(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
+/* Forget the previous incremental search origin before opening a new prompt. */
+void
+window_copy_reset_search(struct window_pane *wp)
+{
+	struct window_mode_entry	*wme;
+	struct window_copy_mode_data	*data;
+
+	if (wp == NULL)
+		return;
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL)
+		return;
+	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
+		return;
+	data = wme->data;
+	data->searchx = -1;
+	data->searchy = -1;
+}
+
 static enum window_copy_cmd_action
 window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
     int direction, int regex)
@@ -3216,6 +3237,8 @@ window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
 	struct window_copy_mode_data	*data = wme->data;
 	const char			*arg0 = args_string(cs->wargs, 0);
 	const char			*ss = data->searchstr;
+	u_int				 saved_cx, saved_cy, saved_oy, limit;
+	int				 found, keys;
 	char				 prefix;
 	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_MOVE;
 
@@ -3223,6 +3246,15 @@ window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
 
 	log_debug("%s: %s", __func__, arg0);
 
+	/* Keep the current position if an Emacs search update fails. */
+	keys = options_get_number(wme->wp->window->options, "mode-keys");
+	if (keys == MODEKEY_EMACS) {
+		saved_cx = data->cx;
+		saved_cy = data->cy;
+		saved_oy = data->oy;
+	}
+
+	/* Reevaluate an edited search string from this prompt's origin. */
 	prefix = *arg0++;
 	if (data->searchx == -1 || data->searchy == -1) {
 		data->searchx = data->cx;
@@ -3232,8 +3264,10 @@ window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
 		data->cx = data->searchx;
 		data->cy = data->searchy;
 		data->oy = data->searcho;
-		data->cx = window_copy_cursor_limit(wme,
+		limit = window_copy_cursor_limit(wme,
 		    screen_hsize(data->backing) + data->cy - data->oy, 0);
+		if (data->cx > limit)
+			data->cx = limit;
 		action = WINDOW_COPY_CMD_REDRAW;
 	}
 	if (*arg0 == '\0') {
@@ -3256,12 +3290,20 @@ window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
 	data->searchregex = regex;
 	free(data->searchstr);
 	data->searchstr = xstrdup(arg0);
-	if (data->searchtype == WINDOW_COPY_SEARCHUP) {
-		if (!window_copy_search_up(wme, regex))
-			return (WINDOW_COPY_CMD_REDRAW);
-	} else {
-		if (!window_copy_search_down(wme, regex))
-			return (WINDOW_COPY_CMD_REDRAW);
+	if (data->searchtype == WINDOW_COPY_SEARCHUP)
+		found = window_copy_search_up(wme, regex);
+	else
+		found = window_copy_search_down(wme, regex);
+	if (!found) {
+		if (keys == MODEKEY_EMACS) {
+			data->cx = saved_cx;
+			data->cy = saved_cy;
+			if (data->oy != saved_oy) {
+				data->oy = saved_oy;
+				window_copy_search_marks(wme, NULL, regex, 1);
+			}
+		}
+		return (WINDOW_COPY_CMD_REDRAW);
 	}
 	return (action);
 }
@@ -4306,7 +4348,8 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 			clear = WINDOW_COPY_CMD_CLEAR_NEVER;
 		if (clear != WINDOW_COPY_CMD_CLEAR_NEVER) {
 			window_copy_clear_marks(wme);
-			data->searchx = data->searchy = -1;
+			data->searchx = -1;
+			data->searchy = -1;
 		}
 		if (action == WINDOW_COPY_CMD_MOVE)
 			action = WINDOW_COPY_CMD_REDRAW;
