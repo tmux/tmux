@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.105 2026/11/11 12:45:45 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.106 2026/11/13 14:40:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -400,6 +400,33 @@ layout_cell_is_bottom(struct layout_cell *root, struct layout_cell *lc)
 	return (1);
 }
 
+/* Return the space reserved by the scrollbar for a layout cell. */
+static u_int
+layout_cell_scrollbar_size(struct window *w, struct layout_cell *lc)
+{
+	struct window_pane	*wp = lc->wp;
+
+	if (wp == NULL)
+		wp = w->active;
+	return (wp->scrollbar_style.width + wp->scrollbar_style.pad);
+}
+
+/* Smallest size of a pane cell including scrollbar and status. */
+static u_int
+layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
+    struct layout_cell *root, enum layout_type type)
+{
+	u_int			 minimum = PANE_MINIMUM;
+
+	if (type == LAYOUT_LEFTRIGHT) {
+		if (w->sb == PANE_SCROLLBARS_ALWAYS)
+			minimum += layout_cell_scrollbar_size(w, lc);
+	} else if (layout_add_horizontal_border(root, lc,
+	    window_get_pane_status(w)))
+		minimum++;
+	return (minimum);
+}
+
 /*
  * Returns 1 if we need to add an extra line for the pane status line. This is
  * the case for the most upper or lower panes only.
@@ -514,12 +541,8 @@ static u_int
 layout_resize_check(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
-	struct layout_cell	*lcchild, *root = w->layout_root;
-	struct style		*sb_style = &w->active->scrollbar_style;
+	struct layout_cell	*lcchild;
 	u_int			 available, minimum;
-	int			 status;
-
-	status = window_get_pane_status(w);
 
 	/* Floating cells do not take space from the tiled layout. */
 	if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
@@ -527,20 +550,11 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
-		if (type == LAYOUT_LEFTRIGHT) {
+		if (type == LAYOUT_LEFTRIGHT)
 			available = lc->g.sx;
-			if (w->sb == PANE_SCROLLBARS_ALWAYS)
-				minimum = PANE_MINIMUM + sb_style->width +
-				    sb_style->pad;
-			else
-				minimum = PANE_MINIMUM;
-		} else {
+		else
 			available = lc->g.sy;
-			if (layout_add_horizontal_border(root, lc, status))
-				minimum = PANE_MINIMUM + 1;
-			else
-				minimum = PANE_MINIMUM;
-		}
+		minimum = layout_pane_minimum_size(w, lc, w->layout_root, type);
 		if (available > minimum)
 			available -= minimum;
 		else
