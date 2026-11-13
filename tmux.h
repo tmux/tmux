@@ -1865,6 +1865,7 @@ struct tty {
 	int		 mode;
 	int              fg;
 	int              bg;
+	int		 ansi[16];
 
 	u_int		 rlower;
 	u_int		 rupper;
@@ -3055,6 +3056,7 @@ void	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_size_query(struct tty *);
 void	tty_invalidate(struct tty *);
+void	tty_set_ansi_colour(struct tty *, u_int, int);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
 void	tty_repeat_requests(struct tty *, int);

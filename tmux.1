@@ -7887,6 +7887,8 @@ Fill the available space with a background colour if appropriate.
 .It Ic dim=percentage
 Dim foreground and background colours by
 .Ar percentage .
+ANSI colours are dimmed using the palette reported by the terminal if it
+supports OSC 4 queries, otherwise tmux's builtin palette.
 .It Ic width=N
 Set the width of the styled area.
 .Ar N
