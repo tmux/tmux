@@ -340,6 +340,13 @@ image_get_geometry(struct image *im)
 	return (&im->geom);
 }
 
+/* Get an image's parent. */
+struct image *
+image_get_parent(struct image *im)
+{
+	return (im->parent);
+}
+
 /* Get the image pixels. */
 u_char *
 image_get_pixels(struct image *im, size_t *stride, size_t *size)

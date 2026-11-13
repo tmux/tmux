@@ -119,21 +119,22 @@ void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     u_int atx, u_int aty, const struct tty_style_ctx *style_ctx)
 {
-	struct grid		*gd = s->grid;
-	const struct grid_cell	*gcp;
-	struct grid_cell	 gc, ngc, last;
-	struct grid_line	*gl;
-	u_int			 i, j, last_i, cx, ex, width;
-	u_int			 cellsize, bg;
-	int			 flags, empty, wrapped = 0;
-	char			 buf[1000];
-	size_t			 len;
-	enum tty_draw_line_state current_state, next_state;
-	struct tty_style_ctx	 default_style_ctx = { 0 };
-	const struct grid_cell	*defaults;
+	struct grid			*gd = s->grid;
+	const struct grid_cell		*gcp;
+	struct grid_cell		 gc, ngc, last;
+	struct grid_line		*gl;
+	u_int				 i, j, last_i, cx, ex, width;
+	u_int				 cellsize, bg;
+	int				 flags, empty, wrapped = 0;
+	char				 buf[1000];
+	size_t				 len;
+	enum tty_draw_line_state	 current_state, next_state;
+	struct tty_style_ctx		 default_style_ctx = { 0 };
+	const struct grid_cell		*defaults;
 #ifdef ENABLE_IMAGES
-	struct image		*im;
-	u_int			 x, y;
+	struct image			*im;
+	struct kitty_placeholder	 ph;
+	u_int				 x, y;
 #endif
 
 	if (style_ctx == NULL) {
@@ -274,6 +275,12 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
+#ifdef ENABLE_IMAGES
+				if (kitty_cell_is_placeholder(&gc) &&
+				    image_grid_get_placeholder(gd, px + i,
+				    gd->hsize + py, &ph))
+					utf8_set(&gc.data, ' ');
+#endif
 				gcp = &gc;
 
 #ifdef ENABLE_IMAGES

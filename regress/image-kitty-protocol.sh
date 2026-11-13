@@ -247,7 +247,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('first-error-unsupported',
               graphics('z=1,s=bad,a=q,i=7,p=9', pixel),
               graphics('i=7,p=9', 'ENOTSUP'))
-        for control in ['U=1', 'P=99', 'Q=9', 'H=1', 'H=-1', 'V=1', 'V=-1']:
+        for control in ['P=99', 'Q=9', 'H=1', 'H=-1', 'V=1', 'V=-1']:
             check('unsupported-placement-' + control,
                   graphics('a=T,i=7,f=32,s=1,v=1,' + control, pixel),
                   unsupported)
@@ -255,6 +255,25 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
                   graphics('a=T,i=7,' + control + ',q=2', pixel), '')
         check('zero-placement-extensions', graphics(transmit +
               ',U=0,P=0,Q=0,H=0,V=0', pixel), ok)
+        check('virtual-transmit', graphics(
+              'a=T,i=7,p=9,U=1,f=32,s=1,v=1,c=3,r=2', pixel),
+              graphics('i=7,p=9', 'OK'))
+        check('virtual-place', graphics(transmit + ',q=2', pixel) +
+              graphics('a=p,i=7,p=9,U=1,c=3,r=2'),
+              graphics('i=7,p=9', 'OK'))
+        check('virtual-chunks', graphics(transmit + ',U=1,m=1', '/wAA') +
+              graphics('m=0', '/w=='), ok)
+        check('virtual-quiet', graphics(transmit + ',U=1,q=1', pixel), '')
+        prototype = graphics('a=T,i=7,p=9,U=1,q=2,f=32,s=1,v=1', pixel)
+        check('virtual-delete-last', prototype + graphics('a=d,d=I,i=7,p=9') +
+              graphics('a=p,i=7'), graphics('i=7', 'ENOENT'))
+        for selector in ['a', 'A']:
+            check('virtual-retain-' + selector, prototype +
+                  graphics('a=d,d=' + selector) +
+                  graphics('a=p,U=1,i=7,p=9'), graphics('i=7,p=9', 'OK'))
+        for value in ['-1', 'bad', '4294967296']:
+            check('invalid-virtual-' + value,
+                  graphics(transmit + ',U=' + value, pixel), invalid)
         for z in ['-2147483649', '2147483648', '1x', '', 'bad']:
             check('invalid-layer-' + z,
                   graphics(transmit + ',z=' + z, pixel), invalid)

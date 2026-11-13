@@ -103,6 +103,14 @@ struct image_rect {
 	u_int		 dst_y;
 };
 
+/* Image and source cell resolved from a Unicode placeholder. */
+struct kitty_placeholder {
+	struct image	*image;
+	u_int		 src_x;
+	u_int		 src_y;
+	u_int		 image_id;
+};
+
 /* image.c */
 struct image	*image_create(enum image_type, struct image_geom *, u_char *);
 struct image	*image_create_with_parent(enum image_type, struct image *,
@@ -116,6 +124,7 @@ void		 image_ref(struct image *);
 void		 image_free(struct image *);
 void		 image_touch(struct image *);
 struct image_geom *image_get_geometry(struct image *);
+struct image	*image_get_parent(struct image *);
 u_char		*image_get_pixels(struct image *, size_t *, size_t *);
 int		 image_get_bounds(struct image_geom *, u_int, u_int, u_int,
 		     u_int, u_int, u_int, struct image_bounds *);
@@ -152,6 +161,10 @@ void		 image_grid_copy_area(struct grid *, u_int, u_int,
 void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(struct grid_line *);
 int		 image_grid_has_image(struct grid *, u_int);
+int		 image_grid_get_placeholder(struct grid *, u_int, u_int,
+		     struct kitty_placeholder *);
+void		 image_place_cell_kitty(struct screen_write_ctx *,
+		     struct kitty_placeholder *, u_int, u_int);
 u_int		 image_grid_clear(struct grid *, u_int);
 u_int		 image_grid_clear_visible(struct grid *, enum image_type);
 int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
@@ -211,6 +224,10 @@ void		 kitty_parse_input(struct input_ctx *, struct window_pane *,
 		     size_t);
 void		 kitty_free_state(void *);
 void		 kitty_remove_image(struct image *);
+int		 kitty_cell_is_placeholder(const struct grid_cell *);
+int		 kitty_placeholder_to_image(void *, struct grid *,
+		     struct grid_cell *, u_int, u_int,
+		     struct kitty_placeholder *);
 
 #endif /* ENABLE_IMAGES */
 

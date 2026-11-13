@@ -66,6 +66,8 @@ struct image_placement {
 	struct image			*image;
 	uint64_t			 index;
 	struct image_spans		 spans;
+	u_int				 app_image_id;
+	int				 placeholder;
 
 	u_int				 x;
 	u_int				 recover_from;
@@ -537,12 +539,12 @@ image_line_overwrite(struct image_line *line, u_int x, u_int w)
 		end = UINT_MAX;
 	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
 		type = image_get_type(span->placement->image);
-		if (type != IMAGE_TYPE_KITTY)
+		if (type != IMAGE_TYPE_KITTY || span->placement->placeholder)
 			image_span_remove(span, x, end);
 	}
 }
 
-/* Remove SIXEL spans overwritten by text writes or erases. */
+/* Remove SIXEL and placeholder spans overwritten by text writes or erases. */
 void
 image_grid_overwrite(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 {
@@ -589,17 +591,20 @@ image_remove_placement(struct image_placement *plmt)
 	image_placement_free(plmt);
 }
 
-/* Check whether a grid retains any placements of an image. */
+/* Check whether a grid retains an image or one of its children. */
 int
 image_grid_has_image(struct grid *gd, u_int id)
 {
 	struct image_placement	*plmt;
+	struct image		*im;
 
 	if (gd->images == NULL)
 		return (0);
 	TAILQ_FOREACH(plmt, &gd->images->placements, entry) {
-		if (image_get_id(plmt->image) == id)
-			return (1);
+		for (im = plmt->image; im != NULL; im = image_get_parent(im)) {
+			if (image_get_id(im) == id)
+				return (1);
+		}
 	}
 	return (0);
 }
@@ -609,12 +614,17 @@ u_int
 image_grid_clear(struct grid *gd, u_int id)
 {
 	struct image_placement	*plmt, *plmt1;
+	struct image		*im;
 	u_int			 removed = 0;
 
 	if (gd->images == NULL)
 		return (0);
 	TAILQ_FOREACH_SAFE(plmt, &gd->images->placements, entry, plmt1) {
-		if (image_get_id(plmt->image) != id)
+		for (im = plmt->image; im != NULL; im = image_get_parent(im)) {
+			if (image_get_id(im) == id)
+				break;
+		}
+		if (im == NULL)
 			continue;
 		image_remove_placement(plmt);
 		removed++;
@@ -633,6 +643,8 @@ image_grid_clear_visible(struct grid *gd, enum image_type type)
 		return (0);
 	TAILQ_FOREACH_SAFE(plmt, &gd->images->placements, entry, plmt1) {
 		if (image_get_type(plmt->image) != type)
+			continue;
+		if (plmt->placeholder)
 			continue;
 		if (!image_placement_visible(gd, plmt))
 			continue;
@@ -710,6 +722,7 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 	struct image_line	*line;
 	struct image_span	*span;
 	struct image_move	*moves = NULL;
+	enum image_type		 type;
 	size_t			 n = 0, i;
 	u_int			 start, end, span_end;
 
@@ -731,7 +744,8 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 		if (span_end > end)
 			span_end = end;
 
-		if (image_get_type(span->placement->image) == IMAGE_TYPE_KITTY)
+		type = image_get_type(span->placement->image);
+		if (type == IMAGE_TYPE_KITTY && !span->placement->placeholder)
 			continue;
 		moves = xreallocarray(moves, n + 1, sizeof *moves);
 		moves[n].placement = span->placement;
@@ -818,7 +832,7 @@ image_line_move(struct grid_line *dst, struct grid_line *src, int scroll)
 		return;
 	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
 		type = image_get_type(span->placement->image);
-		if (type == IMAGE_TYPE_KITTY &&
+		if (type == IMAGE_TYPE_KITTY && !span->placement->placeholder &&
 		    (!scroll || !span->placement->scroll))
 			continue;
 		if (dst == NULL)
@@ -928,6 +942,74 @@ image_grid_restore_lines(struct grid *gd, struct image_saved *saved)
 	free(saved);
 }
 
+/* Find the resolved placeholder at one grid cell. */
+int
+image_grid_get_placeholder(struct grid *gd, u_int x, u_int y,
+    struct kitty_placeholder *ph)
+{
+	struct image_line	*line;
+	struct image_span	*span, *found = NULL;
+
+	if (y >= gd->hsize + gd->sy)
+		return (0);
+	line = gd->linedata[y].images;
+	if (line == NULL)
+		return (0);
+	TAILQ_FOREACH(span, &line->spans, line_entry) {
+		if (!span->placement->placeholder)
+			continue;
+		if (x >= span->x && x < span->x + span->sx)
+			found = span;
+	}
+	if (found == NULL)
+		return (0);
+	ph->image = found->placement->image;
+	ph->src_x = found->source_x + x - found->x;
+	ph->src_y = found->source_y;
+	ph->image_id = found->placement->app_image_id;
+	return (1);
+}
+
+/* Add one Kitty Unicode placeholder cell to an image placement. */
+void
+image_place_cell_kitty(struct screen_write_ctx *ctx,
+    struct kitty_placeholder *ph, u_int x, u_int y)
+{
+	struct grid		*gd = ctx->s->grid;
+	struct image_store	*store = image_store_get(gd);
+	struct image_placement	*plmt = NULL, *at;
+	struct image_line	*line;
+	struct image_span	*span;
+
+	/* Find a matching placeholder placement in this grid. */
+	TAILQ_FOREACH_REVERSE(at, &store->placements, image_placements, entry) {
+		if (at->placeholder && at->image == ph->image &&
+		    at->app_image_id == ph->image_id) {
+			plmt = at;
+			break;
+		}
+	}
+	if (plmt == NULL) {
+		plmt = image_placement_create(gd, ph->image);
+		plmt->placeholder = 1;
+		plmt->app_image_id = ph->image_id;
+	}
+
+	/* Extend an adjacent source run or add a new span for this cell. */
+	line = image_line_get(&gd->linedata[gd->hsize + y]);
+	TAILQ_FOREACH(span, &line->spans, line_entry) {
+		if (span->placement == plmt && span->x + span->sx == x &&
+		    span->source_y == ph->src_y &&
+		    span->source_x + span->sx == ph->src_x) {
+			span->sx++;
+			image_redraw_area(ctx, x, y, 1, 1);
+			return;
+		}
+	}
+	image_span_add(line, plmt, x, 1, ph->src_x, ph->src_y);
+	image_redraw_area(ctx, x, y, 1, 1);
+}
+
 /* Map placements during a copy. */
 static struct image_placement *
 image_copy_placement(struct grid *dst, struct image_placement *src,
@@ -943,6 +1025,8 @@ image_copy_placement(struct grid *dst, struct image_placement *src,
 	}
 	plmt = image_placement_create(dst, src->image);
 	plmt->index = src->index;
+	plmt->app_image_id = src->app_image_id;
+	plmt->placeholder = src->placeholder;
 	plmt->x = src->x;
 	plmt->recover_from = src->recover_from;
 

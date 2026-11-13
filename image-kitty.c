@@ -31,6 +31,7 @@
  * Each input parser keeps one unfinished transfer and maps application image
  * and placement IDs to internal image IDs. Once an upload is completed, it is
  * stored as an RGBA image. Each placement then uses a child image.
+ * Virtual placements appear through Unicode placeholder text cells.
  *
  * Output caches each image and placement separately for each client. Pixels
  * are scaled to the client's cell pixel size on upload and reused in redraws.
@@ -43,6 +44,48 @@
  */
 
 #define KITTY_CHUNK_SIZE 3072
+
+/* Unicode marks encoding placeholder rows, columns and image ID bits. */
+static const uint32_t kitty_diacritics[] = {
+	0x0305, 0x030D, 0x030E, 0x0310, 0x0312, 0x033D, 0x033E, 0x033F,
+	0x0346, 0x034A, 0x034B, 0x034C, 0x0350, 0x0351, 0x0352, 0x0357,
+	0x035B, 0x0363, 0x0364, 0x0365, 0x0366, 0x0367, 0x0368, 0x0369,
+	0x036A, 0x036B, 0x036C, 0x036D, 0x036E, 0x036F, 0x0483, 0x0484,
+	0x0485, 0x0486, 0x0487, 0x0592, 0x0593, 0x0594, 0x0595, 0x0597,
+	0x0598, 0x0599, 0x059C, 0x059D, 0x059E, 0x059F, 0x05A0, 0x05A1,
+	0x05A8, 0x05A9, 0x05AB, 0x05AC, 0x05AF, 0x05C4, 0x0610, 0x0611,
+	0x0612, 0x0613, 0x0614, 0x0615, 0x0616, 0x0617, 0x0657, 0x0658,
+	0x0659, 0x065A, 0x065B, 0x065D, 0x065E, 0x06D6, 0x06D7, 0x06D8,
+	0x06D9, 0x06DA, 0x06DB, 0x06DC, 0x06DF, 0x06E0, 0x06E1, 0x06E2,
+	0x06E4, 0x06E7, 0x06E8, 0x06EB, 0x06EC, 0x0730, 0x0732, 0x0733,
+	0x0735, 0x0736, 0x073A, 0x073D, 0x073F, 0x0740, 0x0741, 0x0743,
+	0x0745, 0x0747, 0x0749, 0x074A, 0x07EB, 0x07EC, 0x07ED, 0x07EE,
+	0x07EF, 0x07F0, 0x07F1, 0x07F3, 0x0816, 0x0817, 0x0818, 0x0819,
+	0x081B, 0x081C, 0x081D, 0x081E, 0x081F, 0x0820, 0x0821, 0x0822,
+	0x0823, 0x0825, 0x0826, 0x0827, 0x0829, 0x082A, 0x082B, 0x082C,
+	0x082D, 0x0951, 0x0953, 0x0954, 0x0F82, 0x0F83, 0x0F86, 0x0F87,
+	0x135D, 0x135E, 0x135F, 0x17DD, 0x193A, 0x1A17, 0x1A75, 0x1A76,
+	0x1A77, 0x1A78, 0x1A79, 0x1A7A, 0x1A7B, 0x1A7C, 0x1B6B, 0x1B6D,
+	0x1B6E, 0x1B6F, 0x1B70, 0x1B71, 0x1B72, 0x1B73, 0x1CD0, 0x1CD1,
+	0x1CD2, 0x1CDA, 0x1CDB, 0x1CE0, 0x1DC0, 0x1DC1, 0x1DC3, 0x1DC4,
+	0x1DC5, 0x1DC6, 0x1DC7, 0x1DC8, 0x1DC9, 0x1DCB, 0x1DCC, 0x1DD1,
+	0x1DD2, 0x1DD3, 0x1DD4, 0x1DD5, 0x1DD6, 0x1DD7, 0x1DD8, 0x1DD9,
+	0x1DDA, 0x1DDB, 0x1DDC, 0x1DDD, 0x1DDE, 0x1DDF, 0x1DE0, 0x1DE1,
+	0x1DE2, 0x1DE3, 0x1DE4, 0x1DE5, 0x1DE6, 0x1DFE, 0x20D0, 0x20D1,
+	0x20D4, 0x20D5, 0x20D6, 0x20D7, 0x20DB, 0x20DC, 0x20E1, 0x20E7,
+	0x20E9, 0x20F0, 0x2CEF, 0x2CF0, 0x2CF1, 0x2DE0, 0x2DE1, 0x2DE2,
+	0x2DE3, 0x2DE4, 0x2DE5, 0x2DE6, 0x2DE7, 0x2DE8, 0x2DE9, 0x2DEA,
+	0x2DEB, 0x2DEC, 0x2DED, 0x2DEE, 0x2DEF, 0x2DF0, 0x2DF1, 0x2DF2,
+	0x2DF3, 0x2DF4, 0x2DF5, 0x2DF6, 0x2DF7, 0x2DF8, 0x2DF9, 0x2DFA,
+	0x2DFB, 0x2DFC, 0x2DFD, 0x2DFE, 0x2DFF, 0xA66F, 0xA67C, 0xA67D,
+	0xA6F0, 0xA6F1, 0xA8E0, 0xA8E1, 0xA8E2, 0xA8E3, 0xA8E4, 0xA8E5,
+	0xA8E6, 0xA8E7, 0xA8E8, 0xA8E9, 0xA8EA, 0xA8EB, 0xA8EC, 0xA8ED,
+	0xA8EE, 0xA8EF, 0xA8F0, 0xA8F1, 0xAAB0, 0xAAB2, 0xAAB3, 0xAAB7,
+	0xAAB8, 0xAABE, 0xAABF, 0xAAC1, 0xFE20, 0xFE21, 0xFE22, 0xFE23,
+	0xFE24, 0xFE25, 0xFE26, 0x10A0F, 0x10A38, 0x1D185, 0x1D186, 0x1D187,
+	0x1D188, 0x1D189, 0x1D1AA, 0x1D1AB, 0x1D1AC, 0x1D1AD, 0x1D242, 0x1D243,
+	0x1D244
+};
 
 /* State attached to an input parser. */
 struct kitty_state {
@@ -67,6 +110,7 @@ struct kitty_state {
 	u_int				 quiet;
 	u_int				 data_size;
 	int				 no_cursor;
+	int				 virtual;
 	int				 more;
 
 	u_char				*data;
@@ -85,6 +129,7 @@ static struct kitty_states kitty_states = TAILQ_HEAD_INITIALIZER(kitty_states);
 struct kitty_placement_map {
 	u_int					 kitty_id;
 	u_int					 image_id;
+	int					 virtual;
 
 	TAILQ_ENTRY(kitty_placement_map)	 entry;
 };
@@ -655,7 +700,6 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 			else if (z != 0)
 				*m = (*m == NULL ? "ENOTSUP" : *m);
 			break;
-		case 'U':
 		case 'P':
 		case 'Q':
 		case 'H':
@@ -683,6 +727,7 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 		case 'c':
 		case 'r':
 		case 'C':
+		case 'U':
 			number = strtonum(value, 0, UINT_MAX, &errstr);
 			if (errstr != NULL) {
 				*m = (*m == NULL ? "EINVAL" : *m);
@@ -743,6 +788,9 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 			case 'C':
 				ks->no_cursor = (number != 0);
 				break;
+			case 'U':
+				ks->virtual = (number != 0);
+				break;
 			}
 			break;
 		}
@@ -768,6 +816,8 @@ kitty_free_state(void *state)
 		TAILQ_REMOVE(&ks->images, map, entry);
 		while ((kpl = TAILQ_FIRST(&map->placements)) != NULL) {
 			TAILQ_REMOVE(&map->placements, kpl, entry);
+			if (kpl->virtual)
+				image_free(image_find(kpl->image_id));
 			free(kpl);
 		}
 		image_free(image_find(map->image_id));
@@ -792,6 +842,8 @@ kitty_remove_image(struct image *im)
 				if (map->image_id != id && kpl->image_id != id)
 					continue;
 				TAILQ_REMOVE(&map->placements, kpl, entry);
+				if (kpl->virtual)
+					image_free(image_find(kpl->image_id));
 				free(kpl);
 			}
 			if (map->image_id != id)
@@ -831,9 +883,11 @@ kitty_image_map_set(struct kitty_state *ks, struct screen_write_ctx *ctx,
 	if (map != NULL) {
 		old = image_find(map->image_id);
 		image_set_order_id(im, image_get_order_id(old));
+		image_clear(ctx, map->image_id);
 		while ((kpl = TAILQ_FIRST(&map->placements)) != NULL) {
 			TAILQ_REMOVE(&map->placements, kpl, entry);
-			image_clear(ctx, kpl->image_id);
+			if (kpl->virtual)
+				image_free(image_find(kpl->image_id));
 			free(kpl);
 		}
 		image_free(image_find(map->image_id));
@@ -851,7 +905,7 @@ kitty_image_map_set(struct kitty_state *ks, struct screen_write_ctx *ctx,
 /* Replace a named placement, or add a new anonymous placement. */
 static void
 kitty_placement_map_set(struct screen_write_ctx *ctx,
-    struct kitty_image_map *map, u_int id, struct image *im)
+    struct kitty_image_map *map, u_int id, struct image *im, int virtual)
 {
 	struct kitty_placement_map	*kpl, *kpl1;
 
@@ -870,9 +924,16 @@ kitty_placement_map_set(struct screen_write_ctx *ctx,
 		kpl = xcalloc(1, sizeof *kpl);
 		kpl->kitty_id = id;
 		TAILQ_INSERT_TAIL(&map->placements, kpl, entry);
-	} else
-		image_clear(ctx, kpl->image_id);
+	} else {
+		if (kpl->virtual)
+			image_free(image_find(kpl->image_id));
+		else
+			image_clear(ctx, kpl->image_id);
+	}
 	kpl->image_id = image_get_id(im);
+	kpl->virtual = virtual;
+	if (virtual)
+		image_ref(im);
 }
 
 /* Remove mappings for absent placements. */
@@ -884,6 +945,8 @@ kitty_prune_placements(struct kitty_image_map *map, struct screen *s)
 	struct grid			*sgd = s->saved_grid;
 
 	TAILQ_FOREACH_SAFE(kpl, &map->placements, entry, kpl1) {
+		if (kpl->virtual)
+			continue;
 		if (image_grid_has_image(s->grid, kpl->image_id))
 			continue;
 		if (sgd != NULL && image_grid_has_image(sgd, kpl->image_id))
@@ -902,8 +965,8 @@ kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
 	struct screen			*s = ctx->s;
 	struct grid			*gd = s->grid;
 	struct kitty_image_map		*map, *map1;
-	struct kitty_placement_map	*kpl;
-	u_int				 removed;
+	struct kitty_placement_map	*kpl, *kpl1;
+	u_int				 removed, n;
 	char				 how = ks->delete;
 	int				 release;
 
@@ -920,17 +983,30 @@ kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
 		if (how == 'i') {
 			if (map->kitty_id != ks->image_id)
 				continue;
-			TAILQ_FOREACH(kpl, &map->placements, entry) {
+			TAILQ_FOREACH_SAFE(kpl, &map->placements, entry, kpl1) {
 				if (ks->placement_id != 0 &&
 				    kpl->kitty_id != ks->placement_id)
 					continue;
-				removed += image_grid_clear(gd, kpl->image_id);
+				if (!kpl->virtual) {
+					n = image_grid_clear(gd, kpl->image_id);
+					removed += n;
+					continue;
+				}
+				TAILQ_REMOVE(&map->placements, kpl, entry);
+				image_free(image_find(kpl->image_id));
+				free(kpl);
+				removed++;
 			}
 			if (ks->placement_id == 0)
 				removed++;
 		}
 		removed += kitty_prune_placements(map, s);
 		if (!release || removed == 0 || !TAILQ_EMPTY(&map->placements))
+			continue;
+		if (image_grid_has_image(gd, map->image_id))
+			continue;
+		if (s->saved_grid != NULL &&
+		    image_grid_has_image(s->saved_grid, map->image_id))
 			continue;
 		TAILQ_REMOVE(&ks->images, map, entry);
 		image_free(image_find(map->image_id));
@@ -1080,6 +1156,12 @@ kitty_place_image(struct image *src, struct kitty_state *ks, u_int xpixel,
 	} else {
 		ig.scaled_width = (double)ig.sx * xpixel - ig.canvas_xoff;
 		ig.scaled_height = (double)ig.sy * ypixel - ig.canvas_yoff;
+		if (ks->virtual) {
+			size = fmin(ig.scaled_width / ig.src_w,
+			    ig.scaled_height / ig.src_h);
+			ig.scaled_width = ig.src_w * size;
+			ig.scaled_height = ig.src_h * size;
+		}
 	}
 	limit = options_get_number(global_options, "image-size-limit");
 	if (ig.sx > USHRT_MAX ||
@@ -1094,6 +1176,10 @@ kitty_place_image(struct image *src, struct kitty_state *ks, u_int xpixel,
 		return (NULL);
 	ig.canvas_width = cw;
 	ig.canvas_height = ch;
+	if (ks->virtual && ks->columns != 0 && ks->rows != 0) {
+		ig.canvas_xoff += (cw - ig.canvas_xoff - ig.scaled_width) / 2;
+		ig.canvas_yoff += (ch - ig.canvas_yoff - ig.scaled_height) / 2;
+	}
 	pixels = image_get_pixels(src, &stride, NULL);
 	return (image_create_with_parent(type, src, &ig, stride, pixels));
 }
@@ -1171,6 +1257,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		ks->quiet = 0;
 		ks->data_size = 0;
 		ks->no_cursor = 0;
+		ks->virtual = 0;
 	}
 	ks->more = 0;
 
@@ -1273,7 +1360,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		goto out;
 	}
 
-	if (ks->action == 'T') {
+	if (ks->action != 'q' && (ks->action == 'T' || ks->virtual)) {
 		im = kitty_place_image(src, ks, w->xpixel, w->ypixel);
 		if (im == NULL)
 			goto out;
@@ -1284,8 +1371,10 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 place:
 	if (im != NULL) {
 		image_set_order_id(im, image_get_order_id(src));
-		kitty_placement_map_set(ctx, map, ks->placement_id, im);
-		image_write(ctx, im, bg, ks->no_cursor);
+		kitty_placement_map_set(ctx, map, ks->placement_id, im,
+		    ks->virtual);
+		if (!ks->virtual)
+			image_write(ctx, im, bg, ks->no_cursor);
 	}
 	m = "OK";
 
@@ -1301,4 +1390,191 @@ out:
 	ks->size = 0;
 	ks->allocated = 0;
 	ks->more = 0;
+}
+
+/* Decode one UTF-8 character from a Kitty placeholder. */
+static int
+kitty_placeholder_character(const u_char *data, size_t size, size_t *offset,
+    uint32_t *value)
+{
+	u_char		ch;
+	u_int		needed, i;
+	uint32_t	result;
+
+	if (*offset >= size)
+		return (0);
+	ch = data[(*offset)++];
+	if (ch < 0x80) {
+		*value = ch;
+		return (1);
+	}
+	if ((ch & 0xe0) == 0xc0) {
+		needed = 1;
+		result = ch & 0x1f;
+	} else if ((ch & 0xf0) == 0xe0) {
+		needed = 2;
+		result = ch & 0x0f;
+	} else if ((ch & 0xf8) == 0xf0) {
+		needed = 3;
+		result = ch & 0x07;
+	} else
+		return (0);
+	if (needed > size - *offset)
+		return (0);
+	for (i = 0; i < needed; i++) {
+		ch = data[(*offset)++];
+		if ((ch & 0xc0) != 0x80)
+			return (0);
+		result = (result << 6)|(ch & 0x3f);
+	}
+	*value = result;
+	return (1);
+}
+
+/* Return the Kitty placeholder diacritic index for a character. */
+static int
+kitty_placeholder_index(uint32_t value, u_int *index)
+{
+	u_int	i;
+
+	for (i = 0; i < nitems(kitty_diacritics); i++) {
+		if (kitty_diacritics[i] == value) {
+			*index = i;
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/* Return whether a cell starts with a Kitty Unicode placeholder. */
+int
+kitty_cell_is_placeholder(const struct grid_cell *gc)
+{
+	if (gc->data.size < 4)
+		return (0);
+	if (gc->data.data[0] != 0xf4)
+		return (0);
+	if (gc->data.data[1] != 0x8e)
+		return (0);
+	if (gc->data.data[2] != 0xbb)
+		return (0);
+	if (gc->data.data[3] != 0xae)
+		return (0);
+	return (1);
+}
+
+/* Decode an image or placement ID from a placeholder colour. */
+static int
+kitty_colour_id(int colour, u_int *id)
+{
+	if (colour < 0)
+		return (0);
+	if (colour & COLOUR_FLAG_RGB)
+		*id = colour & 0xffffff;
+	else if (colour & COLOUR_FLAG_256)
+		*id = colour & 0xff;
+	else if (colour < 8)
+		*id = colour;
+	else if (colour >= 90) {
+		if (colour >= 98)
+			return (0);
+		*id = colour - 90 + 8;
+	} else
+		return (0);
+	return (1);
+}
+
+/* Resolve a Kitty Unicode placeholder to an image and source cell. */
+int
+kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
+    u_int grid_x, u_int grid_y, struct kitty_placeholder *ph)
+{
+	struct kitty_state		*ks = state;
+	struct kitty_image_map		*map;
+	struct kitty_placement_map	*kpl;
+	struct kitty_placeholder	 left;
+	struct grid_cell		 left_cell;
+	struct image			*im;
+	struct image_geom		*ig;
+	uint32_t			 value;
+	size_t				 offset = 0;
+	u_int				 values[3], nvalues = 0, id;
+	u_int				 x = 0, y = 0, placement_id = 0;
+	int				 inherit = 0;
+
+	if (ks == NULL)
+		return (0);
+
+	/* Decode the base character and its row, column and image ID marks. */
+	if (!kitty_placeholder_character(gc->data.data, gc->data.size, &offset,
+	    &value))
+		return (0);
+	if (value != 0x10eeee)
+		return (0);
+	while (offset < gc->data.size && nvalues < nitems(values)) {
+		if (!kitty_placeholder_character(gc->data.data, gc->data.size,
+		    &offset, &value))
+			return (0);
+		if (!kitty_placeholder_index(value, &values[nvalues]))
+			return (0);
+		nvalues++;
+	}
+	if (offset != gc->data.size)
+		return (0);
+	if (!kitty_colour_id(gc->fg, &id))
+		return (0);
+	(void)kitty_colour_id(gc->us, &placement_id);
+	if (nvalues >= 1)
+		y = values[0];
+	if (nvalues >= 2)
+		x = values[1];
+
+	/* Inherit missing values from the matching placeholder to the left. */
+	if (grid_x != 0) {
+		grid_view_get_cell(gd, grid_x - 1, grid_y, &left_cell);
+		if (left_cell.fg == gc->fg && left_cell.us == gc->us)
+			inherit = image_grid_get_placeholder(gd, grid_x - 1,
+			    gd->hsize + grid_y, &left);
+	}
+	if (inherit && ((nvalues >= 1 && left.src_y != y) ||
+	    (nvalues >= 2 && left.src_x + 1 != x)))
+		inherit = 0;
+	if (inherit) {
+		if (nvalues == 0)
+			y = left.src_y;
+		if (nvalues < 2)
+			x = left.src_x + 1;
+		if (nvalues < 3)
+			id |= left.image_id & 0xff000000;
+	}
+	if (nvalues == 3) {
+		if (values[2] > 255)
+			return (0);
+		id |= values[2] << 24;
+	}
+
+	/* Resolve the application image ID and its virtual placement. */
+	map = kitty_image_map_find(ks, id);
+	if (map == NULL)
+		return (0);
+	TAILQ_FOREACH(kpl, &map->placements, entry) {
+		if (!kpl->virtual)
+			continue;
+		if (placement_id != 0 && kpl->kitty_id != placement_id)
+			continue;
+		break;
+	}
+	if (kpl == NULL)
+		return (0);
+	im = image_find(kpl->image_id);
+	if (im == NULL)
+		return (0);
+	ig = image_get_geometry(im);
+	if (x >= ig->sx || y >= ig->sy)
+		return (0);
+	ph->image = im;
+	ph->src_x = x;
+	ph->src_y = y;
+	ph->image_id = id;
+	return (1);
 }

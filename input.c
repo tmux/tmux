@@ -2884,8 +2884,13 @@ input_exit_rename(struct input_ctx *ictx)
 static int
 input_top_bit_set(struct input_ctx *ictx)
 {
-	struct screen_write_ctx	*sctx = &ictx->ctx;
-	struct utf8_data	*ud = &ictx->utf8data;
+	struct screen_write_ctx		*sctx = &ictx->ctx;
+	struct utf8_data		*ud = &ictx->utf8data;
+#ifdef ENABLE_IMAGES
+	struct grid_cell		 gc;
+	struct kitty_placeholder	 ph;
+	u_int				 x;
+#endif
 
 	ictx->flags &= ~INPUT_LAST;
 
@@ -2912,6 +2917,18 @@ input_top_bit_set(struct input_ctx *ictx)
 
 	utf8_copy(&ictx->cell.cell.data, ud);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
+
+#ifdef ENABLE_IMAGES
+	if (sctx->s->cx != 0) {
+		x = sctx->s->cx - 1;
+		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
+		image_grid_overwrite(sctx->s->grid, x,
+		    sctx->s->grid->hsize + sctx->s->cy, 1, 1);
+		if (kitty_placeholder_to_image(ictx->kitty_state,
+		    sctx->s->grid, &gc, x, sctx->s->cy, &ph))
+			image_place_cell_kitty(sctx, &ph, x, sctx->s->cy);
+	}
+#endif
 
 	utf8_copy(&ictx->last, &ictx->cell.cell.data);
 	ictx->flags |= INPUT_LAST;
