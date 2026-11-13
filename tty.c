@@ -2669,7 +2669,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
 	struct colour_palette	*palette;
-	int			 changed;
+	int			 c, changed;
 
 	/* Use default style if not given. */
 	if (style_ctx == NULL)
@@ -2684,7 +2684,16 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		if (gc2.bg == 8)
 			gc2.bg = style_ctx->defaults->bg;
 		if (palette != NULL) {
-			changed = colour_palette_get(palette, gc2.fg);
+			/*
+			 * If bold uses bright colours, look up the bright
+			 * foreground before applying the palette and dimming.
+			 */
+			c = gc2.fg;
+			if (c < 8 &&
+			    gc2.attr & GRID_ATTR_BRIGHT &&
+			    !tty_term_has(tty->term, TTYC_NOBR))
+				c += 90;
+			changed = colour_palette_get(palette, c);
 			if (changed != -1)
 				gc2.fg = changed;
 			changed = colour_palette_get(palette, gc2.bg);
@@ -2991,7 +3000,7 @@ tty_check_bg(struct tty *tty, struct colour_palette *palette,
 }
 
 static void
-tty_check_us(__unused struct tty *tty, struct colour_palette *palette,
+tty_check_us(struct tty *tty, struct colour_palette *palette,
     struct grid_cell *gc)
 {
 	int	c;
