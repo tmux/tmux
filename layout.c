@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.107 2026/11/13 14:44:24 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.108 2026/11/13 19:06:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -332,11 +332,9 @@ layout_fix_offsets1(struct layout_cell *lc)
 }
 
 /* Update cell offsets based on their sizes. */
-void
-layout_fix_offsets(struct window *w)
+static void
+layout_fix_offsets_cell(struct layout_cell *lc)
 {
-	struct layout_cell	*lc = w->layout_root;
-
 	/* Root consists of a single floating cell */
 	if (lc->flags & LAYOUT_CELL_FLOATING)
 		return;
@@ -345,6 +343,13 @@ layout_fix_offsets(struct window *w)
 	lc->g.yoff = 0;
 
 	layout_fix_offsets1(lc);
+}
+
+/* Update cell offsets for the window layout. */
+void
+layout_fix_offsets(struct window *w)
+{
+	layout_fix_offsets_cell(w->layout_root);
 }
 
 static int
