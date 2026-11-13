@@ -36,8 +36,8 @@ sleep 1
 OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
 [ -n "$OUTER" ] || fail "No outer pane."
 
-# The right hand pane's border ends with the buttons [f][z][x]; the zoom one is
-# the middle button, at column 76 (1-based) on the first row.
+# The right hand pane's border ends with [h][f][z][x]; the zoom button is at
+# column 76 (1-based) on the first row.
 seq=$(printf '\033[<0;76;1M\033[<0;76;1m')
 $TMUX2 send-keys -t "$OUTER" -l "$seq" || fail "send-keys failed."
 sleep 1

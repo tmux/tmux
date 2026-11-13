@@ -364,6 +364,13 @@ Choose the current window interactively.
 Kill the current pane.
 .It z
 Toggle zoom state of the current pane.
+.It _
+Cycle the desktop: show tiles, then floating panes, then the entire stack.
+.It h
+Hide the current pane.
+.It H
+Show the most recently hidden pane.
+Repeat to show the remaining hidden panes in reverse order of hiding.
 .It Tab
 Choose a new window and session by fuzzy matching.
 .It {
@@ -1752,8 +1759,7 @@ or
 to change session, window and pane.
 In that case,
 .Fl Z
-moves the zoom to the pane selected if it was covered by a zoomed pane,
-instead of the window being unzoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane.
 If
 .Fl l ,
 .Fl n
@@ -2851,6 +2857,7 @@ off from its containing window to make it the only pane in
 .Ar dst\-window .
 A zoomed pane is first restored to its normal tiled or floating position.
 A floating pane keeps its floating size and position in the new window.
+A hidden pane is shown in the new window.
 With
 .Fl a
 or
@@ -2909,6 +2916,7 @@ If
 .Fl d
 is given, the active pane is not changed.
 The pane must not already be floating.
+A hidden pane stays hidden.
 Zoomed panes are floating and must be unzoomed first.
 .Tg capturep
 .It Xo Ic capture\-pane
@@ -3504,8 +3512,7 @@ Only windows for which the filter is true are killed.
 .D1 Pq alias: Ic lastp
 Select the last (previously selected) pane.
 .Fl Z
-moves the zoom to the pane selected if it was covered by a zoomed pane,
-instead of the window being unzoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane.
 .Fl e
 enables or
 .Fl d
@@ -3999,7 +4006,7 @@ if specified, to
 .Ar new\-name .
 .Tg resizep
 .It Xo Ic resize\-pane
-.Op Fl aMTZ
+.Op Fl aCdhHMTZ
 .Op Fl D Ar lines
 .Op Fl L Ar columns
 .Op Fl R Ar columns
@@ -4055,8 +4062,8 @@ If the tiled layout has not changed and there is enough space, the pane regains
 its previous allocation.
 Otherwise, a neighbouring tiled allocation is split, leaving the other tiles
 unchanged as far as space permits.
-Floating a tiled pane gives its space to the same neighbour as closing it would;
-this does not automatically redistribute tiles evenly.
+Floating or hiding a tiled pane gives its space to the same neighbour as closing
+it would; these operations do not automatically redistribute tiles evenly.
 Floating panes retain their places in the tiled layout without taking any
 tiled space; a window may contain only floating panes.
 Any number of panes may be zoomed, with ordinary floating panes above or
@@ -4066,6 +4073,58 @@ Zoomed panes cannot be moved or resized.
 with
 .Fl Z
 unzooms every pane in the window.
+.Pp
+.Fl h
+hides the target pane.
+If it is already hidden, this does nothing.
+A hidden pane is not shown, cannot be selected with the mouse and is skipped
+when moving to the next or previous pane, but it is otherwise unchanged: a
+hidden tiled pane gives its space to a neighbour and takes it back when shown,
+and a pane that is zoomed or floating is still zoomed or floating when shown.
+Restoring a tiled pane follows the same allocation rules as unzooming it.
+Hiding the active pane selects the visible pane at the front of the stacking
+order, if one remains.
+All panes may be hidden, leaving the window background visible.
+Modal panes cannot be hidden.
+Selecting a hidden pane shows it.
+.Fl H
+shows and selects the pane specified by
+.Fl t .
+Without
+.Fl t ,
+it restores the most recently hidden pane and makes it active.
+Repeated calls show hidden panes in reverse order of hiding.
+Selecting a restored tiled pane hides any zoomed panes covering it, as with
+ordinary selection; those panes may then be restored by another call.
+If no panes are hidden, this does nothing.
+.Fl d
+with
+.Fl H
+shows the pane without making it active.
+.Pp
+.Fl C
+cycles desktop visibility: it hides every floating or zoomed pane in the
+window, or, if any were hidden in
+this way, shows just those again: ordinary floating panes first, then zoomed
+panes on the next call.
+Steps with no panes to restore are skipped.
+Panes hidden independently are left hidden and modal panes are left visible.
+With the default bindings, this is also done by the prefix key followed by
+.Ql _
+or by clicking the
+.Ql [_]
+button in the status line pane list.
+The button uses the
+.Ql MouseDown1Control5 ,
+.Ql SecondClick1Control5
+and
+.Ql TripleClick1Control5
+bindings.
+The default prefix bindings
+.Ql h
+and
+.Ql H
+hide the active pane and show the most recently hidden pane respectively.
 .Pp
 .Fl M
 begins mouse resizing (only valid if bound to a mouse key binding, see
@@ -4212,6 +4271,8 @@ spreads the current pane and any panes next to it out evenly.
 Make pane
 .Ar target\-pane
 the active pane in its window.
+If it is hidden, show it first.
+Selecting a tiled pane covered by zoomed panes hides those zoomed panes.
 Selecting an ordinary floating pane brings it to the front.
 Selecting an exposed zoomed pane leaves floating panes above it in place.
 If one of
@@ -4222,9 +4283,10 @@ or
 .Fl U
 is used, respectively the pane below, to the left, to the right, or above the
 target pane is used.
+.Pp
 .Fl Z
 moves the zoom to the pane selected if it was covered by a zoomed pane,
-instead of the window being unzoomed.
+instead of hiding the zoomed panes.
 .Fl l
 is the same as using the
 .Ic last\-pane
@@ -4298,6 +4360,14 @@ If
 .Fl d
 is given, the session does not make the new pane the current pane.
 A zoomed target is first restored to its normal tiled or floating position.
+A hidden target is shown before splitting; with
+.Fl d ,
+both the original and new panes remain hidden and focus is unchanged.
+Use
+.Fl P
+and
+.Fl F
+to print the new pane's ID for a later command.
 Splitting a floating pane creates another floating pane beside it, reducing
 their sizes if necessary to fit.
 .Fl Z
@@ -4408,8 +4478,9 @@ $ make 2>&1|tmux new\-pane \-dI &
 .Xc
 .D1 Pq alias: Ic swapp
 Swap two panes.
-The tiled or floating position, floating geometry, stacking order and zoom
-state belong to each position and are taken over by the pane swapped into it.
+The tiled or floating position, floating geometry, stacking order, zoom state
+and hidden state belong to each position and are taken over by the pane swapped
+into it.
 If
 .Fl U
 is used and no source pane is specified with
@@ -4423,8 +4494,7 @@ instructs
 .Nm
 not to change the active pane and
 .Fl Z
-moves the zoom to the pane selected if it was covered by a zoomed pane,
-instead of the window being unzoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane.
 .Pp
 If
 .Fl s
@@ -6306,6 +6376,15 @@ will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Op Cm off | top | bottom | top\-floating | bottom\-floating
 .Xc
 Turn pane border status lines off or set their position.
+With the default
+.Ic pane\-border\-format
+and mouse enabled, the
+.Ql [h]
+button hides the pane whose border was clicked.
+It is bound through
+.Ql MouseDown1Control6
+and may be rebound with
+.Ic bind\-key .
 If set to
 .Cm top\-floating
 or
@@ -6671,6 +6750,16 @@ section.
 .It Ic window-pane-status-format Ar string
 Set the format in which the window pane is displayed in the status line window
 pane list.
+With the default mouse bindings, clicking an inactive pane's entry selects it
+and shows it if hidden.
+Clicking the active visible pane's entry hides it and selects the visible pane
+at the front of the stacking order.
+This works for both separate single clicks and rapid successive clicks.
+The
+.Ql [_]
+button cycles the desktop as described under
+.Ic resize\-pane
+.Fl C .
 See the
 .Sx FORMATS
 and
@@ -7723,6 +7812,7 @@ The following variables are available, where appropriate:
 .It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating or zoomed"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
+.It Li "pane_hidden_flag" Ta "" Ta "1 if pane is hidden"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
 .It Li "pane_in_mode" Ta "" Ta "Number of modes pane is in"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
@@ -7855,7 +7945,7 @@ The following variables are available, where appropriate:
 .It Li "window_start_flag" Ta "" Ta "1 if window has the lowest index"
 .It Li "window_visible_layout" Ta "" Ta "Window layout description, respecting zoomed window panes"
 .It Li "window_width" Ta "" Ta "Width of window"
-.It Li "window_zoomed_flag" Ta "" Ta "1 if any pane in the window is zoomed"
+.It Li "window_zoomed_flag" Ta "" Ta "1 if a zoomed pane is not hidden"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
 .El
 .Sh STYLES

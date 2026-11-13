@@ -31,7 +31,8 @@ run()
 # Capture visible tiled rectangles without focus or stacking metadata.
 geometry()
 {
-	run list-panes -f '#{!:#{pane_floating_flag}}' -F \
+	run list-panes \
+	    -f '#{&&:#{!:#{pane_floating_flag}},#{!:#{pane_hidden_flag}}}' -F \
 	    '#{pane_id}:#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
 }
 
@@ -78,6 +79,7 @@ leave()
 {
 	case $operation in
 	float) run break-pane -Wd -s "$B" ;;
+	hide) run resize-pane -h -t "$B" ;;
 	zoom) run resize-pane -Z -t "$B" ;;
 	esac
 }
@@ -87,6 +89,7 @@ restore()
 {
 	case $operation in
 	float) run join-pane -d -s "$B" -t "$B" ;;
+	hide) run resize-pane -dH -t "$B" ;;
 	zoom) run resize-pane -Z -t "$B" ;;
 	esac
 }
@@ -119,7 +122,7 @@ for axis in h v; do
 	closed_first=$(rectangle "$A")
 	closed_last=$(rectangle "$C")
 
-	for operation in float zoom; do
+	for operation in float hide zoom; do
 		# Every removal must match the normal closing behaviour.
 		reset
 		before=$(geometry)

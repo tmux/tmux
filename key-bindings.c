@@ -81,6 +81,7 @@
 	" 'Respawn' 'R' {respawn-pane -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
 	" '#{?pane_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}" \
+	" 'Hide' 'H' {resize-pane -h}" \
 	" '#{?pane_floating_flag,Bring To Front,}' 'F' {move-pane -P front}"
 #define DEFAULT_MOVE_MENU \
 	" 'Centre' 'c' {move-pane -P centre}" \
@@ -106,6 +107,11 @@
 	" 'Bottom' 'b' {resize-pane -x100% -y50%; move-pane -P bottom-centre}" \
 	" 'Left' 'l' {resize-pane -x50% -y100%; move-pane -P centre-left}" \
 	" 'Right' 'r' {resize-pane -x50% -y100%; move-pane -P centre-right}"
+#define DEFAULT_STATUS_CLICK \
+	"if -F '#{==:#{mouse_status_range},desktop}' { resize-pane -C } " \
+	"{ if -Ft= '#{&&:#{==:#{mouse_status_range},pane}," \
+	"#{&&:#{pane_active},#{!:#{pane_hidden_flag}}}}' " \
+	"{ resize-pane -h -t= } { switch-client -t= } }"
 
 static int key_bindings_cmp(struct key_binding *, struct key_binding *);
 RB_GENERATE_STATIC(key_bindings, key_binding, entry, key_bindings_cmp);
@@ -398,6 +404,9 @@ key_bindings_init(void)
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
+		"bind -N 'Show desktop' _ { resize-pane -C }",
+		"bind -N 'Hide pane' h { resize-pane -h }",
+		"bind -N 'Show last hidden pane' H { resize-pane -H }",
 		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 		"bind -N 'Switch client to previous session' ( { switch-client -p }",
 		"bind -N 'Switch client to next session' ) { switch-client -n }",
@@ -534,7 +543,9 @@ key_bindings_init(void)
 		"bind -n M-MouseDrag1Border { move-pane -M }",
 
 		/* Mouse button 1 down on status line. */
-		"bind -n MouseDown1Status { switch-client -t= }",
+		"bind -n MouseDown1Status { " DEFAULT_STATUS_CLICK " }",
+		"bind -n SecondClick1Status { " DEFAULT_STATUS_CLICK " }",
+		"bind -n TripleClick1Status { " DEFAULT_STATUS_CLICK " }",
 		"bind -n MouseDown1SideStatus { switch-client -t= }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 		"bind -n C-MouseDown1SideStatus { swap-window -t@ }",
@@ -543,7 +554,13 @@ key_bindings_init(void)
 		"bind -n MouseDrag1SideStatusBorder { if -F '#{e|>=:#{client_width},3}' { run -C \"set -t '#{session_id}' side-status-width #{?#{==:#{side-status},left},#{e|+:#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}},1},#{e|-:#{client_width},#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}}}}\" } }",
 		"bind -n DoubleClick1SideStatusBorder { set -u side-status-width }",
 
+		/* Click the show desktop button on the second status line. */
+		"bind -n MouseDown1Control5 { resize-pane -C }",
+		"bind -n SecondClick1Control5 { resize-pane -C }",
+		"bind -n TripleClick1Control5 { resize-pane -C }",
+
 		/* Mouse button 1 down on default pane-border-format */
+		"bind -n MouseDown1Control6 { resize-pane -h -t= }",
 		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",
 		"bind -n MouseDown1Control8 { resize-pane -Z }",
 		"bind -n M-MouseDown1Control8 { move-pane -P front }",

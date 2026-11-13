@@ -1120,6 +1120,22 @@ format_cb_pane_floating_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_hidden_flag. */
+static void *
+format_cb_pane_hidden_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	char			*value;
+
+	if (wp == NULL)
+		return (NULL);
+	if (wp->flags & PANE_HIDDEN)
+		value = xstrdup("1");
+	else
+		value = xstrdup("0");
+	return (value);
+}
+
 /* Callback for pane_modal_flag. */
 static void *
 format_cb_pane_modal_flag(struct format_tree *ft)
@@ -3947,6 +3963,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_height", FORMAT_TABLE_STRING,
 	  format_cb_pane_height
+	},
+	{ "pane_hidden_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_hidden_flag
 	},
 	{ "pane_id", FORMAT_TABLE_STRING,
 	  format_cb_pane_id

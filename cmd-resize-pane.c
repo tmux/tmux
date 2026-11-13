@@ -42,8 +42,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.description = "Resize or zoom a pane.",
 	.alias = "resizep",
 
-	.args = { "aD::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-aMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
+	.args = { "aCdD::hHL::MR::Tt:U::x:y:Z", 0, 1, NULL },
+	.usage = "[-aCdhHMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
 		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -51,6 +51,53 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_resize_pane_exec
 };
+
+/*
+ * Cycle tiled "desktop" visibility: hide floating and zoomed panes,
+ * then restore ordinary floating panes, then zoomed panes. Skip empty
+ * steps and leave independently hidden panes hidden.
+ *
+ * There is no cycle counter: PANE_DESKTOP_UNHIDE marks panes to restore.
+ * Restore marked ordinary floating panes first, then marked zoomed panes
+ * on the next call. Unhiding clears the marker. With no marked panes,
+ * hide and mark the visible floating and zoomed panes, leaving the modal
+ * pane visible.
+ */
+static void
+cmd_resize_pane_show_desktop(struct window *w)
+{
+	struct window_pane	*wp;
+	int			 shown = 0, zoomed;
+
+	for (zoomed = 0; zoomed <= 1 && !shown; zoomed++) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (~wp->flags & PANE_DESKTOP_UNHIDE)
+				continue;
+			if (zoomed != ((wp->flags & PANE_ZOOMED) != 0))
+				continue;
+			window_show_pane(wp);
+			shown = 1;
+		}
+	}
+	if (shown) {
+		/* Do not leave the active pane covered by a pane just shown. */
+		if (!window_pane_is_visible(w->active)) {
+			wp = window_get_top_pane(w, NULL);
+			if (wp != NULL)
+				window_set_active_pane(w, wp, 1);
+		}
+		return;
+	}
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == w->modal || (wp->flags & PANE_HIDDEN))
+			continue;
+		if (!window_pane_is_floating(wp))
+			continue;
+		window_hide_pane(wp, 1);
+		wp->flags |= PANE_DESKTOP_UNHIDE;
+	}
+}
 
 static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
@@ -84,6 +131,24 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'M'))
 		return (cmd_resize_pane_mouse_update(self, item));
 
+	if (args_has(args, 'C')) {
+		cmd_resize_pane_show_desktop(w);
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
+	if (args_has(args, 'h')) {
+		window_hide_pane(wp, 1);
+		return (CMD_RETURN_NORMAL);
+	}
+	if (args_has(args, 'H')) {
+		if (args_has(args, 't')) {
+			window_show_pane(wp);
+			if (!args_has(args, 'd'))
+				window_set_active_pane(w, wp, 1);
+		} else
+			window_show_last_hidden_pane(w, !args_has(args, 'd'));
+		return (CMD_RETURN_NORMAL);
+	}
 	if (args_has(args, 'Z')) {
 		if (args_has(args, 'a'))
 			window_unzoom(w, 1);
@@ -98,6 +163,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "pane is zoomed");
 		return (CMD_RETURN_ERROR);
 	}
+	if (!window_pane_is_floating(wp) && (wp->flags & PANE_HIDDEN))
+		window_show_pane(wp);
 
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, PANE_MAXIMUM, w->sx, &cause);

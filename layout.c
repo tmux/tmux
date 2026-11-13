@@ -255,7 +255,8 @@ layout_cell_is_tiled(struct layout_cell *lc)
 	int	tiled;
 
 	tiled = lc->type == LAYOUT_WINDOWPANE &&
-	    (~lc->flags & LAYOUT_CELL_FLOATING);
+	    (~lc->flags & LAYOUT_CELL_FLOATING) &&
+	    (lc->wp == NULL || (~lc->wp->flags & PANE_HIDDEN));
 	return (tiled);
 }
 
@@ -516,8 +517,10 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	u_int			 old_sx, old_sy, sx, sy;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->layout_cell == NULL || wp == skip)
+		if (wp->layout_cell == NULL || wp == skip ||
+		    (wp->flags & PANE_HIDDEN)) {
 			continue;
+		}
 
 		if (wp->flags & PANE_ZOOMED)
 			layout_set_size(wp->layout_cell, w->sx, w->sy, 0, 0);
