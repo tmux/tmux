@@ -934,6 +934,17 @@ const struct options_table_entry options_table[] = {
 	  .text = "Whether moving the mouse into a pane selects it."
 	},
 
+	{ .name = "history-byte-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = UINT_MAX,
+	  .default_num = 0,
+	  .unit = "bytes",
+	  .text = "Maximum allocated grid storage to keep in the history for "
+		  "each pane. Zero means no byte limit."
+	},
+
 	{ .name = "history-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
