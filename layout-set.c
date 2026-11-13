@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-set.c,v 1.40 2026/07/13 09:42:12 nicm Exp $ */
+/* $OpenBSD: layout-set.c,v 1.41 2026/11/13 19:06:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -150,6 +150,14 @@ layout_set_link_floating(struct window *w, struct layout_cell *lcroot)
 	}
 }
 
+/* Update pane offsets and sizes after creating a preset layout. */
+static void
+layout_set_update(struct window *w)
+{
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+}
+
 static void
 layout_set_even(struct window *w, enum layout_type type)
 {
@@ -192,8 +200,7 @@ layout_set_even(struct window *w, enum layout_type type)
 
 	layout_spread_cell(w, lcroot);
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -303,8 +310,7 @@ layout_set_main_h(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -402,8 +408,7 @@ layout_set_main_h_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -501,8 +506,7 @@ layout_set_main_v(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -601,8 +605,7 @@ layout_set_main_v_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -724,8 +727,7 @@ layout_set_tiled(struct window *w)
 	}
 
 	layout_set_link_floating(w, lcroot);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
