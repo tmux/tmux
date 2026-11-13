@@ -784,13 +784,14 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 	}
 	if (!window_pane_is_visible(wp)) {
 		/*
-		 * The pane is covered by a zoomed pane. A tiled pane that is
-		 * not zoomed can only be reached by unzooming (any floats
-		 * stay); anything else can be raised above the zoom.
+		 * A covered float may be raised unless it must stay below zoom.
+		 * Otherwise expose the pane by unzooming the covering panes.
 		 */
-		if (window_pane_is_floating(wp))
+		if (window_pane_is_floating(wp) &&
+		    ((~wp->flags & PANE_NEVER_ABOVE_ZOOM) ||
+		    (wp->flags & PANE_ZOOMED))) {
 			window_raise_pane(wp);
-		else {
+		} else {
 			window_unzoom(w, 1);
 			unzoomed = 1;
 		}
@@ -1005,10 +1006,46 @@ window_find_string(struct window *w, const char *s)
 	return (window_get_active_at(w, x, y));
 }
 
-/*
- * Move a pane to the front of the panes that are raised above the layout:
- * behind the modal pane and any always-on-top pane.
- */
+/* Keep restricted floats below fullscreen panes, which may cover them. */
+void
+window_constrain_pane_stacking(struct window_pane *wp)
+{
+	struct window		*w = wp->window;
+	struct window_pane	*other;
+
+	if (wp->layout_cell != NULL && !window_pane_is_floating(wp))
+		return;
+
+	/* A fullscreen pane must precede every restricted float. */
+	if (wp->flags & PANE_ZOOMED) {
+		TAILQ_FOREACH(other, &w->z_index, zentry) {
+			if (other == wp)
+				return;
+			if ((other->flags & PANE_NEVER_ABOVE_ZOOM) &&
+			    (~other->flags & PANE_ZOOMED) &&
+			    window_pane_is_floating(other)) {
+				TAILQ_REMOVE(&w->z_index, wp, zentry);
+				TAILQ_INSERT_BEFORE(other, wp, zentry);
+				return;
+			}
+		}
+	} else if (wp->flags & PANE_NEVER_ABOVE_ZOOM) {
+		/* Keep the float below the last fullscreen pane. */
+		TAILQ_FOREACH_REVERSE(other, &w->z_index,
+		    window_panes_zindex, zentry) {
+			if (other == wp)
+				return;
+			if (other->flags & PANE_ZOOMED) {
+				TAILQ_REMOVE(&w->z_index, wp, zentry);
+				TAILQ_INSERT_AFTER(&w->z_index, other, wp,
+				    zentry);
+				return;
+			}
+		}
+	}
+}
+
+/* Raise a pane within its stacking restrictions. */
 void
 window_raise_pane(struct window_pane *wp)
 {
@@ -1032,6 +1069,7 @@ window_raise_pane(struct window_pane *wp)
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	else
 		TAILQ_INSERT_BEFORE(wp1, wp, zentry);
+	window_constrain_pane_stacking(wp);
 	if (previous == TAILQ_PREV(wp, window_panes_zindex, zentry))
 		return;
 	window_redraw_floating_pane(wp, wp->xoff, wp->yoff, wp->sx, wp->sy);
@@ -1062,6 +1100,7 @@ window_lower_pane(struct window_pane *wp)
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	else
 		TAILQ_INSERT_BEFORE(wp1, wp, zentry);
+	window_constrain_pane_stacking(wp);
 	wp->flags |= PANE_REDRAW;
 	redraw_invalidate_scene(w);
 }
@@ -1092,8 +1131,10 @@ window_unzoom_one(struct window_pane *wp)
 		layout_insert_tile(w, lc);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
-	} else
+	} else {
 		memcpy(&lc->g, &lc->fg, sizeof lc->g);
+		window_constrain_pane_stacking(wp);
+	}
 }
 
 /* Finish restoring panes and move focus above any remaining fullscreen pane. */
@@ -1235,6 +1276,8 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	else {
 		if (flags & SPAWN_ALWAYS_ON_TOP)
 			wp->flags |= PANE_ALWAYS_ON_TOP;
+		if (flags & SPAWN_NEVER_ABOVE_ZOOM)
+			wp->flags |= PANE_NEVER_ABOVE_ZOOM;
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 		if (~flags & SPAWN_MODAL)
 			window_raise_pane(wp);
@@ -1464,6 +1507,8 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'F';
 	if (wp->flags & PANE_ALWAYS_ON_TOP)
 		flags[pos++] = 'A';
+	if (wp->flags & PANE_NEVER_ABOVE_ZOOM)
+		flags[pos++] = 'N';
 	if (wp == w->modal)
 		flags[pos++] = 'O';
 	flags[pos] = '\0';

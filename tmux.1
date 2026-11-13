@@ -3822,7 +3822,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl AbCDdEfhIkKLMOPvWZ
+.Op Fl AbCDdEfhIkKLMNOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3875,6 +3875,18 @@ follow the mouse drag.
 creates a floating pane which is always on top: it stays in front of other
 floating and zoomed panes, apart from a modal pane, even when they are
 selected or zoomed.
+.Fl N
+creates a floating pane which is never on top of zoomed panes.
+Raising or reordering it keeps it below every zoomed pane.
+Selecting it when covered unzooms those panes before making it active.
+The restriction is suspended while the pane itself is zoomed.
+.Fl N
+cannot be combined with
+.Fl A
+or
+.Fl O
+and has no effect with
+.Fl L .
 .Fl O
 creates a modal pane.
 A modal pane is always the active pane and prevents interaction with any other
