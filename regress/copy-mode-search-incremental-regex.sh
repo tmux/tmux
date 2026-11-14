@@ -50,11 +50,16 @@ for keys in vi emacs; do
 
 	# A term without metacharacters still matches as plain text.
 	$TMUX send-keys -X search-forward-incremental-regex -- '=foo' || exit 1
-	check_count "1 2/3"
+	if [ "$keys" = vi ]; then
+		check_count "1 2/3"
+	else
+		check_count "1 1/3"
+	fi
 
+	# An edited pattern searches from the original cursor column.
 	$TMUX send-keys -X search-forward-incremental-regex -- '-foo[0-9]' ||
 		exit 1
-	check_count "1 1/2"
+	check_count "1 2/2"
 
 	# An invalid expression simply does not match.
 	$TMUX send-keys -X search-forward-incremental-regex -- '=foo[' || exit 1
@@ -63,9 +68,17 @@ for keys in vi emacs; do
 	# A valid expression searches again and search-again replays it.
 	$TMUX send-keys -X search-forward-incremental-regex -- '=foo[0-9]' ||
 		exit 1
-	check_count "1 2/2"
+	if [ "$keys" = vi ]; then
+		check_count "1 2/2"
+	else
+		check_count "1 1/2"
+	fi
 	$TMUX send-keys -X search-again || exit 1
-	check_count "1 1/2"
+	if [ "$keys" = vi ]; then
+		check_count "1 1/2"
+	else
+		check_count "1 2/2"
+	fi
 
 	$TMUX send-keys -X cancel || exit 1
 done
