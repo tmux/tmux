@@ -2806,8 +2806,12 @@ The same as
 .Cm main\-vertical
 but mirrored so the main pane is on the right of the window.
 .It Cm tiled
-Panes are spread out as evenly as possible over the window in both rows and
-columns.
+By default, panes are spread out as evenly as possible over the window in both rows and
+columns. Setting
+.Em tiled\-layout\-min\-columns
+will make the amount of columns first grow to that amount, before increasing the amount of rows. Setting
+.Em tiled\-layout\-max\-columns
+will limit the amount of columns to that amount and setting it to 0 means no limit .
 .El
 .Pp
 In addition,
@@ -6359,6 +6363,12 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.Pp
+.It Ic tiled\-layout\-min\-columns Ar number
+Set the minimum number of columns that will be created in the
+.Cm tiled
+layout before the amount of rows will be increased.
+A value of 1 (the default) means that rows and columns will increase equally.
 .Pp
 .It Ic tiled\-layout\-max\-columns Ar number
 Set the maximum number of columns in the
