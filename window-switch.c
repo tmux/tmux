@@ -38,23 +38,28 @@ static enum prompt_result window_switch_prompt_callback(void *, const char *,
 
 #define WINDOW_SWITCH_DEFAULT_COMMAND "switch-client -Zt '%%'"
 
-#define WINDOW_SWITCH_DEFAULT_FORMAT		\
+#define WINDOW_SWITCH_DEFAULT_FORMAT(style)	\
 	"#{?window_format," \
 		"#{window_name} " \
-		"#[dim]#{session_name}:#{window_index}#{window_flags}#[default] " \
-		"#[dim]#{pane_current_command}#[default] " \
-	        "#[dim]#{?#{!=:#{pane_title},#{host_short}},#{pane_title},}#[default]" \
-		"#{?pane_program_state, #[dim]#{pane_program_name} #{pane_program_state}#[default],}" \
+		style \
+		"#{session_name}:#{window_index}#{window_flags}#[default] " \
+		style "#{pane_current_command}#[default] " \
+		style \
+		"#{?#{!=:#{pane_title},#{host_short}},#{pane_title},}" \
+		"#[default]" \
+		"#{?pane_program_state, " style \
+		"#{pane_program_name} #{pane_program_state}#[default],}" \
 	"," \
 		"#{session_name} " \
-		"#[dim]#{session_windows} windows#[default] " \
-		"#{?session_attached,attached,#[dim]detached#[default]} " \
-		"#[dim]#{window_name}#[default]" \
+		style "#{session_windows} windows#[default] " \
+		"#{?session_attached,attached," \
+		style "detached#[default]} " \
+		style "#{window_name}#[default]" \
 	"}"
 
 const struct window_mode window_switch_mode = {
 	.name = "switch-mode",
-	.default_format = WINDOW_SWITCH_DEFAULT_FORMAT,
+	.default_format = WINDOW_SWITCH_DEFAULT_FORMAT("#[dim]"),
 
 	.init = window_switch_init,
 	.free = window_switch_free,
@@ -75,6 +80,7 @@ struct window_switch_itemdata {
 
 	uint64_t		 tag;
 	char			*text;
+	char			*selected_text; /* NULL uses text. */
 	const char		*value;
 	bitstr_t		*match;
 
@@ -88,6 +94,7 @@ struct window_switch_modedata {
 	int				  zoomed;
 
 	char				 *format;
+	char				 *selected_format; /* NULL: format. */
 	char				 *command;
 
 	char				**lines;
@@ -115,6 +122,7 @@ window_switch_free_item(struct window_switch_itemdata *item)
 {
 	free(item->match);
 	free(item->text);
+	free(item->selected_text);
 	free(item);
 }
 
@@ -127,6 +135,16 @@ window_switch_add_item(struct window_switch_modedata *data)
 	    sizeof *data->item_list);
 	item = data->item_list[data->item_size++] = xcalloc(1, sizeof *item);
 	return (item);
+}
+
+/* Expand the row and its optional selected format. */
+static void
+window_switch_format_item(struct window_switch_modedata *data,
+    struct window_switch_itemdata *item, struct format_tree *ft)
+{
+	item->text = format_expand(ft, data->format);
+	if (data->selected_format != NULL)
+		item->selected_text = format_expand(ft, data->selected_format);
 }
 
 static void
@@ -145,7 +163,7 @@ window_switch_add_session(struct window_switch_modedata *data,
 	item->winlink = -1;
 	item->tag = (uint64_t)s;
 	item->order = (*order)++;
-	item->text = format_expand(ft, data->format);
+	window_switch_format_item(data, item, ft);
 
 	format_free(ft);
 }
@@ -166,7 +184,7 @@ window_switch_add_window(struct window_switch_modedata *data,
 	item->winlink = wl->idx;
 	item->tag = (uint64_t)wl;
 	item->order = (*order)++;
-	item->text = format_expand(ft, data->format);
+	window_switch_format_item(data, item, ft);
 
 	format_free(ft);
 }
@@ -182,7 +200,7 @@ window_switch_add_input(struct window_switch_modedata *data, u_int idx,
 	item->value = data->lines[idx];
 	item->order = data->reversed ? data->lines_size - idx - 1 : idx;
 	format_add(ft, "switch_item", "%s", item->value);
-	item->text = format_expand(ft, data->format);
+	window_switch_format_item(data, item, ft);
 }
 
 static int
@@ -313,6 +331,8 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 	struct grid_cell		 mgc, sgc, gc;
 	const struct grid_cell		*dgc = &grid_default_cell;
 	struct prompt_draw_data		 pdd;
+	const char			*text;
+
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
 
@@ -330,13 +350,16 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 		if (idx >= data->matches_size)
 			break;
 		item = data->matches[idx];
+		text = item->text;
+		if (idx == data->current && item->selected_text != NULL)
+			text = item->selected_text;
 
 		screen_write_cursormove(&ctx, 0, i, 0);
 		if (idx != data->current)
-			format_draw(&ctx, dgc, sx, item->text, NULL, 0);
+			format_draw(&ctx, dgc, sx, text, NULL, 0);
 		else {
 			screen_write_clearendofline(&ctx, sgc.bg);
-			format_draw(&ctx, &sgc, sx, item->text, NULL, 0);
+			format_draw(&ctx, &sgc, sx, text, NULL, 0);
 		}
 
 		if (item->match == NULL)
@@ -402,8 +425,12 @@ window_switch_init(struct window_mode_entry *wme,
 	if (args == NULL || !args_has(args, 'F')) {
 		if (data->type == WINDOW_SWITCH_TYPE_INPUT)
 			data->format = xstrdup("#{switch_item}");
-		else
-			data->format = xstrdup(WINDOW_SWITCH_DEFAULT_FORMAT);
+		else {
+			data->format =
+			    xstrdup(window_switch_mode.default_format);
+			data->selected_format =
+			    xstrdup(WINDOW_SWITCH_DEFAULT_FORMAT(""));
+		}
 	} else
 		data->format = xstrdup(args_get(args, 'F'));
 	if (args == NULL || args_count(args) == 0)
@@ -492,6 +519,7 @@ window_switch_free(struct window_mode_entry *wme)
 	free(data->filter);
 	prompt_free(data->prompt);
 	free(data->format);
+	free(data->selected_format);
 	free(data->command);
 	screen_free(&data->screen);
 
