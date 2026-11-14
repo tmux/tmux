@@ -153,8 +153,8 @@ release()
 	[ "$after" = "$preserved" ] || fail 'unrelated allocation changed'
 }
 
-# Retiling must split the chosen donor approximately in half, fill its old
-# allocation, and restore the target's original cross-axis allocation.
+# After the tiled layout changes, retiling must split the chosen donor in half,
+# fill its allocation, and restore the target's original cross-axis allocation.
 retile()
 {
 	tile_target=$1
@@ -162,6 +162,11 @@ retile()
 	tile_side=$3
 	shift 3
 	preserved_panes="$*"
+
+	# Change the layout so retiling cannot reuse the saved allocation.
+	donor_size=$(run display -p -t "$tile_donor" "$dimension") || exit 1
+	run resize-pane -t "$tile_donor" -"$size_flag" "$((donor_size + 1))"
+
 	preserved=$(rectangles "$@") || exit 1
 	values=$(run display -p -t "$tile_donor" "$allocation") || exit 1
 	set -- $values
@@ -193,12 +198,14 @@ retile()
 for axis in h v; do
 	if [ "$axis" = h ]; then
 		cross=v
+		size_flag=x
 		dimension='#{pane_width}'
 		offset='#{pane_left}'
 		cross_geometry='#{pane_height} #{pane_top}'
 		other_size=60
 	else
 		cross=h
+		size_flag=y
 		dimension='#{pane_height}'
 		offset='#{pane_top}'
 		cross_geometry='#{pane_width} #{pane_left}'

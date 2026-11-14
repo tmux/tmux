@@ -79,6 +79,7 @@ layout_create_cell(struct layout_cell *lcparent)
 
 	layout_geometry_init(&lc->g);
 	layout_geometry_init(&lc->fg);
+	layout_geometry_init(&lc->saved.g);
 
 	return (lc);
 }
@@ -106,7 +107,7 @@ layout_free_cell(struct layout_cell *lc, int only_nodes)
 		}
 		break;
 	case LAYOUT_WINDOWPANE:
-		if (lc->wp != NULL && lc->wp->layout_cell != NULL) {
+		if (lc->wp != NULL && lc->wp->layout_cell == lc) {
 			lc->wp->layout_cell->parent = NULL;
 			lc->wp->layout_cell = NULL;
 		}
@@ -199,6 +200,21 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 void
 layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff, int yoff)
 {
+	struct layout_cell	*parent = lc->parent;
+	int			 sx_changed, sy_changed;
+
+	sx_changed = lc->g.sx != sx;
+	sy_changed = lc->g.sy != sy;
+	if ((lc->type == LAYOUT_LEFTRIGHT && sx_changed) ||
+	    (lc->type == LAYOUT_TOPBOTTOM && sy_changed)) {
+		lc->generation++;
+	}
+	if (parent != NULL &&
+	    ((parent->type == LAYOUT_LEFTRIGHT && sx_changed) ||
+	    (parent->type == LAYOUT_TOPBOTTOM && sy_changed)) &&
+	    (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))) {
+		parent->generation++;
+	}
 	lc->g.sx = sx;
 	lc->g.sy = sy;
 
@@ -236,10 +252,11 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
-	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
-	int	is_floating = lc->flags & LAYOUT_CELL_FLOATING;
+	int	tiled;
 
-	return is_leaf && !is_floating;
+	tiled = lc->type == LAYOUT_WINDOWPANE &&
+	    (~lc->flags & LAYOUT_CELL_FLOATING);
+	return (tiled);
 }
 
 int
@@ -447,61 +464,104 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 	return (0);
 }
 
+/* Get pane geometry, optionally using the placement saved before fullscreen. */
+void
+layout_get_pane_geometry(struct window_pane *wp, int layout, int *xoff,
+    int *yoff, u_int *sx, u_int *sy)
+{
+	struct window		*w = wp->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	struct layout_geometry	*g = &lc->g;
+	int			 status, sb_w, sb_pad, border, reserve, tiled;
+
+	tiled = !window_pane_is_floating(wp);
+	if (layout && (wp->flags & PANE_ZOOMED)) {
+		if (lc->flags & LAYOUT_CELL_ZOOMEDTILED) {
+			g = &lc->saved.g;
+			tiled = 1;
+		} else
+			g = &lc->fg;
+	}
+	if (layout && tiled)
+		status = window_get_pane_status(w);
+	else
+		status = window_pane_get_pane_status(wp);
+	*xoff = g->xoff;
+	*yoff = g->yoff;
+	*sx = g->sx;
+	*sy = g->sy;
+	if ((wp->flags & PANE_ZOOMED) && !layout)
+		border = (status != PANE_STATUS_OFF);
+	else if (layout && (lc->flags & LAYOUT_CELL_ZOOMEDTILED)) {
+		border = (status == PANE_STATUS_TOP && g->yoff == 0) ||
+		    (status == PANE_STATUS_BOTTOM &&
+		    g->yoff + g->sy == w->sy);
+	} else {
+		border = tiled &&
+		    layout_add_horizontal_border(w->layout_root, lc, status);
+	}
+	if (border) {
+		if (status == PANE_STATUS_TOP)
+			(*yoff)++;
+		if (*sy > 1)
+			(*sy)--;
+	}
+
+	/*
+	 * The layout ignores anything a mode does to the scrollbars while the
+	 * window is zoomed.
+	 */
+	if (layout && (wp->flags & PANE_ZOOMED)) {
+		reserve = (!SCREEN_IS_ALTERNATE(&wp->base) &&
+		    w->sb == PANE_SCROLLBARS_ALWAYS);
+	} else
+		reserve = window_pane_scrollbar_reserve(wp);
+	if (reserve) {
+		sb_w = wp->scrollbar_style.width;
+		sb_pad = wp->scrollbar_style.pad;
+		if (sb_w < 1)
+			sb_w = 1;
+		if (sb_pad < 0)
+			sb_pad = 0;
+		if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
+			if ((int)*sx - sb_w - sb_pad < PANE_MINIMUM) {
+				*xoff = *xoff + (int)*sx - PANE_MINIMUM;
+				*sx = PANE_MINIMUM;
+			} else {
+				*sx = *sx - sb_w - sb_pad;
+				*xoff = *xoff + sb_w + sb_pad;
+			}
+		} else /* sb_pos == PANE_SCROLLBARS_RIGHT */
+			if ((int)*sx - sb_w - sb_pad < PANE_MINIMUM)
+				*sx = PANE_MINIMUM;
+			else
+				*sx = *sx - sb_w - sb_pad;
+	}
+}
+
 /* Update pane offsets and sizes based on their cells. */
 int
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
-	struct layout_cell	*lc, *root = w->layout_root;
-	int			 status, sb_w, sb_pad;
-	int			 old_xoff, old_yoff, changed = 0;
-	u_int			 sx, sy, old_sx, old_sy;
+	int			 old_xoff, old_yoff, xoff, yoff, changed = 0;
+	u_int			 old_sx, old_sy, sx, sy;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if ((lc = wp->layout_cell) == NULL || wp == skip)
+		if (wp->layout_cell == NULL || wp == skip)
 			continue;
+
+		if (wp->flags & PANE_ZOOMED)
+			layout_set_size(wp->layout_cell, w->sx, w->sy, 0, 0);
 
 		old_xoff = wp->xoff;
 		old_yoff = wp->yoff;
 		old_sx = wp->sx;
 		old_sy = wp->sy;
 
-		wp->xoff = lc->g.xoff;
-		wp->yoff = lc->g.yoff;
-		sx = lc->g.sx;
-		sy = lc->g.sy;
-
-		status = window_pane_get_pane_status(wp);
-		if (!window_pane_is_floating(wp) &&
-		    layout_add_horizontal_border(root, lc, status)) {
-			if (status == PANE_STATUS_TOP)
-				wp->yoff++;
-			if (sy > 1)
-				sy--;
-		}
-
-		if (window_pane_scrollbar_reserve(wp)) {
-			sb_w = wp->scrollbar_style.width;
-			sb_pad = wp->scrollbar_style.pad;
-			if (sb_w < 1)
-				sb_w = 1;
-			if (sb_pad < 0)
-				sb_pad = 0;
-			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
-				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM) {
-					wp->xoff = wp->xoff +
-					    (int)sx - PANE_MINIMUM;
-					sx = PANE_MINIMUM;
-				} else {
-					sx = sx - sb_w - sb_pad;
-					wp->xoff = wp->xoff + sb_w + sb_pad;
-				}
-			} else /* sb_pos == PANE_SCROLLBARS_RIGHT */
-				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM)
-					sx = PANE_MINIMUM;
-				else
-					sx = sx - sb_w - sb_pad;
-		}
+		layout_get_pane_geometry(wp, 0, &xoff, &yoff, &sx, &sy);
+		wp->xoff = xoff;
+		wp->yoff = yoff;
 
 		window_pane_resize(wp, sx, sy);
 
@@ -596,6 +656,14 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 {
 	struct layout_cell	*lcchild;
 	int			 changed;
+
+	/* A changed child allocation invalidates a saved tiled size. */
+	if (change != 0) {
+		if (lc->type == type)
+			lc->generation++;
+		if (lc->parent != NULL && lc->parent->type == type)
+			lc->parent->generation++;
+	}
 
 	/* Adjust the cell size. */
 	if (type == LAYOUT_LEFTRIGHT)
@@ -720,6 +788,8 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		return;
 	}
 
+	if (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))
+		lcparent->generation++;
 	if (!layout_cell_is_tiled(lc)) {
 		TAILQ_REMOVE(&lcparent->cells, lc, entry);
 		layout_free_cell(lc, 0);
@@ -749,6 +819,7 @@ out:
 	if (lc != NULL && TAILQ_NEXT(lc, entry) == NULL) {
 		TAILQ_REMOVE(&lcparent->cells, lc, entry);
 
+		lc->saved.generation = UINT_MAX;
 		lc->parent = lcparent->parent;
 		if (lc->parent == NULL) {
 			if (layout_cell_is_tiled(lc)) {
@@ -792,8 +863,10 @@ layout_clamp_floating_panes(struct window *w, u_int sx, u_int sy)
 
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		lc = wp->layout_cell;
-		if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING))
+		if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING) ||
+		    (wp->flags & PANE_ZOOMED)) {
 			continue;
+		}
 		if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
 			pad = 0;
 		else
@@ -845,7 +918,9 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	 * out proportionately - this should leave the layout fitting the new
 	 * window size.
 	 */
-	if (lc->type == LAYOUT_WINDOWPANE && (lc->flags & LAYOUT_CELL_FLOATING)) {
+	if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc)) {
+		if (lc->type != LAYOUT_WINDOWPANE)
+			layout_set_size(lc, sx, sy, 0, 0);
 		layout_clamp_floating_panes(w, sx, sy);
 		layout_fix_panes(w, NULL);
 		return;
@@ -1232,6 +1307,8 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	if (lc->type == LAYOUT_WINDOWPANE)
 		return;
 
+	lc->generation++;
+
 	/* What is the current size used? */
 	count = 0;
 	prev = 0;
@@ -1245,6 +1322,8 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 		else if (lc->type == LAYOUT_TOPBOTTOM)
 			prev += lcchild->g.sy;
 	}
+	if (count == 0)
+		return;
 	prev += (count - 1);
 
 	/* And how much is available? */
@@ -1301,6 +1380,9 @@ layout_replace_with_node(struct window *w, struct layout_cell *lc,
 		TAILQ_REPLACE(&lc->parent->cells, lc, lcparent, entry);
 
 	/* Insert the old cell. */
+	if (lc->parent != NULL)
+		lc->parent->generation++;
+	lc->saved.generation = UINT_MAX;
 	lc->parent = lcparent;
 	TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
 
@@ -1708,10 +1790,6 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	if (window_active_pane_is_over_zoom(w))
-		window_push_zoom(w, 0, 1);
-	else
-		window_push_zoom(w, 1, (flags & SPAWN_ZOOM));
 	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL)
 		*cause = xstrdup("no space for a new pane");
@@ -1738,12 +1816,6 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 			return (NULL);
 	}
 
-	if (flags & SPAWN_FLOATOVERZOOM)
-		window_push_zoom(wp->window, 0, 1);
-	else if (window_active_pane_is_over_zoom(w))
-		window_push_zoom(wp->window, 0, 1);
-	else
-		window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lcnew = layout_floating_pane(w, wp, &fg);
 	return (lcnew);
 }
@@ -1980,106 +2052,132 @@ layout_split_floating_cell(struct layout_cell *lc, struct window *w,
 	return (0);
 }
 
-/*
- * Removes a cell from the tiled layout by giving the cell's space to the
- * nearest neighbour.
- */
-int
+/* Save a tiled allocation and give its space to the nearest neighbour. */
+void
 layout_remove_tile(struct window *w, struct layout_cell *lc)
 {
-	struct layout_cell	*lcneighbour, *lcparent;
+	struct layout_cell	*neighbour, *parent = lc->parent;
 	enum layout_type	 type;
+	u_int			 generation = lc->generation;
 	int			 change;
 
 	if (lc->flags & LAYOUT_CELL_FLOATING)
-		return (-1);
-
-	lcneighbour = layout_cell_get_neighbour(lc);
-	if (lcneighbour == NULL) {
-		if (lc->parent != NULL)
-			layout_remove_tile(w, lc->parent);
-	} else if ((lcparent = lcneighbour->parent) != NULL) {
-		type = lcparent->type;
-		/*
-		 * Adding the size of the layout cell plus its border to the
-		 * neighbour.
-		 */
+		return;
+	memcpy(&lc->saved.g, &lc->g, sizeof lc->saved.g);
+	if (parent != NULL)
+		lc->saved.previous = parent->generation;
+	neighbour = layout_cell_get_neighbour(lc);
+	if (neighbour == NULL) {
+		if (parent != NULL)
+			layout_remove_tile(w, parent);
+	} else {
+		type = parent->type;
 		if (type == LAYOUT_TOPBOTTOM)
 			change = lc->g.sy + 1;
 		else
 			change = lc->g.sx + 1;
-		layout_resize_adjust(w, lcneighbour, type, change);
+		layout_resize_adjust(w, neighbour, type, change);
 	}
-
-	/*
-	 * Zeroing out the cell geometry until the cell is retiled unless this
-	 * is the top level node.
-	 */
-	if (lc->parent != NULL)
+	if (parent != NULL) {
 		layout_set_size(lc, 0, 0, 0, 0);
-	return (0);
+		lc->generation = generation;
+		lc->saved.generation = parent->generation;
+	}
 }
 
-/*
- * Inserts a cell back into the tiled layout by taking half the space from its
- * nearest neighbour.
- */
-int
+/* Grow a tiled cell, borrowing from siblings before enlarging the window. */
+static void
+layout_grow_cell(struct window *w, struct layout_cell *lc,
+    enum layout_type type, u_int needed)
+{
+	struct layout_cell	*parent = lc->parent;
+	u_int			 before, after;
+	int			 change;
+
+	while (needed != 0) {
+		if (parent == NULL) {
+			layout_resize_adjust(w, lc, type, needed);
+			window_resize(w, lc->g.sx, lc->g.sy, -1, -1);
+			break;
+		}
+		if (parent->type == type) {
+			change = layout_resize_pane_grow(w, lc, type,
+			    needed, 1);
+			if (change != 0) {
+				needed -= change;
+				continue;
+			}
+		}
+		if (type == LAYOUT_LEFTRIGHT)
+			before = lc->g.sx;
+		else
+			before = lc->g.sy;
+		layout_grow_cell(w, parent, type, needed);
+		if (type == LAYOUT_LEFTRIGHT)
+			after = lc->g.sx;
+		else
+			after = lc->g.sy;
+		needed -= after - before;
+	}
+}
+
+/* Restore a tiled allocation, or split its neighbour if it has changed. */
+void
 layout_insert_tile(struct window *w, struct layout_cell *lc)
 {
-	struct layout_cell	*lcneighbour, *lctiled, *lcparent;
+	struct layout_cell	*neighbour, *parent = lc->parent, *tiled;
 	enum layout_type	 type;
-	u_int			 size1, size2, saved_size;
+	u_int			 size, available, other, old;
+	u_int			 generation = lc->generation;
+	int			 unchanged;
 
-	if (lc == NULL)
-		fatalx("layout cell cannot be null when tiling");
-
-	if (layout_cell_is_tiled(lc))
-		return (-1);
-
-	lcparent = lc->parent;
-	if (lcparent == NULL) {
-		/* Only pane in the layout. */
+	if (parent == NULL) {
+		lc->flags &= ~LAYOUT_CELL_FLOATING;
 		layout_set_size(lc, w->sx, w->sy, 0, 0);
-		return (0);
+		return;
 	}
-
-	type = lcparent->type;
-	lcneighbour = layout_cell_get_neighbour(lc);
-	if (lcneighbour == NULL) {
-		/*
-		 * This will become the only visible cell in the parent.
-		 * Tile the parent, then set the child's 'split' size.
-		 */
-		layout_insert_tile(w, lcparent);
+	type = parent->type;
+	unchanged = lc->saved.g.sx != UINT_MAX &&
+	    lc->saved.generation == parent->generation;
+	neighbour = layout_cell_get_neighbour(lc);
+	if (neighbour == NULL) {
+		layout_insert_tile(w, parent);
+		layout_set_size(lc, parent->g.sx, parent->g.sy, 0, 0);
+	} else {
+		tiled = layout_cell_get_first_tiled(neighbour);
+		while (!layout_split_check_space(tiled->wp, neighbour, type))
+			layout_grow_cell(w, neighbour, type, 1);
 		if (type == LAYOUT_LEFTRIGHT)
-			size1 = lcparent->g.sx;
+			size = lc->saved.g.sx;
 		else
-			size1 = lcparent->g.sy;
-		layout_resize_set_size(w, lc, type, size1);
-	} else {
-		/*
-		 * If the neighbour is a node, a tiled child in the subtree of
-		 * the neighbour is needed to check for space.
-		 */
-		lctiled = layout_cell_get_first_tiled(lcneighbour);
-		if (!layout_split_check_space(lctiled->wp, lcneighbour, type))
-			return (-1);
-		layout_split_sizes(lcneighbour, -1, 0, type, &size1, &size2,
-		    &saved_size);
-		layout_resize_set_size(w, lc, type, size1);
-		layout_resize_set_size(w, lcneighbour, type, size2);
+			size = lc->saved.g.sy;
+		available = layout_resize_check(w, neighbour, type);
+		if (unchanged && size < available) {
+			layout_resize_adjust(w, neighbour, type,
+			    -(int)(size + 1));
+		} else {
+			layout_split_sizes(neighbour, -1, 0, type, &size,
+			    &other, &old);
+			layout_resize_set_size(w, neighbour, type, other);
+			unchanged = 0;
+		}
+		if (type == LAYOUT_LEFTRIGHT)
+			layout_set_size(lc, size, parent->g.sy, 0, 0);
+		else
+			layout_set_size(lc, parent->g.sx, size, 0, 0);
+	}
+	lc->flags &= ~LAYOUT_CELL_FLOATING;
+
+	/* An unchanged group keeps its child allocations when expanded. */
+	if (unchanged &&
+	    ((lc->type == LAYOUT_LEFTRIGHT && lc->g.sx == lc->saved.g.sx) ||
+	    (lc->type == LAYOUT_TOPBOTTOM && lc->g.sy == lc->saved.g.sy))) {
+		lc->generation = generation;
 	}
 
-	/* Setting opposite of the 'split' size to that of the parent. */
-	if (lcparent->type == LAYOUT_LEFTRIGHT) {
-		size1 = lcparent->g.sy;
-		type = LAYOUT_TOPBOTTOM;
-	} else {
-		size1 = lcparent->g.sx;
-		type = LAYOUT_LEFTRIGHT;
-	}
-	layout_resize_set_size(w, lc, type, size1);
-
-	return (0);
+	/* Unwinding unchanged removals also restores the earlier revisions. */
+	if (unchanged)
+		parent->generation = lc->saved.previous;
+	else
+		parent->generation++;
 }
