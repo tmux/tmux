@@ -558,4 +558,123 @@ for mode in emacs vi; do
 	x cancel
 done
 
+# By default a short line moves the cursor left only until the next long line,
+# and vertical movement from the end of a line follows line ends.
+$TMUX respawn-pane -k \
+    "printf '\033[H\033[2J'; printf '%s\r\n' abcdefghijklmnopqrstuvwxyz abc \
+	abcdefghij; printf 'abcdefghijklmnopqrstuvwxyz0123456789'; exec cat" ||
+    fail "respawn-pane failed"
+wait_cursor 36,3
+for mode in emacs vi; do
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+	end0=26
+	end1=3
+	end2=10
+	end3=36
+	if [ "$mode" = vi ]; then
+		end0=25
+		end1=2
+		end2=9
+		end3=35
+	fi
+
+	enter_with_default off
+	x top-line
+	x start-of-line
+	$TMUX send-keys -N8 -X cursor-right || fail "cursor-right failed"
+	check_cursor 8,0
+	x cursor-down
+	check_cursor "$end1,1"
+	x cursor-down
+	check_cursor 8,2
+	x cursor-down
+	check_cursor 8,3
+	x cursor-up
+	check_cursor 8,2
+	x cursor-up
+	check_cursor "$end1,1"
+	x cursor-up
+	check_cursor 8,0
+	x cancel
+
+	# A horizontal move on a short line replaces the remembered column.
+	enter_with_default off
+	x top-line
+	x start-of-line
+	$TMUX send-keys -N8 -X cursor-right || fail "cursor-right failed"
+	x cursor-down
+	check_cursor "$end1,1"
+	x cursor-left
+	left=$((end1 - 1))
+	check_cursor "$left,1"
+	x cursor-down
+	check_cursor "$left,2"
+	x cursor-down
+	check_cursor "$left,3"
+	x cursor-up
+	check_cursor "$left,2"
+	x cursor-up
+	check_cursor "$left,1"
+	x cursor-up
+	check_cursor "$left,0"
+	x cancel
+
+	enter_with_default off
+	x top-line
+	x end-of-line
+	check_cursor "$end0,0"
+	x cursor-down
+	check_cursor "$end1,1"
+	x cursor-down
+	check_cursor "$end2,2"
+	x cursor-down
+	check_cursor "$end3,3"
+	x cursor-up
+	check_cursor "$end2,2"
+	x cursor-up
+	check_cursor "$end1,1"
+	x cursor-up
+	check_cursor "$end0,0"
+	x cancel
+
+	# End-of-line replaces a column remembered from an earlier move.
+	enter_with_default off
+	x top-line
+	x start-of-line
+	$TMUX send-keys -N5 -X cursor-right || fail "cursor-right failed"
+	x cursor-down
+	check_cursor "$end1,1"
+	x cursor-up
+	check_cursor 5,0
+	x end-of-line
+	check_cursor "$end0,0"
+	x cursor-down
+	check_cursor "$end1,1"
+	x cursor-down
+	check_cursor "$end2,2"
+	x cursor-down
+	check_cursor "$end3,3"
+	x cancel
+done
+
+# In vi mode, column zero of a one-character line is also its end, so the
+# remembered column is kept across it.
+$TMUX respawn-pane -k \
+    "printf '\033[H\033[2J'; printf '%s\r\n' abcdefgh a; \
+	printf 'abcdefgh'; exec cat" ||
+    fail "respawn-pane failed"
+wait_cursor 8,2
+mode=vi
+$TMUX set-window-option -g mode-keys "$mode" || fail "set mode-keys failed"
+enter_with_default off
+x top-line
+x start-of-line
+$TMUX send-keys -N5 -X cursor-right || fail "cursor-right failed"
+x cursor-down
+check_cursor 0,1
+x cursor-down
+check_cursor 5,2
+x cancel
+
 exit 0
