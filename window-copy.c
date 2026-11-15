@@ -3114,8 +3114,10 @@ static enum window_copy_cmd_action
 window_copy_cmd_next_prompt(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
+	u_int				 np = wme->prefix;
 
-	window_copy_cursor_prompt(wme, 1, args_has(cs->wargs, 'o'));
+	for (; np != 0; np--)
+		window_copy_cursor_prompt(wme, 1, args_has(cs->wargs, 'o'));
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
@@ -3123,8 +3125,10 @@ static enum window_copy_cmd_action
 window_copy_cmd_previous_prompt(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
+	u_int				 np = wme->prefix;
 
-	window_copy_cursor_prompt(wme, 0, args_has(cs->wargs, 'o'));
+	for (; np != 0; np--)
+		window_copy_cursor_prompt(wme, 0, args_has(cs->wargs, 'o'));
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
