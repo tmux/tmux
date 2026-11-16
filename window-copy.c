@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.444 2026/10/29 09:45:10 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.445 2026/11/16 11:42:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3098,8 +3098,10 @@ static enum window_copy_cmd_action
 window_copy_cmd_next_prompt(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
+	u_int				 np = wme->prefix;
 
-	window_copy_cursor_prompt(wme, 1, args_has(cs->wargs, 'o'));
+	for (; np != 0; np--)
+		window_copy_cursor_prompt(wme, 1, args_has(cs->wargs, 'o'));
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
@@ -3107,8 +3109,10 @@ static enum window_copy_cmd_action
 window_copy_cmd_previous_prompt(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
+	u_int				 np = wme->prefix;
 
-	window_copy_cursor_prompt(wme, 0, args_has(cs->wargs, 'o'));
+	for (; np != 0; np--)
+		window_copy_cursor_prompt(wme, 0, args_has(cs->wargs, 'o'));
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
