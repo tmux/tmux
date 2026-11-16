@@ -3296,6 +3296,9 @@ If
 is not given, "switch\-client \-Zt \[aq]%%\[aq]" is used.
 .Fl F
 specifies the format for each item in the list.
+In this format,
+.Ql is_selected
+is 1 for the selected item and 0 otherwise.
 .Pp
 .Fl f
 reads choices from
@@ -3307,7 +3310,7 @@ With
 .Ql switch_item
 contains the original line and the default display format is
 .Ql #{switch_item} .
-Fuzzy matching uses the displayed text.
+Fuzzy matching uses the unselected text.
 When a choice is selected,
 .Ql %%
 and

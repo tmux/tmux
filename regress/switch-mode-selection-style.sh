@@ -118,6 +118,31 @@ def expect(selected, prefix="", selection_dim=False, custom=False, match=False):
         time.sleep(.05)
 
 
+# Check selected text and the columns highlighted after filtering.
+def expect_text(expected, highlighted=()):
+    deadline = time.monotonic() + 5
+    while True:
+        capture = run(outer, "capture-pane", "-pe", "-t", "outer:0.0")
+        rows = []
+        for line in capture.splitlines():
+            text, styles = cells(line)
+            if text and not text.startswith("(search)"):
+                rows.append((text, styles))
+        try:
+            assert [text for text, styles in rows] == expected, rows
+            if highlighted:
+                for index, style in enumerate(rows[0][1]):
+                    if index in highlighted:
+                        assert style == (frozenset({1, 2}), 6, 5), (index, rows)
+                    else:
+                        assert style == (frozenset(), 0, 3), (index, rows)
+            return
+        except AssertionError:
+            if time.monotonic() >= deadline:
+                raise
+        time.sleep(.05)
+
+
 # Close the mode before opening the next case.
 def cancel():
     run(inner, "send-keys", "-t", "alpha:0", "Escape")
@@ -186,6 +211,34 @@ try:
         expect("alpha", match=True)
         run(inner, "send-keys", "-t", "alpha:0", "Down")
         expect("bravo", match=True)
+        cancel()
+
+    # Custom formats can choose secondary styling with the selection flag.
+    format = "STATE #{session_name} #{?is_selected,,#[dim]}secondary"
+    for mode in ("-s", "-w"):
+        run(inner, "switch-mode", mode, "-t", "alpha:0", "-F", format)
+        expect("alpha", "STATE ")
+        run(inner, "send-keys", "-t", "alpha:0", "Down")
+        expect("bravo", "STATE ")
+        cancel()
+
+    # Filtering uses normal text; highlights follow the selected text.
+    with open(input_path, "w") as output:
+        output.write("alpha\nbravo\n")
+    for args, name in ((("-s",), "#{session_name}"),
+        (("-w",), "#{window_name}"), (("-f", input_path), "#{switch_item}")):
+        format = "#{?is_selected,SELECT ,}" + name
+        run(inner, "switch-mode", "-t", "alpha:0", "-F", format, *args)
+        expect_text(["SELECT alpha", "bravo"])
+        run(inner, "send-keys", "-t", "alpha:0", "Down")
+        expect_text(["alpha", "SELECT bravo"])
+        run(inner, "send-keys", "-t", "alpha:0", "-l", "brv")
+        expect_text(["SELECT bravo"], (7, 8, 10))
+
+        # Text shown only on the selection must not affect filtering.
+        run(inner, "send-keys", "-t", "alpha:0", "C-u")
+        run(inner, "send-keys", "-t", "alpha:0", "-l", "SELECT")
+        expect_text([])
         cancel()
 finally:
     run(outer, "kill-server", check=False)
