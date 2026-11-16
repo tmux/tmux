@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-pane.c,v 1.72 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.73 2026/11/16 14:00:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -121,6 +121,9 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		status = window_get_pane_status(w);
+		if (!window_pane_is_floating(wp) &&
+		    window_border_type_is_separate(w))
+			status = PANE_STATUS_OFF; /* drawn on the border */
 		switch (status) {
 		case PANE_STATUS_TOP:
 			if (y != INT_MAX && wp->yoff == 1)
