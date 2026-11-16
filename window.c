@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.391 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.392 2026/11/16 20:28:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2314,7 +2314,7 @@ window_pane_find_up(struct window_pane *wp)
 		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (yoff + (int)sy + 1 != edge)
+		if (yoff + (int)sy + gap != edge)
 			continue;
 		end = xoff + (int)sx - 1;
 
@@ -2350,9 +2350,6 @@ window_pane_find_down(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	status = window_get_pane_status(w);
-	gap = 1;
-	if (window_border_type_is_separate(w))
-		gap = 2;
 	gap = 1;
 	if (window_border_type_is_separate(w))
 		gap = 2;
