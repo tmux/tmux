@@ -320,4 +320,95 @@ $TMUX kill-pane -t "$fp" || fail "kill floating pane failed"
 $TMUX set -g display-panes-format 'P#{pane_index}' ||
 	fail "reset display-panes-format after floating failed"
 
+# Separate borders use different preview geometry. Exercise both axes, title
+# positions and scrollbar sides, including entry from an already zoomed pane.
+$TMUX set -g status off \; set -g window-size manual || exit 1
+for axis in h v; do
+	for config in separate:off:off separate:top:left separate:bottom:right \
+	    separate-active:off:off separate-active:top:right \
+	    separate-active:bottom:left; do
+		type=${config%%:*}
+		rest=${config#*:}
+		status=${rest%%:*}
+		side=${rest#*:}
+		$TMUX new-window -t m: -n separate 'cat' \; \
+		    resize-window -x 80 -y 24 \; \
+		    set -w pane-border-type "$type" \; \
+		    set -w pane-border-status "$status" \; \
+		    set -w pane-border-format 'TITLE#{pane_index}' \; \
+		    split-window -d -"$axis" 'cat' || exit 1
+		op0=$($TMUX display-message -p -t m:separate.0 '#{pane_id}')
+		op1=$($TMUX display-message -p -t m:separate.1 '#{pane_id}')
+		if [ "$side" != off ]; then
+			$TMUX set -w pane-scrollbars on \; \
+			    set -w pane-scrollbars-position "$side" \; \
+			    set -w pane-scrollbars-style 'width=2,pad=1' || exit 1
+		fi
+		$TMUX respawn-pane -k -t "$op0" \
+		    'printf "TOP0\nBODY0\n"; exec cat' || exit 1
+		$TMUX respawn-pane -k -t "$op1" \
+		    'printf "TOP1\nBODY1\n"; exec cat' || exit 1
+		wait_capture BODY0
+		wait_capture BODY1
+		op0_size=$($TMUX display-message -p -t "$op0" \
+		    '#{pane_width}x#{pane_height}')
+		op1_size=$($TMUX display-message -p -t "$op1" \
+		    '#{pane_width}x#{pane_height}')
+		$TMUX set -w display-panes-format \
+		    'O#{pane_index}:#{pane_unzoomed_width}x#{pane_unzoomed_height}' || exit 1
+		for zoom in 0 1; do
+			if [ "$zoom" = 1 ]; then
+				$TMUX resize-pane -Z -t "$op0" || exit 1
+			fi
+			op_geometry=$($TMUX list-panes -t m:separate -F \
+			    '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}')
+			$TMUX display-panes -d 0 -t "$op0" || exit 1
+			wait_format "$op0" '#{pane_mode}' panes-mode
+			wait_format "$op0" '#{window_zoomed_flag}' 1
+			# Labels and content must start immediately inside the preview
+			# border, including when a left scrollbar reserved three columns.
+			wait_capture "│O0:$op0_size"
+			wait_capture "│O1:$op1_size"
+			wait_capture '│BODY0'
+			wait_capture '│BODY1'
+			if [ "$axis" = h ]; then
+				wait_capture '││'
+			fi
+			$TMUX send-keys -t "$op0" q || exit 1
+			wait_format "$op0" '#{pane_in_mode}' 0
+			wait_format "$op0" '#{window_zoomed_flag}' "$zoom"
+			[ "$($TMUX list-panes -t m:separate -F \
+			    '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}')" = \
+			    "$op_geometry" ] || fail "$config/$axis: overlay changed pane geometry"
+		done
+		$TMUX kill-window -t m:separate || exit 1
+	done
+done
+
+# A single separate pane cannot zoom: its preview fills the area inside the
+# existing border, and leaving the mode must restore that same geometry.
+for type in separate separate-active; do
+	$TMUX new-window -t m: -n single 'printf "TOP\nONLY\n"; exec cat' \; \
+	    resize-window -x 80 -y 24 \; \
+	    set -w pane-border-type "$type" \; \
+	    set -w display-panes-format \
+	    'O#{pane_index}:#{pane_unzoomed_width}x#{pane_unzoomed_height}' || exit 1
+	only=$($TMUX display-message -p -t m:single '#{pane_id}')
+	only_size=$($TMUX display-message -p -t "$only" '#{pane_width}x#{pane_height}')
+	only_geometry=$($TMUX display-message -p -t "$only" \
+	    '#{pane_left} #{pane_top} #{pane_width} #{pane_height}')
+	wait_capture ONLY
+	$TMUX display-panes -d 0 -t "$only" || exit 1
+	wait_format "$only" '#{pane_mode}' panes-mode
+	wait_format "$only" '#{window_zoomed_flag}' 0
+	wait_capture "│O0:$only_size"
+	wait_capture '│ONLY'
+	$TMUX send-keys -t "$only" q || exit 1
+	wait_format "$only" '#{pane_in_mode}' 0
+	[ "$($TMUX display-message -p -t "$only" \
+	    '#{pane_left} #{pane_top} #{pane_width} #{pane_height}')" = \
+	    "$only_geometry" ] || fail "$type: overlay changed single-pane geometry"
+	$TMUX kill-window -t m:single || exit 1
+done
+
 exit 0
