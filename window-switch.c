@@ -38,26 +38,24 @@ static enum prompt_result window_switch_prompt_callback(void *, const char *,
 
 #define WINDOW_SWITCH_DEFAULT_COMMAND "switch-client -Zt '%%'"
 
-#define WINDOW_SWITCH_DIM_STYLE "#{?is_selected,,#[dim]}"
-
 #define WINDOW_SWITCH_DEFAULT_FORMAT		\
 	"#{?window_format," \
 		"#{window_name} " \
-		WINDOW_SWITCH_DIM_STYLE \
+		"#{?is_selected,,#[dim]}" \
 		"#{session_name}:#{window_index}#{window_flags}#[default] " \
-		WINDOW_SWITCH_DIM_STYLE "#{pane_current_command}#[default] " \
-		WINDOW_SWITCH_DIM_STYLE \
+		"#{?is_selected,,#[dim]}#{pane_current_command}#[default] " \
+		"#{?is_selected,,#[dim]}" \
 		"#{?#{!=:#{pane_title},#{host_short}},#{pane_title},}" \
 		"#[default]" \
-		"#{?pane_program_state, " WINDOW_SWITCH_DIM_STYLE \
+		"#{?pane_program_state, #{?is_selected,,#[dim]}" \
 		"#{pane_program_name} #{pane_program_state}#[default],}" \
 	"," \
 		"#{session_name} " \
-		WINDOW_SWITCH_DIM_STYLE \
+		"#{?is_selected,,#[dim]}" \
 		"#{session_windows} windows#[default] " \
 		"#{?session_attached,attached," \
-		WINDOW_SWITCH_DIM_STYLE "detached#[default]} " \
-		WINDOW_SWITCH_DIM_STYLE "#{window_name}#[default]" \
+		"#{?is_selected,,#[dim]}detached#[default]} " \
+		"#{?is_selected,,#[dim]}#{window_name}#[default]" \
 	"}"
 
 const struct window_mode window_switch_mode = {
