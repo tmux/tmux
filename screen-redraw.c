@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.172 2026/11/12 11:11:27 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.173 2026/11/16 14:00:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -256,6 +256,7 @@ struct redraw_build_ctx {
 	u_int					 sy;
 
 	int					 ind;
+	int					 border_type;
 
 	struct redraw_build_cell		*cells;
 };
@@ -272,6 +273,7 @@ struct redraw_draw_ctx {
 	enum pane_lines		 pane_lines;
 	struct grid_cell	 default_gc;
 	u_int			 default_dim;
+	int			 border_type;
 
 	int			 flags;
 #define REDRAW_ISOLATES 0x1
@@ -335,6 +337,7 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 	redraw_get_window_offset(c, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
 
 	bctx->ind = options_get_number(w->options, "pane-border-indicators");
+	bctx->border_type = options_get_number(w->options, "pane-border-type");
 }
 
 /* Return a cell. */
@@ -736,6 +739,8 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	if (floating && pane_lines == PANE_LINES_NONE)
 		return;
 	pane_status = window_pane_get_pane_status(wp);
+	if (bctx->border_type != PANE_BORDER_TYPE_JOINED)
+		pane_status = PANE_STATUS_OFF; /* both borders are drawn */
 
 	left = wp->xoff - 1;
 	right = wp->xoff + wp->sx;
@@ -1434,7 +1439,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	struct tty_style_ctx	 style_ctx = { 0 };
 	enum pane_lines		 pane_lines;
 	u_int			 i, cell_type;
-	int			 isolates = 0;
+	int			 isolates = 0, blank = 0;
 
 	style_ctx.defaults = &grid_default_cell;
 
@@ -1443,6 +1448,11 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	else {
 		wp = redraw_get_pane_for_border_style(dctx, span);
 		cell_type = span->data.b.cell_type;
+		/* separate-active only draws the active pane's border. */
+		if (dctx->border_type == PANE_BORDER_TYPE_SEPARATE_ACTIVE &&
+		    (dctx->active == NULL ||
+		    !redraw_data_has_pane(&span->data, dctx->active)))
+			blank = 1;
 	}
 
 	if (wp == NULL) {
@@ -1462,11 +1472,16 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 		window_pane_get_border_cell(wp, cell_type, &gc);
 	}
 
-	if (span->data.type == REDRAW_SPAN_BORDER &&
+	if (!blank &&
+	    span->data.type == REDRAW_SPAN_BORDER &&
 	    dctx->marked != NULL &&
 	    redraw_data_has_pane(&span->data, dctx->marked))
 		gc.attr ^= GRID_ATTR_REVERSE;
-	redraw_draw_border_arrow(dctx, span, &gc);
+	if (blank) {
+		gc.attr &= ~GRID_ATTR_CHARSET;
+		utf8_set(&gc.data, ' ');
+	} else
+		redraw_draw_border_arrow(dctx, span, &gc);
 
 	if (cell_type == CELL_UD && (dctx->flags & REDRAW_ISOLATES))
 		isolates = 1;
@@ -1821,6 +1836,7 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	struct client	*c = scene->c;
 	struct session	*s = c->session;
 	struct options	*oo = s->options;
+	struct window	*w = s->curw->window;
 	struct tty	*tty = &c->tty;
 	u_int		 lines;
 
@@ -1829,7 +1845,8 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 
 	if (server_is_marked(s, s->curw, marked_pane.wp))
 		dctx->marked = marked_pane.wp;
-	dctx->active = s->curw->window->active;
+	dctx->active = w->active;
+	dctx->border_type = options_get_number(w->options, "pane-border-type");
 
 	lines = status_line_size(c);
 	if (options_get_number(oo, "status-position") == 0)
