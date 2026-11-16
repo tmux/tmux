@@ -3299,6 +3299,7 @@ specifies the format for each item in the list.
 In this format,
 .Ql is_selected
 is 1 for the selected item and 0 otherwise.
+Use this to vary styling while keeping the text and layout unchanged.
 .Pp
 .Fl f
 reads choices from
@@ -3310,7 +3311,7 @@ With
 .Ql switch_item
 contains the original line and the default display format is
 .Ql #{switch_item} .
-Fuzzy matching uses the unselected text.
+Fuzzy matching uses the displayed text.
 When a choice is selected,
 .Ql %%
 and

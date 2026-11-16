@@ -339,7 +339,6 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 	const struct grid_cell		*dgc = &grid_default_cell;
 	struct prompt_draw_data		 pdd;
 	const char			*text;
-	bitstr_t			*match;
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
@@ -359,16 +358,8 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 			break;
 		item = data->matches[idx];
 		text = item->text;
-		match = item->match;
-		if (idx == data->current && item->selected_text != NULL) {
+		if (idx == data->current && item->selected_text != NULL)
 			text = item->selected_text;
-
-			/* Selection may move the matched text. */
-			if (match != NULL) {
-				match = fuzzy_match(data->filter, text,
-				    sx, NULL);
-			}
-		}
 
 		screen_write_cursormove(&ctx, 0, i, 0);
 		if (idx != data->current)
@@ -378,10 +369,10 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 			format_draw(&ctx, &sgc, sx, text, NULL, 0);
 		}
 
-		if (match == NULL)
+		if (item->match == NULL)
 			continue;
 		for (j = 0; j < sx; j++) {
-			if (!bit_test(match, j))
+			if (!bit_test(item->match, j))
 				continue;
 			grid_get_cell(s->grid, j, i, &gc);
 			gc.attr = mgc.attr;
@@ -390,8 +381,6 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 			screen_write_cursormove(&ctx, j, i, 0);
 			screen_write_cell(&ctx, &gc);
 		}
-		if (match != item->match)
-			free(match);
 	}
 
 	if (data->prompt != NULL) {
