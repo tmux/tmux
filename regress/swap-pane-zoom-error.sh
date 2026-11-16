@@ -31,7 +31,7 @@ $TMUX swap-pane -Z -U -t %2
 [ "$($TMUX display -p '#{window_zoomed_flag}')" = 1 ] || exit 1
 
 # A swap that is allowed still happens.
-$TMUX swap-pane -D -t %0 || exit 1
+$TMUX swap-pane -s %1 -t %0 || exit 1
 echo $($TMUX lsp -F'#{pane_id}') >$TMP
 (echo "%1 %0 %2"|cmp -s - $TMP) || exit 1
 

@@ -101,7 +101,8 @@ wait_format "$p0" '#{window_zoomed_flag}' '1'
 wait_format "$p0" '#{pane_unzoomed_width}x#{pane_unzoomed_height}' \
     "$p0_size"
 wait_capture "P0:$p0_size"
-wait_capture "P1:$p1_size"
+p1_expanded=$($TMUX display-message -p -t "$p1" '#{pane_width}x#{pane_height}')
+wait_capture "P1:$p1_expanded"
 $TMUX send-keys -t "$p0" q || fail "exit panes mode failed"
 wait_format "$p0" '#{pane_in_mode}' '0'
 wait_format "$p0" '#{window_zoomed_flag}' '0'
@@ -123,7 +124,8 @@ wait_format "$p0" '#{window_zoomed_flag}' '1'
 wait_format "$p0" '#{pane_unzoomed_width}x#{pane_unzoomed_height}' \
     "$p0_size"
 wait_capture "S0:$p0_size"
-wait_capture "S1:$p1_size"
+p1_expanded=$($TMUX display-message -p -t "$p1" '#{pane_width}x#{pane_height}')
+wait_capture "S1:$p1_expanded"
 $TMUX send-keys -t "$p0" q || fail "exit scrollbar panes mode failed"
 wait_format "$p0" '#{pane_in_mode}' '0'
 $TMUX set -w -t m:0 pane-scrollbars off ||
@@ -262,7 +264,9 @@ $TMUX display-panes -d 0 -t "$p0" || fail "display-panes status failed"
 wait_format "$p0" '#{pane_mode}' 'panes-mode'
 wait_capture 'STATUS-TOP'
 wait_capture "T0:$status_p0_size"
-wait_capture "T1:$status_p1_size"
+status_p1_expanded=$($TMUX display-message -p -t "$p1" \
+    '#{pane_width}x#{pane_height}')
+wait_capture "T1:$status_p1_expanded"
 CAPTURED=$(capture)
 first=$(printf '%s\n' "$CAPTURED" | sed -n '1p')
 second=$(printf '%s\n' "$CAPTURED" | sed -n '2p')

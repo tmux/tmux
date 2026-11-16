@@ -100,6 +100,10 @@ for mode in default command empty already-zoomed; do
 	wait_capture "$DIR/zoomed"
 
 	$INNER resize-pane -Z -t "$float" || exit 1
+	if [ "$mode" = already-zoomed ]; then
+		check "$base" '#{pane_zoomed_flag}:#{window_zoomed_flag}' '1:1'
+		$INNER resize-pane -Z -t "$base" || exit 1
+	fi
 	check "$float" '#{pane_zoomed_flag}:#{window_zoomed_flag}:#{pane_floating_flag}' \
 	    '0:0:1'
 	check "$float" '#{pane_width}:#{pane_height}:#{pane_left}:#{pane_top}' \
@@ -108,14 +112,13 @@ for mode in default command empty already-zoomed; do
 	$INNER kill-pane -t "$float" || exit 1
 done
 
-# A detached creation zooms the active pane and retains the new float's
-# requested geometry for unzooming.
+# Fullscreen takes precedence over detached creation.
 $INNER select-pane -t "$base" || exit 1
 float=$($INNER new-pane -dZ -PF '#{pane_id}' \
     -x 80% -y 80% -X 10% -Y 10% '') || exit 1
-check "$base" '#{pane_zoomed_flag}:#{window_zoomed_flag}' '1:1'
-check "$float" '#{pane_zoomed_flag}:#{pane_active}' '0:0'
-$INNER resize-pane -Z -t "$base" || exit 1
+check "$base" '#{pane_zoomed_flag}:#{pane_active}' '0:0'
+check "$float" '#{pane_zoomed_flag}:#{pane_active}' '1:1'
+$INNER resize-pane -Z -t "$float" || exit 1
 check "$float" '#{pane_width}:#{pane_height}:#{pane_left}:#{pane_top}' \
     '46:14:7:3'
 wait_capture "$DIR/floating"

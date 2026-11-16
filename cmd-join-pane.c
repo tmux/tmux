@@ -66,131 +66,172 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.exec = cmd_join_pane_exec
 };
 
+/* Stacking classes, ordered from front to back. */
+enum cmd_join_pane_stack_class {
+	CMD_JOIN_PANE_MODAL,
+	CMD_JOIN_PANE_ALWAYS_ON_TOP,
+	CMD_JOIN_PANE_NORMAL
+};
+
+/* Get the stacking class of a pane. */
+static enum cmd_join_pane_stack_class
+cmd_join_pane_stack_class(struct window_pane *wp)
+{
+	if (wp == wp->window->modal)
+		return (CMD_JOIN_PANE_MODAL);
+	if (wp->flags & PANE_ALWAYS_ON_TOP)
+		return (CMD_JOIN_PANE_ALWAYS_ON_TOP);
+	return (CMD_JOIN_PANE_NORMAL);
+}
+
+/* Get the visible pane just in front in the same stacking class, if any. */
+static struct window_pane *
+cmd_join_pane_forward(struct window_pane *wp)
+{
+	struct window_pane		*owp = wp;
+	enum cmd_join_pane_stack_class	 class = cmd_join_pane_stack_class(wp);
+
+	do {
+		owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
+	} while (owp != NULL && !window_pane_is_visible(owp));
+	if (owp != NULL && cmd_join_pane_stack_class(owp) != class)
+		owp = NULL;
+	return (owp);
+}
+
+/* Get the visible pane just behind in the same stacking class, if any. */
+static struct window_pane *
+cmd_join_pane_backward(struct window_pane *wp)
+{
+	struct window_pane		*owp = wp;
+	enum cmd_join_pane_stack_class	 class = cmd_join_pane_stack_class(wp);
+
+	do {
+		owp = TAILQ_NEXT(owp, zentry);
+	} while (owp != NULL && !window_pane_is_visible(owp));
+	if (owp != NULL && (!window_pane_is_floating(owp) ||
+	    cmd_join_pane_stack_class(owp) != class)) {
+		owp = NULL;
+	}
+	return (owp);
+}
+
+/* Reorder a float, or move an unzoomed float to a named position. */
 static enum cmd_retval
 cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
     struct window_pane *wp, const char *position)
 {
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
-	struct window_pane	*owp;
-	int			 wx = w->sx, wy = w->sy;
-	int			 px = lc->g.sx, py = lc->g.sy;
+	struct window_pane	*owp, *previous;
+	int			 wx, wy, px, py, border;
 	int			 xoff = lc->g.xoff, yoff = lc->g.yoff;
-	int			 border = 1;
 
-	if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
-		border = 0;
+	previous = TAILQ_PREV(wp, window_panes_zindex, zentry);
 
-	if (strcmp(position, "top-left") == 0) {
-		xoff = border;
-		yoff = border;
-	} else if (strcmp(position, "top-centre") == 0 ||
-	    strcmp(position, "top-center") == 0) {
-		xoff = (wx - px) / 2;
-		yoff = border;
-	} else if (strcmp(position, "top-right") == 0) {
-		xoff = wx - px - border;
-		yoff = border;
-	} else if (strcmp(position, "centre-left") == 0 ||
-	    strcmp(position, "center-left") == 0) {
-		xoff = border;
-		yoff = (wy - py) / 2;
-	} else if (strcmp(position, "centre") == 0 ||
-	    strcmp(position, "center") == 0) {
-		xoff = (wx - px) / 2;
-		yoff = (wy - py) / 2;
-	} else if (strcmp(position, "centre-right") == 0 ||
-	    strcmp(position, "center-right") == 0) {
-		xoff = wx - px - border;
-		yoff = (wy - py) / 2;
-	} else if (strcmp(position, "bottom-left") == 0) {
-		xoff = border;
-		yoff = wy - py - border;
-	} else if (strcmp(position, "bottom-centre") == 0 ||
-	    strcmp(position, "bottom-center") == 0) {
-		xoff = (wx - px) / 2;
-		yoff = wy - py - border;
-	} else if (strcmp(position, "bottom-right") == 0) {
-		xoff = wx - px - border;
-		yoff = wy - py - border;
-	} else if (strcmp(position, "top-left-centre") == 0 ||
-	    strcmp(position, "top-left-center") == 0) {
-		xoff = wx / 4 - px / 2;
-		yoff = wy / 4 - py / 2;
-	} else if (strcmp(position, "top-right-centre") == 0 ||
-	    strcmp(position, "top-right-center") == 0) {
-		xoff = (3 * wx) / 4 - px / 2;
-		yoff = wy / 4 - py / 2;
-	} else if (strcmp(position, "bottom-left-centre") == 0 ||
-	    strcmp(position, "bottom-left-center") == 0) {
-		xoff = wx / 4 - px / 2;
-		yoff = (3 * wy) / 4 - py / 2;
-	} else if (strcmp(position, "bottom-right-centre") == 0 ||
-	    strcmp(position, "bottom-right-center") == 0) {
-		xoff = (3 * wx) / 4 - px / 2;
-		yoff = (3 * wy) / 4 - py / 2;
-	} else if (strcmp(position, "front") == 0) {
-		TAILQ_REMOVE(&w->z_index, wp, zentry);
-		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	if (strcmp(position, "front") == 0) {
+		window_raise_pane(wp);
 	} else if (strcmp(position, "back") == 0) {
-		TAILQ_REMOVE(&w->z_index, wp, zentry);
-		TAILQ_FOREACH(owp, &w->z_index, zentry) {
-			if (!window_pane_is_floating_with_hidden(owp))
-				break;
-		}
-		if (owp != NULL)
-			TAILQ_INSERT_BEFORE(owp, wp, zentry);
-		else
-			TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+		window_lower_pane(wp);
 	} else if (strcmp(position, "forward") == 0) {
-		owp = TAILQ_PREV(wp, window_panes_zindex, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
+		owp = cmd_join_pane_forward(wp);
 		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
 		}
 	} else if (strcmp(position, "backward") == 0) {
-		owp = TAILQ_NEXT(wp, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_NEXT(owp, zentry);
-		if (owp != NULL && window_pane_is_floating(owp)) {
+		owp = cmd_join_pane_backward(wp);
+		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
 		}
 	} else if (strcmp(position, "forward-loop") == 0) {
-		owp = TAILQ_PREV(wp, window_panes_zindex, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
-		TAILQ_REMOVE(&w->z_index, wp, zentry);
-		if (owp != NULL)
+		owp = cmd_join_pane_forward(wp);
+		if (owp != NULL) {
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
-		else {
-			TAILQ_FOREACH(owp, &w->z_index, zentry) {
-				if (!window_pane_is_floating_with_hidden(owp))
-					break;
-			}
-			if (owp != NULL)
-				TAILQ_INSERT_BEFORE(owp, wp, zentry);
-			else
-				TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
-		}
+		} else
+			window_lower_pane(wp);
 	} else if (strcmp(position, "backward-loop") == 0) {
-		owp = TAILQ_NEXT(wp, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_NEXT(owp, zentry);
-		if (owp != NULL && window_pane_is_floating(owp)) {
+		owp = cmd_join_pane_backward(wp);
+		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
-		} else {
-			TAILQ_REMOVE(&w->z_index, wp, zentry);
-			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
-		}
+		} else
+			window_raise_pane(wp);
 	} else {
-		cmdq_error(item, "unknown position: %s", position);
-		return (CMD_RETURN_ERROR);
+		/* Fullscreen panes can be reordered but cannot be moved. */
+		if (wp->flags & PANE_ZOOMED) {
+			cmdq_error(item, "pane is zoomed");
+			return (CMD_RETURN_ERROR);
+		}
+		wx = w->sx;
+		wy = w->sy;
+		px = lc->g.sx;
+		py = lc->g.sy;
+		border = 1;
+		if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+			border = 0;
+
+		if (strcmp(position, "top-left") == 0) {
+			xoff = border;
+			yoff = border;
+		} else if (strcmp(position, "top-centre") == 0 ||
+		    strcmp(position, "top-center") == 0) {
+			xoff = (wx - px) / 2;
+			yoff = border;
+		} else if (strcmp(position, "top-right") == 0) {
+			xoff = wx - px - border;
+			yoff = border;
+		} else if (strcmp(position, "centre-left") == 0 ||
+		    strcmp(position, "center-left") == 0) {
+			xoff = border;
+			yoff = (wy - py) / 2;
+		} else if (strcmp(position, "centre") == 0 ||
+		    strcmp(position, "center") == 0) {
+			xoff = (wx - px) / 2;
+			yoff = (wy - py) / 2;
+		} else if (strcmp(position, "centre-right") == 0 ||
+		    strcmp(position, "center-right") == 0) {
+			xoff = wx - px - border;
+			yoff = (wy - py) / 2;
+		} else if (strcmp(position, "bottom-left") == 0) {
+			xoff = border;
+			yoff = wy - py - border;
+		} else if (strcmp(position, "bottom-centre") == 0 ||
+		    strcmp(position, "bottom-center") == 0) {
+			xoff = (wx - px) / 2;
+			yoff = wy - py - border;
+		} else if (strcmp(position, "bottom-right") == 0) {
+			xoff = wx - px - border;
+			yoff = wy - py - border;
+		} else if (strcmp(position, "top-left-centre") == 0 ||
+		    strcmp(position, "top-left-center") == 0) {
+			xoff = wx / 4 - px / 2;
+			yoff = wy / 4 - py / 2;
+		} else if (strcmp(position, "top-right-centre") == 0 ||
+		    strcmp(position, "top-right-center") == 0) {
+			xoff = (3 * wx) / 4 - px / 2;
+			yoff = wy / 4 - py / 2;
+		} else if (strcmp(position, "bottom-left-centre") == 0 ||
+		    strcmp(position, "bottom-left-center") == 0) {
+			xoff = wx / 4 - px / 2;
+			yoff = (3 * wy) / 4 - py / 2;
+		} else if (strcmp(position, "bottom-right-centre") == 0 ||
+		    strcmp(position, "bottom-right-center") == 0) {
+			xoff = (3 * wx) / 4 - px / 2;
+			yoff = (3 * wy) / 4 - py / 2;
+		} else {
+			cmdq_error(item, "unknown position: %s", position);
+			return (CMD_RETURN_ERROR);
+		}
 	}
 
+	/* Raising or lowering an already positioned pane needs no redraw. */
+	if (xoff == lc->g.xoff && yoff == lc->g.yoff &&
+	    previous == TAILQ_PREV(wp, window_panes_zindex, zentry)) {
+		return (CMD_RETURN_NORMAL);
+	}
 	if (xoff != lc->g.xoff || yoff != lc->g.yoff) {
 		lc->g.xoff = xoff;
 		lc->g.yoff = yoff;
@@ -203,6 +244,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 	return (CMD_RETURN_NORMAL);
 }
 
+/* Move an unzoomed float by coordinates or directional offsets. */
 static enum cmd_retval
 cmd_join_pane_move(struct cmdq_item *item, struct args *args,
     struct winlink *wl, struct window_pane *wp)
@@ -214,7 +256,13 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args,
 	char			*cause = NULL, flag;
 	int			 xoff = lc->g.xoff, yoff = lc->g.yoff, adjust;
 	u_int			 i;
-	enum pane_lines		 lines = window_pane_get_pane_lines(wp);
+	enum pane_lines		 lines;
+
+	if (wp->flags & PANE_ZOOMED) {
+		cmdq_error(item, "pane is zoomed");
+		return (CMD_RETURN_ERROR);
+	}
+	lines = window_pane_get_pane_lines(wp);
 
 	if (args_has(args, 'X')) {
 		xoff = args_percentage_and_expand(args, 'X', -(int)w->sx,
@@ -357,10 +405,11 @@ static enum cmd_retval
 cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
     struct window_pane *wp, const char *s)
 {
-	struct window		*w = wl->window;
-	struct window_pane	*owp;
-	const char		*errstr;
-	u_int			 n, z;
+	struct window			*w = wl->window;
+	struct window_pane		*owp;
+	const char			*errstr;
+	u_int				 n, z;
+	enum cmd_join_pane_stack_class	 class, other_class;
 
 	z = strtonum(s, 0, UINT_MAX, &errstr);
 	if (errstr != NULL) {
@@ -369,11 +418,18 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	}
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 
+	/* Keep the pane ordered relative to the other stacking classes. */
+	class = cmd_join_pane_stack_class(wp);
 	n = 0;
 	TAILQ_FOREACH(owp, &w->z_index, zentry) {
-		if (!window_pane_is_floating_with_hidden(owp))
+		other_class = cmd_join_pane_stack_class(owp);
+		if (other_class < class)
+			continue;
+		if (other_class > class ||
+		    !window_pane_is_floating(owp)) {
 			break;
-		if (owp->layout_cell == NULL)
+		}
+		if (!window_pane_is_visible(owp))
 			continue;
 		if (n >= z)
 			break;
@@ -392,6 +448,7 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	return (CMD_RETURN_NORMAL);
 }
 
+/* Return a floating pane to its retained place in the tiled layout. */
 static enum cmd_retval
 cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
     struct window_pane *wp)
@@ -402,24 +459,15 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 		cmdq_error(item, "pane is not floating");
 		return (CMD_RETURN_ERROR);
 	}
-	if (w->flags & WINDOW_ZOOMED) {
-		cmdq_error(item, "can't tile a pane while window is zoomed");
-		return (CMD_RETURN_ERROR);
+
+	memcpy(&lc->fg, &lc->g, sizeof lc->fg);
+
+	layout_insert_tile(w, lc);
+
+	if (~wp->flags & PANE_ZOOMED) {
+		TAILQ_REMOVE(&w->z_index, wp, zentry);
+		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	}
-
-	lc->fg.sx = lc->g.sx;
-	lc->fg.sy = lc->g.sy;
-	lc->fg.xoff = lc->g.xoff;
-	lc->fg.yoff = lc->g.yoff;
-
-	if (layout_insert_tile(w, lc) != 0) {
-		cmdq_error(item, "no space for a new pane");
-		return (CMD_RETURN_ERROR);
-	}
-	lc->flags &= ~LAYOUT_CELL_FLOATING;
-
-	TAILQ_REMOVE(&w->z_index, wp, zentry);
-	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 
 	if (!args_has(args, 'd'))
 		window_set_active_pane(w, wp, 1);
@@ -447,6 +495,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause = NULL;
 	int			 flags = 0, dst_idx;
 	struct layout_cell	*lc;
+	enum cmd_retval		 retval;
 
 	dst_s = target->s;
 	dst_wl = target->wl;
@@ -469,11 +518,20 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "pane is not floating");
 				return (CMD_RETURN_ERROR);
 			}
-			if ((s = args_get(args, 'P')) != NULL)
-				return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
-			if ((s = args_get(args, 'z')) != NULL)
-				return (cmd_join_pane_zindex(item, dst_wl, dst_wp, s));
-			return (cmd_join_pane_move(item, args, dst_wl, dst_wp));
+			s = args_get(args, 'P');
+			if (s != NULL) {
+				retval = cmd_join_pane_place(item, dst_wl,
+				    dst_wp, s);
+				return (retval);
+			}
+			s = args_get(args, 'z');
+			if (s != NULL) {
+				retval = cmd_join_pane_zindex(item, dst_wl,
+				    dst_wp, s);
+				return (retval);
+			}
+			retval = cmd_join_pane_move(item, args, dst_wl, dst_wp);
+			return (retval);
 		}
 	}
 
@@ -486,10 +544,12 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	server_unzoom_window(dst_w);
-	server_unzoom_window(src_w);
-
 	if (src_wp == dst_wp) {
+		if (src_wp->flags & PANE_ZOOMED) {
+			window_unzoom_pane(src_wp, 1);
+			if (!window_pane_is_floating(src_wp))
+				return (CMD_RETURN_NORMAL);
+		}
 		if (window_pane_is_floating(src_wp))
 			return (cmd_join_pane_tile(item, args, src_w, src_wp));
 		cmdq_error(item, "source and target panes must be different");
@@ -503,6 +563,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'f'))
 		flags |= SPAWN_FULLSIZE;
 
+	if (src_wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(src_wp, 1);
+	if (dst_wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(dst_wp, 1);
 	lc = layout_get_tiled_cell(item, args, dst_w, dst_wp, flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "size or position %s", cause);
@@ -521,13 +585,11 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_wp->window = dst_w;
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
-	if (flags & SPAWN_BEFORE) {
+	if (flags & SPAWN_BEFORE)
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
-		TAILQ_INSERT_BEFORE(dst_wp, src_wp, zentry);
-	} else {
+	else
 		TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
-		TAILQ_INSERT_AFTER(&dst_w->z_index, dst_wp, src_wp, zentry);
-	}
+	TAILQ_INSERT_TAIL(&dst_w->z_index, src_wp, zentry);
 	layout_assign_pane(lc, src_wp, 0);
 	colour_palette_from_option(&src_wp->palette, src_wp->options);
 

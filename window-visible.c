@@ -145,10 +145,10 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 			continue;
 		}
 
-		if (window_pane_is_floating(wp) &&
-		    window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+		if (window_pane_is_unzoomed_float(wp) &&
+		    window_pane_get_pane_lines(wp) == PANE_LINES_NONE) {
 			no_border = 1;
-		else
+		} else
 			no_border = 0;
 		if (no_border) {
 			tb = wp->yoff;
@@ -162,8 +162,10 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 		    py < tb ||
 		    py > bb)
 			continue;
-		if (!window_pane_is_floating(wp) && (py == tb || py == bb))
+		if (!window_pane_is_unzoomed_float(wp) &&
+		    (py == tb || py == bb)) {
 			continue;
+		}
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 		if (window_pane_scrollbar_reserve(wp))
