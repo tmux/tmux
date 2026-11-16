@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.198 2026/11/10 10:34:39 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.199 2026/11/16 20:40:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -53,7 +53,6 @@
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
 	" ''" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_line_numbers,Hide Line Numbers,Show Line Numbers},}' 'L' {send -X line-numbers-toggle}" \
-	" '#{?#{==:#{pane_mode},copy-mode},Edit,}' 'e' {if -F '#{selection_present}' {send -X open-selection} {send -X open-output}}" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?refresh_active,Refresh Off,Refresh On},}' 'r' {send -X refresh-toggle}" \
 	" ''" \
 	" '#{?#{&&:#{buffer_size},#{!:#{pane_in_mode}}},Paste #[underscore]#{=/9/...:buffer_sample},}' 'p' {paste-buffer}" \
