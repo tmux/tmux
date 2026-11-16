@@ -6,14 +6,27 @@ TERM=screen
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -L${TEST_SOCKET:-testO$$} -f/dev/null"
 OUT=/tmp/tmux-output-commands-$$
+EXP=/tmp/tmux-output-commands-expected-$$
 EXPECTED=$(printf 'one\ntwo')
 
 cleanup()
 {
 	$TMUX kill-server 2>/dev/null
-	rm -f "$OUT"
+	rm -f "$OUT" "$EXP"
 }
 trap cleanup EXIT HUP INT TERM
+
+check_pipe()
+{
+	i=0
+	while [ "$i" -lt 50 ]; do
+		cmp -s "$OUT" "$EXP" && return 0
+		sleep 0.1
+		i=$((i + 1))
+	done
+	cmp "$OUT" "$EXP"
+	exit 1
+}
 
 $TMUX kill-server 2>/dev/null
 $TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007one\\ntwo\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007broken\\n\\033]133;C\\007unfinished\"; exec sleep 100'" || exit 1
@@ -24,14 +37,46 @@ $TMUX set-buffer sentinel || exit 1
 $TMUX send-keys -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = unfinished ] || exit 1
 
-$TMUX send-keys -X pipe-output "wc -c >$OUT" || exit 1
-sleep 1
-[ "$(cat "$OUT")" = 10 ] || exit 1
+$TMUX set-buffer sentinel || exit 1
+printf unfinished >"$EXP"
+: >"$OUT"
+$TMUX send-keys -X pipe-output "cat >$OUT" || exit 1
+check_pipe
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
 
-$TMUX send-keys -X copy-pipe-output "wc -c >$OUT" output || exit 1
-sleep 1
-[ "$(cat "$OUT")" = 10 ] || exit 1
+: >"$OUT"
+$TMUX send-keys -X copy-pipe-output "cat >$OUT" output || exit 1
+check_pipe
 [ "$($TMUX show-buffer)" = unfinished ] || exit 1
+buffer=$($TMUX list-buffers -F '#{buffer_name}' | head -n1)
+case "$buffer" in
+output[0-9]*) ;;
+*) exit 1 ;;
+esac
+[ "$($TMUX show-buffer -b "$buffer")" = unfinished ] || exit 1
+
+# Paste suppression leaves the buffer list unchanged but still pipes output.
+$TMUX set-buffer sentinel || exit 1
+buffers=$($TMUX list-buffers -F '#{buffer_name}')
+$TMUX send-keys -X copy-output -P || exit 1
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+[ "$($TMUX list-buffers -F '#{buffer_name}')" = "$buffers" ] || exit 1
+: >"$OUT"
+$TMUX send-keys -X copy-pipe-output -P "cat >$OUT" || exit 1
+check_pipe
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+[ "$($TMUX list-buffers -F '#{buffer_name}')" = "$buffers" ] || exit 1
+
+# Explicit commands expand formats; an omitted command uses copy-command.
+$TMUX set-option -g @output_file "$OUT" || exit 1
+: >"$OUT"
+$TMUX send-keys -X pipe-output "cat >#{@output_file}" || exit 1
+check_pipe
+$TMUX set-option -s copy-command "cat >$OUT" || exit 1
+: >"$OUT"
+$TMUX send-keys -X pipe-output || exit 1
+check_pipe
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
 
 $TMUX send-keys -X select-output || exit 1
 $TMUX set-buffer sentinel || exit 1
@@ -41,9 +86,10 @@ $TMUX send-keys -X cancel || exit 1
 
 $TMUX copy-mode || exit 1
 $TMUX send-keys -X select-output || exit 1
-$TMUX send-keys -X pipe-selection "wc -c >$OUT" || exit 1
-sleep 1
-[ "$(cat "$OUT")" = 10 ] || exit 1
+: >"$OUT"
+$TMUX send-keys -X pipe-selection "cat >$OUT" || exit 1
+check_pipe
+[ "$($TMUX show-buffer)" = unfinished ] || exit 1
 $TMUX send-keys -X cancel || exit 1
 
 $TMUX copy-mode || exit 1
@@ -95,6 +141,28 @@ $TMUX copy-mode -t :plain || exit 1
 $TMUX set-buffer sentinel || exit 1
 $TMUX send-keys -t :plain.0 -X copy-output || exit 1
 [ "$($TMUX show-buffer -b keep)" = unchanged ] || exit 1
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+$TMUX send-keys -t :plain.0 -X select-output || exit 1
+[ "$($TMUX display-message -p -t :plain.0 '#{selection_present}')" = 0 ] ||
+    exit 1
+
+# Whole-buffer pipes also work without OSC 133 markers.
+printf 'alpha\nbeta\n' >"$EXP"
+height=$($TMUX display-message -p -t :plain.0 '#{pane_height}')
+i=3
+while [ "$i" -lt "$height" ]; do
+	printf '\n' >>"$EXP"
+	i=$((i + 1))
+done
+: >"$OUT"
+$TMUX send-keys -t :plain.0 -X pipe-output -a "cat >$OUT" || exit 1
+check_pipe
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+: >"$OUT"
+$TMUX send-keys -t :plain.0 -X copy-pipe-output -a "cat >$OUT" || exit 1
+check_pipe
+$TMUX save-buffer "$OUT" || exit 1
+cmp "$OUT" "$EXP" || exit 1
 $TMUX send-keys -t :plain.0 -X cancel || exit 1
 
 $TMUX new-window -d -n empty "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007one\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007true\\n\\033]133;C\\007\\033]133;D;0\\007'; exec sleep 100" || exit 1

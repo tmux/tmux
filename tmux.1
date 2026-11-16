@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1181 2026/10/08 07:50:05 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1200 2026/11/16 14:00:11 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 8 2026 $
+.Dd $Mdocdate: November 16 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1271,6 +1271,7 @@ If
 is specified, list only clients connected to that session.
 .Tg lscm
 .It Xo Ic list\-commands
+.Op Fl h
 .Op Fl F Ar format
 .Op Ar command
 .Xc
@@ -1279,6 +1280,11 @@ List the syntax of
 .Ar command
 or - if omitted - of all commands supported by
 .Nm .
+With
+.Fl h ,
+show command names and a short description.
+.Fl h
+twice shows syntax as well.
 .Tg ls
 .It Xo Ic list\-sessions
 .Op Fl r
@@ -1444,7 +1450,7 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
 .It Xo Ic refresh\-client
-.Op Fl cDlLRSU
+.Op Fl cDlLqRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
@@ -1570,6 +1576,9 @@ a colon, then a report escape sequence.
 requests the clipboard from the client using the
 .Xr xterm 1
 escape sequence and stores it in a new paste buffer.
+.Pp
+.Fl q
+queries the client terminal for its size.
 .Pp
 .Fl L ,
 .Fl R ,
@@ -2184,6 +2193,18 @@ before the target.
 .Xc
 Jump to the last mark.
 .It Xo
+.Ic keep\-column\-on
+.Xc
+Keep the cursor column when moving vertically.
+.It Xo
+.Ic keep\-column\-off
+.Xc
+Do not keep the cursor column when moving vertically.
+.It Xo
+.Ic keep\-column\-toggle
+.Xc
+Toggle keeping the cursor column when moving vertically.
+.It Xo
 .Ic line\-numbers\-on
 .Xc
 Show line numbers in copy mode.
@@ -2525,6 +2546,17 @@ flag to the
 .Ic command\-prompt
 command.
 .It Xo
+.Ic search\-backward\-incremental\-regex
+.Ar regex
+(emacs: C\-M\-r)
+.Xc
+Search backwards incrementally for the specified regular expression.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command\-prompt
+command.
+.It Xo
 .Ic search\-backward\-text
 .Ar text
 .Xc
@@ -2541,6 +2573,17 @@ Search forward for the specified text.
 (emacs: C\-s)
 .Xc
 Search forward incrementally for the specified text.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command\-prompt
+command.
+.It Xo
+.Ic search\-forward\-incremental\-regex
+.Ar regex
+(emacs: C\-M\-s)
+.Xc
+Search forward incrementally for the specified regular expression.
 Is expected to be used with the
 .Fl i
 flag to the
@@ -2623,6 +2666,9 @@ perform an incremental search and expect to be used with the
 flag to the
 .Ic command\-prompt
 command.
+The
+.Ql \-incremental\-regex
+variants do the same but search for a regular expression.
 .Ql search\-again
 repeats the last search and
 .Ql search\-reverse
@@ -2910,7 +2956,7 @@ The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHILpPRqCJMN
+.Op Fl aeFHILpPRqCJMNT
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2989,7 +3035,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose\-client
-.Op Fl hkNryZ
+.Op Fl hikNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -3065,6 +3111,8 @@ a format for each shortcut key; both are evaluated once for each line.
 .Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl i
+starts showing client information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k
@@ -3169,7 +3217,7 @@ first.
 .Fl N
 starts without the preview or if given twice with the larger preview.
 .Fl i
-starts showing client information instead of the preview.
+starts showing session, window and pane information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k
@@ -3187,17 +3235,18 @@ The
 command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
-.Op Fl kNZ
+.Op Fl kNyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl t Ar target\-pane
-.Op Ar template
 .Xc
 Put a pane into customize mode, where options and key bindings may be browsed
 and modified from a list.
 Option values in the list are shown for the active pane in the current window.
 .Fl Z
 zooms the pane.
+.Fl y
+disables any confirmation prompts.
 The following keys may be used in customize mode:
 .Bl -column "KeyXXXXXX" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
@@ -3248,6 +3297,7 @@ command works only if at least one client is attached.
 .Ic switch\-mode
 .Op Fl krsZw
 .Op Fl F Ar format
+.Op Fl f Ar path
 .Op Fl O Ar sort\-order
 .Op Fl t Ar target\-pane
 .Op Ar command
@@ -3293,6 +3343,24 @@ If
 is not given, "switch\-client \-Zt \[aq]%%\[aq]" is used.
 .Fl F
 specifies the format for each item in the list.
+.Pp
+.Fl f
+reads choices from
+.Ar path
+instead of listing sessions or windows.
+Each line is one choice.
+With
+.Fl f ,
+.Ql switch_item
+contains the original line and the default display format is
+.Ql #{switch_item} .
+Fuzzy matching uses the displayed text.
+When a choice is selected,
+.Ql %%
+and
+.Ql %1
+are replaced by the original line
+.Pp
 .Fl k
 kills the pane when the mode is exited.
 .Pp
@@ -3302,7 +3370,7 @@ option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
-.Op Fl kNZ
+.Op Fl kNPZ
 .Op Fl d Ar duration
 .Op Fl s Ar source\-window
 .Op Fl t Ar target\-pane
@@ -3355,6 +3423,9 @@ substituted by the pane ID.
 The default
 .Ar template
 is "select\-pane \-t \[aq]%%\[aq]".
+If
+.Fl P
+is given, the selected pane ID is printed.
 .Tg findw
 .It Xo Ic find\-window
 .Op Fl iCNrTZ
@@ -3787,7 +3858,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl AbCDefhIkKLMOPvWZ
+.Op Fl AbCDdEfhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -4211,7 +4282,7 @@ the command behaves like
 .Ic last\-window .
 .Tg splitw
 .It Xo Ic split\-window
-.Op Fl bdefhIkPvZ
+.Op Fl bdEfhIkPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -4961,6 +5032,11 @@ Whether tmux should use the detected client theme
 use terminal ANSI colours
 .Pq Cm terminal ,
 or force the light or dark theme.
+With
+.Cm detect ,
+the theme reported by the terminal is used if available, otherwise the theme is
+derived from the terminal background colour.
+If neither is available, the dark theme is used.
 .It Xo Ic dark\-theme\-black ,
 .Ic dark\-theme\-white ,
 .Ic dark\-theme\-light\-grey ,
@@ -5134,6 +5210,12 @@ option.
 If not empty, a file to which
 .Nm
 will write command prompt history on exit and load it from on start.
+.It Ic image\-size\-limit Ar bytes
+Maximum size of a single image in bytes.
+.It Ic image\-total\-count\-limit Ar number
+Maximum number of stored images.
+.It Ic image\-total\-size\-limit Ar bytes
+Maximum total bytes for all stored images.
 .It Ic input\-buffer\-size Ar bytes
 Maximum of bytes allowed to read in escape and control sequences.
 Once reached, the sequence will be discarded.
@@ -5235,12 +5317,16 @@ Supports extended keys.
 Supports focus reporting.
 .It hyperlinks
 Supports OSC 8 hyperlinks.
+.It imagescroll
+Moves image content with scroll regions.
 .It ignorefkeys
 Ignore function keys from
 .Xr terminfo 5
 and use the
 .Nm
 internal set only.
+.It kittygraphics
+Supports the Kitty graphics protocol.
 .It margins
 Supports DECSLRM margins.
 .It mouse
@@ -5309,6 +5395,16 @@ For example:
 set \-s user\-keys[0] "\ee[5;30012\[ti]"
 bind User0 resize\-pane \-L 3
 .Ed
+.It Xo Ic utmp
+.Op Ic on | off
+.Xc
+Maintain utmp records for panes using
+.Xr utempter 3 .
+This option is unavailable if
+.Nm
+was built without
+.Xr utempter 3
+support.
 .It Xo Ic variation\-selector\-always\-wide
 .Op Cm on | off
 .Xc
@@ -5658,6 +5754,41 @@ is on.
 Formats are expanded, see the
 .Sx FORMATS
 section.
+.It Xo Ic side\-status
+.Op Cm off | left | right
+.Xc
+Show a vertical status line at the left or right of the terminal.
+The side status line uses the
+.Ic side\-status\-style
+colours, draws a vertical line on the edge next to the window area and is
+updated every
+.Ic status\-interval
+seconds like the status line.
+.It Ic side\-status\-format Ar format
+Specify the format used for the side status line.
+The format may produce multiple rows using the
+.Ic nl
+style or a newline character.
+.Pp
+Rows drawn with
+.Ic list=on
+are trimmed to the available height and scrolled to keep the row drawn with
+.Ic list=focus
+visible; rows drawn with
+.Ic list=left\-marker
+and
+.Ic list=right\-marker
+replace the first and last visible list row when rows are hidden above or
+below.
+.It Ic side\-status\-style Ar style
+Set the style of the side status line.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.It Ic side\-status\-width Ar width
+Set the width of the side status line.
 .It Xo Ic silence\-action
 .Op Cm any | none | current | other
 .Xc
@@ -6055,6 +6186,11 @@ and
 .Cm hybrid ,
 they use absolute line numbers.
 .Pp
+.It Xo Ic copy\-mode\-keep\-column
+.Op Cm on | off
+.Xc
+When on, keep the cursor column when moving vertically in copy mode.
+.Pp
 .It Xo Ic mode\-keys
 .Op Cm vi | emacs
 .Xc
@@ -6194,6 +6330,20 @@ see the
 .Sx STYLES
 section.
 Attributes are ignored.
+.Pp
+.It Xo Ic pane\-border\-type
+.Op Ic joined | separate | separate\-active
+.Xc
+Set how pane borders are drawn.
+If
+.Ic joined ,
+adjacent panes share a single border;
+.Ic separate ,
+a full border is drawn around each pane; and
+.Ic separate\-active ,
+panes are laid out as for
+.Ic separate
+but the border is only drawn around the active pane.
 .Pp
 .It Xo Ic pane\-scrollbars
 .Op Cm off | modal | on | auto\-hide
@@ -6828,13 +6978,19 @@ allows mouse events to be bound as keys.
 The name of each key is made up of a mouse event (such as
 .Ql MouseUp1 )
 and a location suffix, one of the following:
-.Bl -column "XXXXXXXXXXXXX" -offset indent
+.Bl -column "SideStatusControlN" -offset indent
 .It Li "Pane" Ta "the contents of a pane"
 .It Li "Border" Ta "a pane border"
 .It Li "Status" Ta "the status line window list"
 .It Li "StatusLeft" Ta "the left part of the status line"
 .It Li "StatusRight" Ta "the right part of the status line"
 .It Li "StatusDefault" Ta "any other part of the status line"
+.It Li "SideStatus" Ta "a tagged range in the side status line"
+.It Li "SideStatusLeft" Ta "a left range in the side status line"
+.It Li "SideStatusRight" Ta "a right range in the side status line"
+.It Li "SideStatusDefault" Ta "any other part of the side status line"
+.It Li "SideStatusBorder" Ta "the border between the side status line and panes"
+.It Li "SideStatusControlN" Ta "control range N in the side status line"
 .It Li "ScrollbarSlider" Ta "the scrollbar slider"
 .It Li "ScrollbarUp" Ta "above the scrollbar slider"
 .It Li "ScrollbarDown" Ta "below the scrollbar slider"
@@ -7443,6 +7599,7 @@ The following variables are available, where appropriate:
 .It Li "buffer_name" Ta "" Ta "Name of buffer"
 .It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
+.It Li "client_active_theme" Ta "" Ta "Theme in use"
 .It Li "client_activity" Ta "" Ta "Time client last had activity"
 .It Li "client_cell_height" Ta "" Ta "Height of each client cell in pixels"
 .It Li "client_cell_width" Ta "" Ta "Width of each client cell in pixels"
@@ -7462,6 +7619,7 @@ The following variables are available, where appropriate:
 .It Li "client_termfeatures" Ta "" Ta "Terminal features of client, if any"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
 .It Li "client_termtype" Ta "" Ta "Terminal type of client, if available"
+.It Li "client_theme" Ta "" Ta "Theme reported by the terminal (light or dark), if any"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_uid" Ta "" Ta "UID of client process"
 .It Li "client_user" Ta "" Ta "User of client process"
@@ -7470,7 +7628,9 @@ The following variables are available, where appropriate:
 .It Li "client_written" Ta "" Ta "Bytes written to client"
 .It Li "command" Ta "" Ta "Name of command in use, if any"
 .It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
+.It Li "command_list_description" Ta "" Ta "Command description if listing commands"
 .It Li "command_list_name" Ta "" Ta "Command name if listing commands"
+.It Li "command_list_name_width" Ta "" Ta "Maximum command name width in list"
 .It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
 .It Li "config_files" Ta "" Ta "List of configuration files loaded"
 .It Li "cursor_blinking" Ta "" Ta "1 if the cursor is blinking"
@@ -7499,6 +7659,7 @@ The following variables are available, where appropriate:
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
+.It Li "hook_command_line" Ta "" Ta "Command line reported for an OSC 133 command hook, if any"
 .It Li "hook_fire_count" Ta "" Ta "Number of times hook has fired"
 .It Li "hook_fire_time" Ta "" Ta "Time hook last fired"
 .It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
@@ -7513,6 +7674,7 @@ The following variables are available, where appropriate:
 .It Li "hook_window_name" Ta "" Ta "Name of window where hook was run, if any"
 .It Li "host" Ta "#H" Ta "Hostname of local host"
 .It Li "host_short" Ta "#h" Ta "Hostname of local host (no domain name)"
+.It Li "image_support" Ta "" Ta "1 if server has support for images"
 .It Li "insert_flag" Ta "" Ta "Pane insert flag"
 .It Li "key_string" Ta "" Ta "String representation of the key binding"
 .It Li "key_repeat" Ta "" Ta "1 if key binding is repeatable"
@@ -7529,6 +7691,8 @@ The following variables are available, where appropriate:
 .It Li "line" Ta "" Ta "Line number in the list"
 .It Li "loop_index" Ta "" Ta "Index of item in the W:, P:, S:, or L: loop"
 .It Li "loop_last_flag" Ta "" Ta "1 if last window, pane, session, client in the W:, P:, S:, or L: loop"
+.It Li "mouse_absolute_x" Ta "" Ta "Mouse X position in terminal, if any"
+.It Li "mouse_absolute_y" Ta "" Ta "Mouse Y position in terminal, if any"
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
 .It Li "mouse_button_flag" Ta "" Ta "Pane mouse button flag"
@@ -7566,6 +7730,7 @@ The following variables are available, where appropriate:
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
 .It Li "pane_command_duration" Ta "" Ta "Current or most recent OSC 133 command duration in seconds"
 .It Li "pane_command_end_time" Ta "" Ta "Time most recent OSC 133 command ended"
+.It Li "pane_command_line" Ta "" Ta "Current or most recent OSC 133 command line, if reported"
 .It Li "pane_command_running" Ta "" Ta "1 if an OSC 133 command is running"
 .It Li "pane_command_start_time" Ta "" Ta "Time current or most recent OSC 133 command started"
 .It Li "pane_command_status" Ta "" Ta "Exit status from most recent OSC 133 command"
@@ -7601,6 +7766,9 @@ The following variables are available, where appropriate:
 .It Li "pane_private_modes" Ta "" Ta "List of enabled DECSET private modes"
 .It Li "pane_pb_state" Ta "" Ta "Pane progress bar state, one of hidden, normal, error, indeterminate, paused (can be set by application)"
 .It Li "pane_pb_progress" Ta "" Ta "Pane progress bar progress percentage (can be set by application)"
+.It Li "pane_program_message" Ta "" Ta "OSC 7501 program message"
+.It Li "pane_program_name" Ta "" Ta "OSC 7501 program name"
+.It Li "pane_program_state" Ta "" Ta "OSC 7501 program state: idle, working, done, blocked or error"
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
@@ -7667,8 +7835,8 @@ The following variables are available, where appropriate:
 .It Li "session_stack" Ta "" Ta "Window indexes in most recent order"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
-.It Li "sixel_support" Ta "" Ta "1 if server has support for SIXEL"
 .It Li "start_time" Ta "" Ta "Server start time"
+.It Li "switch_item" Ta "" Ta "Original input line in switch mode"
 .It Li "synchronized_output_flag" Ta "" Ta "1 if pane has synchronized output enabled"
 .It Li "uid" Ta "" Ta "Server UID"
 .It Li "user" Ta "" Ta "Server user"
@@ -7844,6 +8012,8 @@ and
 .Ic list=right\-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
+.It Ic nl
+End the current row when drawn over multiple rows
 .It Ic noattr
 Do not copy attributes from the default style.
 .It Xo Ic push\-default ,
@@ -7871,7 +8041,22 @@ replaces the previous saved default).
 .Xc
 Mark a range for mouse events in the
 .Ic status\-format
+or
+.Ic side\-status\-format
 option.
+In the side status line, the bindings described below use
+.Ql SideStatus ,
+.Ql SideStatusLeft ,
+.Ql SideStatusRight
+and
+.Ql SideStatusControlN
+instead of
+.Ql Status ,
+.Ql StatusLeft ,
+.Ql StatusRight
+and
+.Ql ControlN .
+.Pp
 When a mouse event occurs in the
 .Ic range=left
 or
@@ -9024,6 +9209,8 @@ These are set automatically if the
 capability is present.
 .It Em \&Hls
 Set or clear a hyperlink annotation.
+.It Em \&Iscrl
+Indicates that the terminal moves image content with scroll regions.
 .It Em \&Nobr
 Tell
 .Nm

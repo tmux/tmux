@@ -53,8 +53,10 @@ jobs:
             build-essential \
             libevent-dev \
             libncurses-dev \
+            libpng-dev \
             libutf8proc-dev \
-            pkg-config
+            pkg-config \
+            zlib1g-dev
 
       - name: dependencies
         if: runner.os == 'macOS'
@@ -64,6 +66,7 @@ jobs:
             automake \
             bison \
             libevent \
+            libpng \
             jemalloc \
             make \
             ncurses \
@@ -79,7 +82,7 @@ jobs:
       - name: build
         run: |
           sh autogen.sh
-          ./configure ${{ matrix.configure }}
+          ./configure --enable-images ${{ matrix.configure }}
           ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test

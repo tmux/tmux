@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Server socket creation failures must produce a nonzero client exit status.
 
 PATH=/bin:/usr/bin
@@ -11,7 +13,7 @@ export TERM
 # Root bypasses directory mode bits, so it cannot trigger this failure.
 [ "$(id -u)" -eq 0 ] && exit 0
 
-TMP=$(mktemp -d) || exit 1
+TMP=$(test_tmpdir) || exit 1
 SOCKET="$TMP/ro/socket"
 
 cleanup()

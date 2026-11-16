@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-swap-window.c,v 1.30 2026/07/27 08:03:01 nicm Exp $ */
+/* $OpenBSD: cmd-swap-window.c,v 1.31 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -30,6 +30,7 @@ static enum cmd_retval	cmd_swap_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_swap_window_entry = {
 	.name = "swap-window",
+	.description = "Swap two windows.",
 	.alias = "swapw",
 
 	.args = { "ds:t:", 0, 0, NULL },

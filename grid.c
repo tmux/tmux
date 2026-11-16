@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.159 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.161 2026/10/12 15:40:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -18,9 +18,6 @@
 
 #include <sys/types.h>
 
-#ifdef __APPLE__
-#include <assert.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,7 +42,7 @@ const struct grid_cell grid_default_cell = {
 
 /*
  * Padding grid cell data. Padding cells are the only zero width cell that
- * appears in the grid - because of this, they are always extended cells.
+ * appears in the grid.
  */
 static const struct grid_cell grid_padding_cell = {
 	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 8, 0
@@ -58,42 +55,6 @@ static const struct grid_cell grid_cleared_cell = {
 static const struct grid_cell_entry grid_cleared_entry = {
 	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
 };
-
-#ifdef __APPLE__
-void
-grid_check_is_clear(struct grid *gd)
-{
-	struct grid_line	*gl;
-	u_int			 yy, ny;
-
-	assert(gd != NULL);
-
-	if (gd->sy == 0) {
-		assert(gd->linedata == NULL);
-		return;
-	}
-
-	assert(gd->linedata != NULL);
-
-	ny = gd->hsize + gd->sy;
-	for (yy = 0; yy < ny; yy++) {
-		gl = &gd->linedata[yy];
-
-		assert(gl->celldata == NULL);
-		assert(gl->cellused == 0);
-		assert(gl->cellsize == 0);
-		assert(gl->extddata == NULL);
-		assert(gl->extdsize == 0);
-		assert(gl->flags == 0);
-		assert(gl->time == 0);
-	}
-}
-#else
-void
-grid_check_is_clear(__unused struct grid *gd)
-{
-}
-#endif
 
 /* Store cell in entry. */
 static void
@@ -347,12 +308,9 @@ grid_free_line(struct grid *gd, u_int py)
 {
 	struct grid_line	*gl = &gd->linedata[py];
 
-#ifdef __APPLE__
-	assert(gl->cellused <= gl->cellsize);
-	assert(gl->extdsize == 0 || gl->extddata != NULL);
-	assert(gl->cellsize == 0 || gl->celldata != NULL);
+#ifdef ENABLE_IMAGES
+	image_grid_free_line(gd, gl);
 #endif
-
 	free(gl->celldata);
 	free(gl->extddata);
 	memset(gl, 0, sizeof *gl);
@@ -384,11 +342,6 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 
 	if (gd->sy != 0)
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
-
-#ifdef __APPLE__
-	assert(gd->hsize == 0);
-#endif
-	grid_check_is_clear(gd);
 	return (gd);
 }
 
@@ -397,6 +350,9 @@ void
 grid_destroy(struct grid *gd)
 {
 	grid_free_lines(gd, 0, gd->hsize + gd->sy);
+#ifdef ENABLE_IMAGES
+	image_grid_free(gd);
+#endif
 	free(gd->linedata);
 	free(gd);
 }
@@ -642,7 +598,10 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 	if (gce->flags & GRID_FLAG_BG256)
 		gc->bg |= COLOUR_FLAG_256;
 	gc->us = 8;
-	utf8_set(&gc->data, gce->data.data);
+	if (gc->flags & GRID_FLAG_PADDING)
+		memcpy(&gc->data, &grid_padding_cell.data, sizeof gc->data);
+	else
+		utf8_set(&gc->data, gce->data.data);
 	gc->link = 0;
 }
 
@@ -739,6 +698,9 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 		return;
 	if (grid_check_y(gd, __func__, py + ny - 1) != 0)
 		return;
+#ifdef ENABLE_IMAGES
+	image_grid_overwrite(gd, px, py, nx, ny);
+#endif
 
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
@@ -764,7 +726,10 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 void
 grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 {
-	u_int	yy;
+#ifdef ENABLE_IMAGES
+	struct image_line	*images;
+#endif
+	u_int			 yy;
 
 	if (ny == 0)
 		return;
@@ -775,8 +740,16 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 		return;
 
 	for (yy = py; yy < py + ny; yy++) {
+#ifdef ENABLE_IMAGES
+		image_grid_overwrite(gd, 0, yy, gd->sx, 1);
+		images = gd->linedata[yy].images;
+		gd->linedata[yy].images = NULL;
+#endif
 		grid_free_line(gd, yy);
 		grid_empty_line(gd, yy, bg);
+#ifdef ENABLE_IMAGES
+		gd->linedata[yy].images = images;
+#endif
 	}
 	if (py != 0)
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
@@ -841,6 +814,9 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
 
 	grid_expand_line(gd, py, px + nx, 8);
 	grid_expand_line(gd, py, dx + nx, 8);
+#ifdef ENABLE_IMAGES
+	image_grid_move_cells(gd, dx, px, py, nx);
+#endif
 	memmove(&gl->celldata[dx], &gl->celldata[px],
 	    nx * sizeof *gl->celldata);
 	if (dx + nx > gl->cellused)
@@ -1280,6 +1256,9 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 {
 	struct grid_line	*dstl, *srcl;
 	u_int			 yy;
+#ifdef ENABLE_IMAGES
+	u_int			 ody = dy, osy = sy;
+#endif
 
 	if (dy + ny > dst->hsize + dst->sy)
 		ny = dst->hsize + dst->sy - dy;
@@ -1292,6 +1271,9 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		dstl = &dst->linedata[dy];
 
 		memcpy(dstl, srcl, sizeof *dstl);
+#ifdef ENABLE_IMAGES
+		dstl->images = NULL;
+#endif
 		if (srcl->cellsize != 0) {
 			dstl->celldata = xreallocarray(NULL,
 			    srcl->cellsize, sizeof *dstl->celldata);
@@ -1311,6 +1293,9 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		sy++;
 		dy++;
 	}
+#ifdef ENABLE_IMAGES
+	image_grid_duplicate_lines(dst, ody, src, osy, ny);
+#endif
 }
 
 /* Mark line as dead. */
@@ -1435,6 +1420,11 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 			break;
 		line = yy + 1 + lines;
 
+#ifdef ENABLE_IMAGES
+		if (image_grid_line_has_images(&gd->linedata[line]))
+			break;
+#endif
+
 		/* Consume empty lines, including any markers. */
 		if (~gd->linedata[line].flags & GRID_LINE_WRAPPED)
 			wrapped = 0;
@@ -1504,8 +1494,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 
 	/* Remove the lines that were completely consumed. */
 	for (i = yy + 1; i < yy + 1 + lines; i++) {
-		free(gd->linedata[i].celldata);
-		free(gd->linedata[i].extddata);
+		grid_free_line(gd, i);
 		grid_reflow_dead(&gd->linedata[i]);
 	}
 
@@ -1612,6 +1601,13 @@ grid_reflow(struct grid *gd, u_int sx)
 		gl = &gd->linedata[yy];
 		if (gl->flags & GRID_LINE_DEAD)
 			continue;
+
+#ifdef ENABLE_IMAGES
+		if (image_grid_line_has_images(gl)) {
+			grid_reflow_move(target, gl);
+			continue;
+		}
+#endif
 
 		/*
 		 * Work out the width of this line. at is the point at which

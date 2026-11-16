@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-move-window.c,v 1.34 2021/08/21 10:22:39 nicm Exp $ */
+/* $OpenBSD: cmd-move-window.c,v 1.35 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -30,6 +30,7 @@ static enum cmd_retval	cmd_move_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_move_window_entry = {
 	.name = "move-window",
+	.description = "Move a window between sessions.",
 	.alias = "movew",
 
 	.args = { "abdkrs:t:", 0, 0, NULL },
@@ -44,6 +45,7 @@ const struct cmd_entry cmd_move_window_entry = {
 
 const struct cmd_entry cmd_link_window_entry = {
 	.name = "link-window",
+	.description = "Link a window into another session.",
 	.alias = "linkw",
 
 	.args = { "abdks:t:", 0, 0, NULL },

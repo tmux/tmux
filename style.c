@@ -1,4 +1,4 @@
-/* $OpenBSD: style.c,v 1.47 2026/06/29 17:08:52 nicm Exp $ */
+/* $OpenBSD: style.c,v 1.49 2026/11/13 09:58:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -41,10 +41,10 @@ static struct style style_default = {
 	STYLE_RANGE_NONE, 0, "",
 
 	STYLE_WIDTH_DEFAULT, 0, STYLE_PAD_DEFAULT,
+	0,
+	0,
 
-	STYLE_DEFAULT_BASE,
-
-	0
+	STYLE_DEFAULT_BASE
 };
 
 /*
@@ -70,7 +70,7 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 {
 	struct style	saved;
 	const char	delimiters[] = " ,\n", *errstr;
-	char		tmp[256], *found;
+	char		tmp[MAX_HYPERLINK_URI + 32], *found;
 	int		value;
 	size_t		end;
 	u_int		n;
@@ -110,6 +110,8 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			sy->default_type = STYLE_DEFAULT_POP;
 		else if (strcasecmp(tmp, "set-default") == 0)
 			sy->default_type = STYLE_DEFAULT_SET;
+		else if (strcasecmp(tmp, "nl") == 0)
+			sy->nl = 1;
 		else if (strcasecmp(tmp, "nolist") == 0)
 			sy->list = STYLE_LIST_OFF;
 		else if (strncasecmp(tmp, "list=", 5) == 0) {
@@ -305,7 +307,7 @@ style_tostring(struct style *sy)
 	struct grid_cell	*gc = &sy->gc;
 	int			 off = 0;
 	const char		*comma = "", *tmp = "", *uri;
-	static char		 s[2048];
+	static char		 s[MAX_HYPERLINK_URI + 2048];
 	char			 b[21];
 
 	*s = '\0';
@@ -573,6 +575,21 @@ style_ranges_get_range(struct style_ranges *srs, u_int x)
 		return (NULL);
 	TAILQ_FOREACH(sr, srs, entry) {
 		if (x >= sr->start && x < sr->end)
+			return (sr);
+	}
+	return (NULL);
+}
+
+/* Get range for position and row from style ranges. */
+struct style_range *
+style_ranges_get_range_at(struct style_ranges *srs, u_int x, u_int y)
+{
+	struct style_range	*sr;
+
+	if (srs == NULL)
+		return (NULL);
+	TAILQ_FOREACH(sr, srs, entry) {
+		if (x >= sr->start && x < sr->end && y == sr->y)
 			return (sr);
 	}
 	return (NULL);

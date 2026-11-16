@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.216 2026/10/06 17:49:45 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.222 2026/10/26 10:14:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -73,6 +73,10 @@ static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *, int);
 static int	tty_keys_sync(struct tty *, const char *, size_t, size_t *,
 		    int);
+#ifdef ENABLE_IMAGES
+static int	tty_keys_kitty_graphics(struct tty *, const char *, size_t,
+		    size_t *, int);
+#endif
 static int	tty_keys_colours1(struct tty *, const char *, size_t, size_t *,
 		    int);
 static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *,
@@ -94,7 +98,10 @@ static const struct {
 	{ KEYC_REPORT_XDA, tty_keys_extended_device_attributes },
 	{ KEYC_REPORT_COLOURS, tty_keys_colours1 },
 	{ KEYC_REPORT_PALETTE, tty_keys_palette },
-	{ KEYC_REPORT_WINSZ, tty_keys_winsz }
+	{ KEYC_REPORT_WINSZ, tty_keys_winsz },
+#ifdef ENABLE_IMAGES
+	{ KEYC_REPORT_KITTY_GRAPHICS, tty_keys_kitty_graphics }
+#endif
 };
 
 /* A key tree entry. */
@@ -937,8 +944,8 @@ partial_key:
 		if (delay < 500)
 			delay = 500;
 	}
-	if (tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    tty->flags & (TTY_OSC52QUERY|TTY_WINSIZEQUERY) ||
+	if (tty->flags & (TTY_WAITFG|TTY_WAITBG|TTY_OSC52QUERY) ||
+	    tty->flags & (TTY_WINSZQUERY|TTY_WINSZPIXELS) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay (active query)", c->name);
@@ -1534,6 +1541,55 @@ tty_keys_sync(struct tty *tty, const char *buf, size_t len, size_t *size,
 	return (0);
 }
 
+#ifdef ENABLE_IMAGES
+/*
+ * Handle a Kitty graphics query response. Returns 0 for success, -1 for
+ * failure, 1 for partial.
+ */
+static int
+tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
+    size_t *size, int apply)
+{
+	struct client		*c = tty->client;
+	static const char	 prefix[] = "\033_Gi=31;";
+	size_t			 i, end;
+
+	*size = 0;
+	if (tty->flags & TTY_HAVEKITTYGRAPHICS)
+		return (-1);
+
+	for (i = 0; i < (sizeof prefix) - 1; i++) {
+		if (i == len)
+			return (1);
+		if (buf[i] != prefix[i])
+			return (-1);
+	}
+	for (end = i; end < len; end++) {
+		if (buf[end] == '\033')
+			break;
+		if (buf[end] < ' ' || buf[end] > '~')
+			return (-1);
+	}
+	if (end == len || end + 1 == len)
+		return (1);
+	if (end == i || buf[end + 1] != '\\')
+		return (-1);
+	*size = end + 2;
+	if (!apply)
+		return (0);
+
+	if (end - i == 2 && memcmp(buf + i, "OK", 2) == 0) {
+		tty_parse_client_features(c, "kittygraphics", ",");
+		tty_update_features(tty);
+	}
+	log_debug("%s: received Kitty graphics response %.*s", c->name,
+	    (int)*size, buf);
+	tty->flags |= TTY_HAVEKITTYGRAPHICS;
+
+	return (0);
+}
+#endif
+
 /*
  * Handle secondary device attributes input. Returns 0 for success, -1 for
  * failure, 1 for partial.
@@ -1675,6 +1731,8 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(c, "mintty", 0);
 	else if (strncmp(tmp, "foot(", 5) == 0)
 		tty_default_features(c, "foot", 0);
+	else if (strncmp(tmp, "kitty(", 6) == 0)
+		tty_default_features(c, "kitty", 0);
 	else if (strncmp(tmp, "WezTerm ", 7) == 0)
 		tty_default_features(c, "WezTerm", 0);
 	else if (strncmp(tmp, "ghostty ", 8) == 0)
@@ -1783,8 +1841,12 @@ tty_keys_colours1(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 	n = tty_keys_colours(tty, buf, len, size, &tty->fg, &tty->bg);
 	if (n == 0) {
-		if (tty->bg != bg)
+		if (tty->bg != bg) {
 			server_client_update_theme_colours(c);
+			if (tty->flags & TTY_OPENED)
+				tty_invalidate(tty);
+			server_redraw_client(c);
+		}
 		session_theme_changed(c->session);
 	}
 	return (n);
@@ -1869,11 +1931,12 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 	size_t		 end;
 	char		 tmp[64];
 	u_int		 sx, sy, xpixel, ypixel, char_x, char_y;
+	int		 resize;
 
 	*size = 0;
 
 	/* If we did not request this, ignore it. */
-	if (!(tty->flags & TTY_WINSIZEQUERY))
+	if (!(tty->flags & (TTY_WINSZQUERY|TTY_WINSZPIXELS)))
 		return (-1);
 
 	/* First two bytes are always \033[. */
@@ -1886,10 +1949,7 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 	if (len == 2)
 		return (1);
 
-	/*
-	 * Stop at either 't' or anything that isn't a
-	 * number or ';'.
-	 */
+	/* Stop at either 't' or anything that isn't a number or ';'. */
 	for (end = 2; end < len && end != sizeof tmp; end++) {
 		if (buf[end] == 't')
 			break;
@@ -1907,25 +1967,42 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 	/* Try to parse the window size sequence. */
 	if (sscanf(tmp, "8;%u;%u", &sy, &sx) == 2) {
+		if (!(tty->flags & TTY_WINSZQUERY))
+			return (-1);
 		*size = end + 1;
 		if (!apply)
 			return (0);
 
-		/* Window size in characters. */
-		tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel);
+		resize = (tty->flags & TTY_WINSZAPPLY);
+		tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZAPPLY);
+
+		if (sx == 0 ||
+		    sy == 0 ||
+		    sx > CLIENT_MAX_TERM_SIZE ||
+		    sy > CLIENT_MAX_TERM_SIZE) {
+			log_debug("%s: ignoring reported size %ux%u",
+			    c->name, sx, sy);
+			return (0);
+		}
+		if (resize)
+			server_client_size_changed(c, sx, sy);
+		else if (tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel))
+			server_redraw_client(c);
 		return (0);
 	} else if (sscanf(tmp, "4;%u;%u", &ypixel, &xpixel) == 2) {
+		if (!(tty->flags & TTY_WINSZPIXELS))
+			return (-1);
 		*size = end + 1;
 		if (!apply)
 			return (0);
+		tty->flags &= ~TTY_WINSZPIXELS;
 
-		/* Window size in pixels. */
 		char_x = (xpixel && tty->sx) ? xpixel / tty->sx : 0;
 		char_y = (ypixel && tty->sy) ? ypixel / tty->sy : 0;
-		tty_set_size(tty, tty->sx, tty->sy, char_x, char_y);
+		if (tty_set_size(tty, tty->sx, tty->sy, char_x, char_y))
+			server_redraw_client(c);
 		tty_invalidate(tty);
-
-		tty->flags &= ~TTY_WINSIZEQUERY;
+		recalculate_sizes();
 		return (0);
 	}
 

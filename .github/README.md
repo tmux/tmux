@@ -93,3 +93,9 @@ https://groups.google.com/forum/#!forum/tmux-users
 Subscribe by sending an email to:
 
 tmux-users+subscribe@googlegroups.com
+
+## Merchandise
+
+tmux merchandise is available from
+[Commit Goods](https://commitgoods.com/collections/tmux?utm_source=github&utm_medium=referral) -
+purchases help support the tmux project.

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-switch-client.c,v 1.75 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: cmd-switch-client.c,v 1.77 2026/10/15 07:25:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -33,6 +33,7 @@ static enum cmd_retval	cmd_switch_client_exec(struct cmd *,
 
 const struct cmd_entry cmd_switch_client_entry = {
 	.name = "switch-client",
+	.description = "Switch a client to another session.",
 	.alias = "switchc",
 
 	.args = { "c:EFlnO:pt:rT:Z", 0, 0, NULL },
@@ -65,6 +66,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct sort_criteria	 sort_crit;
 	uid_t			 uid;
 
+	if (c != NULL && (c->flags & CLIENT_READONLY) && c != tc) {
+		cmdq_error(item, "client is read-only");
+		return (CMD_RETURN_ERROR);
+	}
+
 	if (tflag != NULL &&
 	    (tflag[strcspn(tflag, ":.%")] != '\0' || strcmp(tflag, "=") == 0)) {
 		type = CMD_FIND_PANE;
@@ -78,6 +84,12 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	s = target.s;
 	wl = target.wl;
 	wp = target.wp;
+
+	if (c != NULL && (c->flags & CLIENT_READONLY) &&
+	    (wl != s->curw || (wp != NULL && wp != wp->window->active))) {
+		cmdq_error(item, "client is read-only");
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (args_has(args, 'r')) {
 		if (tc->flags & CLIENT_READONLY) {
@@ -156,7 +168,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (!args_has(args, 'E'))
+	if (!args_has(args, 'E') && (~tc->flags & CLIENT_READONLY))
 		environ_update(s->options, tc->environ, s->environ);
 
 	server_client_set_session(tc, s);

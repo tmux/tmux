@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-set-buffer.c,v 1.38 2026/08/24 07:05:23 nicm Exp $ */
+/* $OpenBSD: cmd-set-buffer.c,v 1.39 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_set_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_set_buffer_entry = {
 	.name = "set-buffer",
+	.description = "Create or modify a paste buffer.",
 	.alias = "setb",
 
 	.args = { "ab:t:n:w", 0, 1, NULL },
@@ -43,6 +44,7 @@ const struct cmd_entry cmd_set_buffer_entry = {
 
 const struct cmd_entry cmd_delete_buffer_entry = {
 	.name = "delete-buffer",
+	.description = "Delete a paste buffer.",
 	.alias = "deleteb",
 
 	.args = { "b:", 0, 0, NULL },

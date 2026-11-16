@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-set-environment.c,v 1.29 2025/04/09 06:27:43 nicm Exp $ */
+/* $OpenBSD: cmd-set-environment.c,v 1.30 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_set_environment_exec(struct cmd *,
 
 const struct cmd_entry cmd_set_environment_entry = {
 	.name = "set-environment",
+	.description = "Set or remove an environment variable.",
 	.alias = "setenv",
 
 	.args = { "Fhgrt:u", 1, 2, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.57 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.60 2026/11/12 09:39:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -140,6 +140,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			}
 		}
 
+		window_unzoom(w, 1);
 		sc->wp0 = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, sc->wp0, entry);
 
@@ -322,11 +323,13 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			sc->wp0->event = NULL;
 		}
 		if (sc->wp0->fd != -1) {
+			window_pane_utmp_remove(sc->wp0);
 			close(sc->wp0->fd);
 			sc->wp0->fd = -1;
 		}
 		window_pane_reset_mode_all(sc->wp0);
-		screen_reinit(&sc->wp0->base, 0);
+		window_pane_clear_program_status(sc->wp0, 1);
+		screen_reinit(&sc->wp0->base);
 		if (sc->wp0->ictx != NULL) {
 			input_free(sc->wp0->ictx);
 			sc->wp0->ictx = NULL;
@@ -482,6 +485,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	new_wp->pid = fdforkpty(ptm_fd, &new_wp->fd, new_wp->tty, NULL, &ws);
 	if (new_wp->pid == -1) {
 		xasprintf(cause, "fork failed: %s", strerror(errno));
+		if (actual_cwd != NULL &&
+		    chdir(path) != 0 &&
+		    (home == NULL || chdir(home) != 0))
+			chdir("/");
 		new_wp->fd = -1;
 		if (~sc->flags & SPAWN_RESPAWN) {
 			server_client_remove_pane(new_wp);
@@ -579,16 +586,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	_exit(1);
 
 complete:
-#ifdef HAVE_UTEMPTER
-	if (~new_wp->flags & PANE_EMPTY) {
-		xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), new_wp->id);
-		utempter_add_record(new_wp->fd, cp);
-		kill(getpid(), SIGCHLD);
-		free(cp);
-	}
-#endif
-
 	new_wp->flags &= ~PANE_EXITED;
+	window_pane_utmp_add(new_wp);
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	window_pane_set_event(new_wp);

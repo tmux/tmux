@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Version 1 layouts must reject excessive nesting without losing the session or
 # changing its layout. Check both split types and the depth limit boundary.
 
@@ -8,7 +10,7 @@ TERM=screen
 export PATH TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX="$TEST_TMUX -S$DIR/socket -f/dev/null"
 
 fail()

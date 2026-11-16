@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise screen-redraw.c drawing of floating panes: their borders and titles,
 # clipping at the window edge, and the interaction with the area outside the
 # window (when the window is smaller than the attached client).
@@ -32,31 +34,18 @@ fail() {
 compare() {
 	if [ -n "$GENERATE" ]; then
 		sleep 1
-		$TMUX capturep -p $2 >$TMP || exit 1
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		$TMUX capturep -p $2 >"$TMP" || exit 1
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
-		return
+	else
+		wait_until capture_matches_file "$RESULTS/$1.result" "$TMP" $TMUX capturep -p $2 ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
-
-	tries=0
-	while [ "$tries" -lt 100 ]; do
-		$TMUX capturep -p $2 >$TMP || exit 1
-		cmp -s $TMP "$RESULTS/$1.result" && return
-		sleep 0.1
-		tries=$((tries + 1))
-	done
-	fail "scene $1 differs from $RESULTS/$1.result"
 }
 
 wait_for_pids() {
 	for pid in $1; do
-		tries=0
-		while kill -0 "$pid" 2>/dev/null; do
-			tries=$((tries + 1))
-			[ "$tries" -lt 100 ] || \
-				fail "timed out waiting for pane $pid to exit"
-			sleep 0.05
-		done
+		wait_for_exit "$pid" || fail "timed out waiting for pane $pid to exit"
 	done
 }
 

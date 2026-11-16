@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-windows.c,v 1.51 2026/09/08 10:20:08 nicm Exp $ */
+/* $OpenBSD: cmd-list-windows.c,v 1.53 2026/11/09 12:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -43,10 +43,11 @@ static enum cmd_retval	cmd_list_windows_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	.name = "list-windows",
+	.description = "List windows and their state.",
 	.alias = "lsw",
 
 	.args = { "aF:f:O:rt:", 0, 0, NULL },
-	.usage = "[-ar] [-F format] [-f filter] [-O order]"
+	.usage = "[-ar] [-F format] [-f filter] [-O order] "
 		 CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },

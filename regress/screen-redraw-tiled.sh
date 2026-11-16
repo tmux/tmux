@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise screen-redraw.c border drawing for non-floating (tiled) panes: the
 # border junctions where panes meet, and pane status lines/titles.
 #
@@ -38,14 +40,14 @@ fail() {
 }
 
 compare() {
-	sleep 1
-	$TMUX capturep -p >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -p >"$TMP" || exit 1
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until capture_matches_file "$RESULTS/$1.result" "$TMP" $TMUX capturep -p ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
 }
 

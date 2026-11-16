@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-show-prompt-history.c,v 1.5 2026/06/25 11:39:11 nicm Exp $ */
+/* $OpenBSD: cmd-show-prompt-history.c,v 1.6 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Anindya Mukherjee <anindya49@hotmail.com>
@@ -29,6 +29,7 @@ static enum cmd_retval	cmd_show_prompt_history_exec(struct cmd *,
 
 const struct cmd_entry cmd_show_prompt_history_entry = {
 	.name = "show-prompt-history",
+	.description = "Show interactive prompt history.",
 	.alias = "showphist",
 
 	.args = { "T:", 0, 0, NULL },
@@ -40,6 +41,7 @@ const struct cmd_entry cmd_show_prompt_history_entry = {
 
 const struct cmd_entry cmd_clear_prompt_history_entry = {
 	.name = "clear-prompt-history",
+	.description = "Clear interactive prompt history.",
 	.alias = "clearphist",
 
 	.args = { "T:", 0, 0, NULL },

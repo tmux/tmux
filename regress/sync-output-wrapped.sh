@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # When only some lines are redrawn after a synchronized update, a line
 # following a wrapped line must be drawn at its own position, not where the
 # cursor happens to be.
@@ -11,7 +13,7 @@ export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 
@@ -28,8 +30,8 @@ fail()
 
 cleanup()
 {
-	$OUTER kill-server 2>/dev/null
-	$INNER kill-server 2>/dev/null
+	stop_server $OUTER || exit 1
+	stop_server $INNER || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15

@@ -14,8 +14,8 @@ export PATH TERM LC_ALL
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
 DIR=$(mktemp -d) || exit 1
-INNER_NAME=testA$
-OUTER_NAME=testB$
+INNER_NAME=testA$$
+OUTER_NAME=testB$$
 INNER="$TEST_TMUX -L$INNER_NAME -f/dev/null"
 OUTER="$TEST_TMUX -L$OUTER_NAME -f/dev/null"
 EMITTER=$DIR/emitter.pl
@@ -95,8 +95,8 @@ PERL
 
 for margins in off on; do
 	if [ "$margins" = on ]; then
-		INNER_NAME=testC$
-		OUTER_NAME=testD$
+		INNER_NAME=testC$$
+		OUTER_NAME=testD$$
 		INNER="$TEST_TMUX -L$INNER_NAME -f/dev/null"
 		OUTER="$TEST_TMUX -L$OUTER_NAME -f/dev/null"
 	fi

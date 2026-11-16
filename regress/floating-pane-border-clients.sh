@@ -2,6 +2,7 @@
 
 # Damage-only redraws must evaluate both active and inactive border styles
 # for each client, even though the cached border cells belong to the pane.
+# Exercise client-dependent colours and dim values separately.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -60,7 +61,7 @@ use strict;
 use warnings;
 
 $| = 1;
-for my $phase (1 .. 2) {
+for my $phase (1 .. 4) {
 	while (!-e "$ENV{TRIGGER}-$phase") {
 		select undef, undef, undef, 0.01;
 	}
@@ -76,6 +77,7 @@ $INNER set -g status off || exit 1
 $INNER set -g window-size manual || exit 1
 $INNER set -g automatic-rename off || exit 1
 $INNER set -g status-interval 0 || exit 1
+$INNER set -g terminal-features '*:RGB' || exit 1
 $INNER set -g pane-border-lines simple || exit 1
 $INNER set -g pane-border-status top || exit 1
 $INNER set -g pane-border-format 'CLIENT=#{client_name}' || exit 1
@@ -96,40 +98,65 @@ wait_for_clients
 
 NAME1=$($OUTER display-message -p -t "$LEFT" '#{pane_tty}') || exit 1
 NAME2=$($OUTER display-message -p -t "$RIGHT" '#{pane_tty}') || exit 1
-STYLE="fg=#{?#{==:#{client_name},$NAME1},red,blue}"
-$INNER set -g pane-border-style "$STYLE" || exit 1
-$INNER set -g pane-active-border-style "$STYLE" || exit 1
-
 # Capture just the floating pane's rows, excluding the acknowledgement in
 # the tiled pane. Exercise each cache by changing the floating pane's focus.
 phase=1
-while [ "$phase" -le 2 ]; do
-	if [ "$phase" -eq 2 ]; then
-		$INNER select-pane -t "$FLOAT" || exit 1
+for mode in colour dim; do
+	if [ "$mode" = colour ]; then
+		STYLE="fg=#{?#{==:#{client_name},$NAME1},red,blue}"
+		ACTIVE_STYLE=$STYLE
+	else
+		STYLE="fg=#c8c8c8,bg=#646464,dim=#{?#{==:#{client_name},$NAME1},25,50}%"
+		ACTIVE_STYLE="fg=#c8c8c8,bg=#646464,dim=#{?#{==:#{client_name},$NAME1},50,75}%"
 	fi
-	$INNER refresh-client -t "$NAME1" || exit 1
-	$INNER refresh-client -t "$NAME2" || exit 1
-	sleep 0.5
-	for target in "$LEFT" "$RIGHT"; do
-		$OUTER capture-pane -pe -S 5 -E 10 -t "$target" \
-		    >"$DIR/before-$target" || exit 1
-	done
-	RED=$(printf '\033[31m')
-	BLUE=$(printf '\033[34m')
-	grep -Fq "$RED" "$DIR/before-$LEFT" || fail "missing red border"
-	grep -Fq "$BLUE" "$DIR/before-$RIGHT" || fail "missing blue border"
+	$INNER set -g pane-border-style "$STYLE" || exit 1
+	$INNER set -g pane-active-border-style "$ACTIVE_STYLE" || exit 1
+	$INNER select-pane -t inner:0.0 || exit 1
 
-	: >"$DIR/trigger-$phase"
-	wait_for_marker "$LEFT" "DAMAGE$phase"
-	wait_for_marker "$RIGHT" "DAMAGE$phase"
-	sleep 0.2
-	for target in "$LEFT" "$RIGHT"; do
-		$OUTER capture-pane -pe -S 5 -E 10 -t "$target" \
-		    >"$CAPTURE" || exit 1
-		diff -u "$DIR/before-$target" "$CAPTURE" ||
-		    fail "phase $phase changed $target's border style"
+	for active in 0 1; do
+		if [ "$active" -eq 1 ]; then
+			$INNER select-pane -t "$FLOAT" || exit 1
+		fi
+		$INNER refresh-client -t "$NAME1" || exit 1
+		$INNER refresh-client -t "$NAME2" || exit 1
+		sleep 0.5
+		for target in "$LEFT" "$RIGHT"; do
+			$OUTER capture-pane -pe -S 5 -E 10 -t "$target" \
+			    >"$DIR/before-$target" || exit 1
+			if [ "$mode" = colour ]; then
+				if [ "$target" = "$LEFT" ]; then
+					FG=$(printf '\033[31m')
+				else
+					FG=$(printf '\033[34m')
+				fi
+			else
+				if [ "$target" = "$LEFT" ]; then
+					value=$((150 - active * 50))
+				else
+					value=$((100 - active * 50))
+				fi
+				FG=$(printf '\033[38;2;%d;%d;%dm' "$value" "$value" "$value")
+				value=$((value / 2))
+				BG=$(printf '\033[48;2;%d;%d;%dm' "$value" "$value" "$value")
+				grep -Fq "$BG" "$DIR/before-$target" ||
+				    fail "phase $phase: missing $target's dimmed background"
+			fi
+			grep -Fq "$FG" "$DIR/before-$target" ||
+			    fail "phase $phase: missing $target's border foreground"
+		done
+
+		: >"$DIR/trigger-$phase"
+		wait_for_marker "$LEFT" "DAMAGE$phase"
+		wait_for_marker "$RIGHT" "DAMAGE$phase"
+		sleep 0.2
+		for target in "$LEFT" "$RIGHT"; do
+			$OUTER capture-pane -pe -S 5 -E 10 -t "$target" \
+			    >"$CAPTURE" || exit 1
+			diff -u "$DIR/before-$target" "$CAPTURE" ||
+			    fail "phase $phase changed $target's border style"
+		done
+		phase=$((phase + 1))
 	done
-	phase=$((phase + 1))
 done
 
 exit 0

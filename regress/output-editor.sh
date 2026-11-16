@@ -1,12 +1,14 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Output and selection editors use either the default or an explicit command.
 
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -14,8 +16,8 @@ OUT="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$OUT kill-server 2>/dev/null
-	$TMUX kill-server 2>/dev/null
+	stop_server $OUT || exit 1
+	stop_server $TMUX || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup EXIT HUP INT TERM
@@ -54,6 +56,9 @@ done
 $TMUX set-option -g editor "sh $DIR/editor.sh default" || exit 1
 $TMUX set-option -g @output_editor "sh $DIR/editor.sh override" || exit 1
 $TMUX set-buffer sentinel || exit 1
+$TMUX capture-pane -p -t edit:0 >"$DIR/capture" || exit 1
+awk 'NR > 1 { printf "\n" } { printf "%s", $0 }' \
+    "$DIR/capture" >"$DIR/all-expected"
 $TMUX copy-mode -t edit:0 || exit 1
 
 $TMUX send-keys -t edit:0 -X open-output || exit 1
@@ -63,6 +68,11 @@ wait_editor default
 $TMUX send-keys -t edit:0 -X open-output '#{@output_editor}' || exit 1
 wait_editor override
 [ "$(cat "$DIR/override")" = "$(printf 'one\ntwo')" ] || exit 1
+
+$TMUX send-keys -t edit:0 -X open-output -a "sh $DIR/editor.sh all" || exit 1
+wait_editor all
+cmp "$DIR/all-expected" "$DIR/all" || exit 1
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
 
 $TMUX send-keys -t edit:0 -X select-output || exit 1
 $TMUX send-keys -t edit:0 -X open-selection "sh $DIR/editor.sh selection" || exit 1

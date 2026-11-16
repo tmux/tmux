@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.111 2026/09/22 14:10:26 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.115 2026/11/12 11:19:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -116,6 +116,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_IND] = { TTYCODE_STRING, "ind" },
 	[TTYC_INDN] = { TTYCODE_STRING, "indn" },
 	[TTYC_INVIS] = { TTYCODE_STRING, "invis" },
+	[TTYC_ISCRL] = { TTYCODE_FLAG, "Iscrl" },
 	[TTYC_KCBT] = { TTYCODE_STRING, "kcbt" },
 	[TTYC_KCUB1] = { TTYCODE_STRING, "kcub1" },
 	[TTYC_KCUD1] = { TTYCODE_STRING, "kcud1" },
@@ -254,6 +255,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_KUP6] = { TTYCODE_STRING, "kUP6" },
 	[TTYC_KUP7] = { TTYCODE_STRING, "kUP7" },
 	[TTYC_MS] = { TTYCODE_STRING, "Ms" },
+	[TTYC_NCV] = { TTYCODE_NUMBER, "ncv" },
 	[TTYC_NOBR] = { TTYCODE_STRING, "Nobr" },
 	[TTYC_OL] = { TTYCODE_STRING, "ol" },
 	[TTYC_OP] = { TTYCODE_STRING, "op" },
@@ -413,6 +415,8 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 				continue;
 
 			if (remove) {
+				if (code->type == TTYCODE_STRING)
+					free(code->value.string);
 				code->type = TTYCODE_NONE;
 				continue;
 			}
@@ -440,6 +444,42 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 		}
 
 		free(value);
+	}
+}
+
+static void
+tty_term_free_colours(struct tty_term *term)
+{
+	u_int	i;
+
+	for (i = 0; i < nitems(term->setaf); i++) {
+		free(term->setaf[i]);
+		term->setaf[i] = NULL;
+		free(term->setab[i]);
+		term->setab[i] = NULL;
+	}
+}
+
+static void
+tty_term_build_colours(struct tty_term *term)
+{
+	u_int		 i;
+	int		 setaf, setab;
+	const char	*s;
+
+	tty_term_free_colours(term);
+
+	setaf = tty_term_has(term, TTYC_SETAF);
+	setab = tty_term_has(term, TTYC_SETAB);
+	for (i = 0; i < nitems(term->setaf); i++) {
+		if (setaf) {
+			s = tty_term_string_i(term, TTYC_SETAF, i);
+			term->setaf[i] = xstrdup(s);
+		}
+		if (setab) {
+			s = tty_term_string_i(term, TTYC_SETAB, i);
+			term->setab[i] = xstrdup(s);
+		}
 	}
 }
 
@@ -528,6 +568,7 @@ tty_term_apply_overrides(struct tty_term *term)
 	for (; acs[0] != '\0' && acs[1] != '\0'; acs += 2)
 		term->acs[(u_char) acs[0]][0] = acs[1];
 
+	tty_term_build_colours(term);
 	tty_term_validate(term);
 }
 
@@ -709,6 +750,7 @@ tty_term_free(struct tty_term *term)
 			free(term->codes[i].value.string);
 	}
 	free(term->codes);
+	tty_term_free_colours(term);
 
 	LIST_REMOVE(term, entry);
 	free(term->name);
@@ -830,7 +872,15 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 const char *
 tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 {
-	const char	*x = tty_term_string(term, code), *s;
+	const char	*x, *s;
+
+	if (a >= 0 && (u_int)a < nitems(term->setaf)) {
+		if (code == TTYC_SETAF && term->setaf[a] != NULL)
+			return (term->setaf[a]);
+		if (code == TTYC_SETAB && term->setab[a] != NULL)
+			return (term->setab[a]);
+	}
+	x = tty_term_string(term, code);
 
 #if defined(HAVE_TIPARM_S)
 	s = tiparm_s(1, 0, x, a);

@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.251 2026/10/07 12:59:50 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.256 2026/11/16 14:00:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -53,6 +53,9 @@ static const char *options_table_status_justify_list[] = {
 static const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
 };
+static const char *options_table_side_status_list[] = {
+	"off", "left", "right", NULL
+};
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
@@ -78,6 +81,9 @@ static const char *options_table_pane_border_indicators_list[] = {
 static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", "spaces", "none",
 	"rounded", NULL
+};
+static const char *options_table_pane_border_type_list[] = {
+	"joined", "separate", "separate-active", NULL
 };
 static const char *options_table_menu_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
@@ -243,6 +249,50 @@ static const char *options_table_status_format_default[] = {
 	NULL
 };
 
+/* Side status line format. */
+#define OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+	"#[range=window|#{window_index} #{E:window-status-style}]" \
+	"#I:#W#{?window_flags,#{window_flags}, }" \
+	"#[norange default]#[nl]"
+#define OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+	"#[range=window|#{window_index} list=focus " \
+		"#{?#{!=:#{E:window-status-current-style},default}," \
+			"#{E:window-status-current-style}," \
+			"#{E:window-status-style}" \
+		"}" \
+	"]" \
+	"#I:#W#{?window_flags,#{window_flags}, }" \
+	"#[norange list=on default]#[nl]"
+#define OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+	"#[acs fg=themelightgrey]#{?window_end_flag,mq,tq}+" \
+	"#[noacs default] "
+#define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
+	"#[list=on]" \
+	"#[list=left-marker]#[acs]-#[noacs]#[nl]" \
+	"#[list=right-marker]#[acs].#[noacs]#[nl]" \
+	"#{?#{e|>:#{server_sessions},1}," \
+		"#{S:" \
+			"#[range=session|#{session_id}]" \
+			"#{session_name}" \
+			"#[norange]#[nl]" \
+			"#{?#{==:#{session_name},#{client_session}}," \
+				"#{W:" \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+				"," \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+				"}" \
+			",}" \
+		"}" \
+	"," \
+		"#{W:" \
+			OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+		"," \
+			OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+		"}" \
+	"}"
+
 /* Helpers for hook options. */
 #define OPTIONS_TABLE_HOOK(hook_name, default_value, hook_text) \
 	{ .name = hook_name, \
@@ -329,7 +379,8 @@ const struct options_table_entry options_table[] = {
 			 "server-info=show-messages -JT,"
 			 "info=show-messages -JT,"
 			 "choose-window=choose-tree -w,"
-			 "choose-session=choose-tree -s",
+			 "choose-session=choose-tree -s,"
+			 "help=list-commands -h",
 	  .separator = ",",
 	  .text = "Array of command aliases. "
 		  "Each entry is an alias and a command separated by '='."
@@ -457,6 +508,37 @@ const struct options_table_entry options_table[] = {
 	  .text = "Location of the command prompt history file. "
 		  "Empty does not write a history file."
 	},
+
+#ifdef ENABLE_IMAGES
+	{ .name = "image-size-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = UINT_MAX,
+	  .default_num = 64 * 1024 * 1024,
+	  .unit = "bytes",
+	  .text = "Maximum size of an uploaded or decoded image."
+	},
+
+	{ .name = "image-total-count-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = INT_MAX,
+	  .default_num = 1000,
+	  .text = "Maximum number of stored images."
+	},
+
+	{ .name = "image-total-size-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = UINT_MAX,
+	  .default_num = 1024 * 1024 * 1024,
+	  .unit = "bytes",
+	  .text = "Maximum total image pixel memory."
+	},
+#endif
 
 	{ .name = "input-buffer-size",
 	  .type = OPTIONS_TABLE_NUMBER,
@@ -656,7 +738,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},gray10,black}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},gray95,black}",
 	  .text = "Light theme colour for black."
 	},
 
@@ -664,7 +746,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},gray95,white}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},gray10,white}",
 	  .text = "Light theme colour for white."
 	},
 
@@ -742,6 +824,15 @@ const struct options_table_entry options_table[] = {
 		  "Each sequence in the list is translated into a key: "
 		  "'User0', 'User1' and so on."
 	},
+
+#ifdef HAVE_UTEMPTER
+	{ .name = "utmp",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to maintain utmp records."
+	},
+#endif
 
 	{ .name = "variation-selector-always-wide",
 	  .type = OPTIONS_TABLE_FLAG,
@@ -994,6 +1085,40 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}",
 	  .text = "Format of the terminal title to set."
+	},
+
+	{ .name = "side-status",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_side_status_list,
+	  .default_num = 0,
+	  .text = "Whether to draw a vertical status line at the left or "
+		  "right of the terminal."
+	},
+
+	{ .name = "side-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = OPTIONS_TABLE_SIDE_STATUS_FORMAT1,
+	  .text = "Format for the side status line."
+	},
+
+	{ .name = "side-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "fg=themegreen",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the side status line."
+	},
+
+	{ .name = "side-status-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 1,
+	  .maximum = SHRT_MAX,
+	  .default_num = 14,
+	  .text = "Width of the side status line."
 	},
 
 	{ .name = "silence-action",
@@ -1483,6 +1608,13 @@ const struct options_table_entry options_table[] = {
 	  .text = "Line number mode in copy mode."
 	},
 
+	{ .name = "copy-mode-keep-column",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 0,
+	  .text = "Keep the cursor column when moving vertically in copy mode."
+	},
+
 	{ .name = "fill-character",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -1636,6 +1768,17 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the pane status lines."
+	},
+
+	{ .name = "pane-border-type",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_border_type_list,
+	  .default_num = PANE_BORDER_TYPE_JOINED,
+	  .text = "How pane borders are drawn: 'joined' shares borders "
+		  "between adjacent panes, 'separate' draws a full border "
+		  "around each pane, 'separate-active' uses the same layout "
+		  "but only draws the border around the active pane."
 	},
 
 	{ .name = "pane-colours",
