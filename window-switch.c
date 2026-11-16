@@ -80,8 +80,6 @@ struct window_switch_itemdata {
 	int			 winlink;
 
 	uint64_t		 tag;
-	char			*text;
-	char			*selected_text; /* NULL if identical to text. */
 	const char		*value;
 	bitstr_t		*match;
 
@@ -121,8 +119,6 @@ static void
 window_switch_free_item(struct window_switch_itemdata *item)
 {
 	free(item->match);
-	free(item->text);
-	free(item->selected_text);
 	free(item);
 }
 
@@ -137,21 +133,48 @@ window_switch_add_item(struct window_switch_modedata *data)
 	return (item);
 }
 
-/* Cache the row format with and without selection. */
-static void
+/* Expand an item's format using its current target and selection state. */
+static char *
 window_switch_format_item(struct window_switch_modedata *data,
-    struct window_switch_itemdata *item, struct format_tree *ft)
+    struct window_switch_itemdata *item, int selected)
 {
-	char	*text;
+	struct format_tree	*ft;
+	struct session		*s = NULL;
+	struct winlink		*wl = NULL;
+	struct window_pane	*wp = NULL;
+	struct cmd_find_state	 fs;
+	char			*text;
 
-	format_add(ft, "is_selected", "0");
-	item->text = format_expand(ft, data->format);
-	format_add(ft, "is_selected", "1");
+	switch (item->type) {
+	case WINDOW_SWITCH_TYPE_SESSION:
+		s = session_find_by_id(item->session);
+		if (s == NULL)
+			return (NULL);
+		break;
+	case WINDOW_SWITCH_TYPE_WINDOW:
+		s = session_find_by_id(item->session);
+		if (s == NULL)
+			return (NULL);
+		wl = winlink_find_by_index(&s->windows, item->winlink);
+		if (wl == NULL)
+			return (NULL);
+		break;
+	case WINDOW_SWITCH_TYPE_INPUT:
+		cmd_find_from_pane(&fs, data->wp, 0);
+		s = fs.s;
+		wl = fs.wl;
+		wp = fs.wp;
+		break;
+	}
+
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, NULL, s, wl, wp);
+	format_add(ft, "is_selected", "%d", selected);
+	if (item->type == WINDOW_SWITCH_TYPE_INPUT)
+		format_add(ft, "switch_item", "%s", item->value);
 	text = format_expand(ft, data->format);
-	if (strcmp(text, item->text) == 0)
-		free(text);
-	else
-		item->selected_text = text;
+	format_free(ft);
+	return (text);
 }
 
 static void
@@ -159,10 +182,6 @@ window_switch_add_session(struct window_switch_modedata *data,
     struct session *s, u_int *order)
 {
 	struct window_switch_itemdata	*item;
-	struct format_tree		*ft;
-
-	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
-	format_defaults(ft, NULL, s, NULL, NULL);
 
 	item = window_switch_add_item(data);
 	item->type = WINDOW_SWITCH_TYPE_SESSION;
@@ -170,9 +189,6 @@ window_switch_add_session(struct window_switch_modedata *data,
 	item->winlink = -1;
 	item->tag = (uint64_t)s;
 	item->order = (*order)++;
-	window_switch_format_item(data, item, ft);
-
-	format_free(ft);
 }
 
 static void
@@ -180,10 +196,6 @@ window_switch_add_window(struct window_switch_modedata *data,
     struct winlink *wl, u_int *order)
 {
 	struct window_switch_itemdata	*item;
-	struct format_tree		*ft;
-
-	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
-	format_defaults(ft, NULL, wl->session, wl, NULL);
 
 	item = window_switch_add_item(data);
 	item->type = WINDOW_SWITCH_TYPE_WINDOW;
@@ -191,14 +203,10 @@ window_switch_add_window(struct window_switch_modedata *data,
 	item->winlink = wl->idx;
 	item->tag = (uint64_t)wl;
 	item->order = (*order)++;
-	window_switch_format_item(data, item, ft);
-
-	format_free(ft);
 }
 
 static void
-window_switch_add_input(struct window_switch_modedata *data, u_int idx,
-    struct format_tree *ft)
+window_switch_add_input(struct window_switch_modedata *data, u_int idx)
 {
 	struct window_switch_itemdata	*item;
 
@@ -206,8 +214,6 @@ window_switch_add_input(struct window_switch_modedata *data, u_int idx,
 	item->type = WINDOW_SWITCH_TYPE_INPUT;
 	item->value = data->lines[idx];
 	item->order = data->reversed ? data->lines_size - idx - 1 : idx;
-	format_add(ft, "switch_item", "%s", item->value);
-	window_switch_format_item(data, item, ft);
 }
 
 static int
@@ -237,8 +243,7 @@ window_switch_build(struct window_switch_modedata *data)
 	struct session			**sl;
 	struct winlink			**wl;
 	struct sort_criteria		  sort_crit;
-	struct cmd_find_state		  fs;
-	struct format_tree		 *ft;
+	char				 *text;
 
 	sort_crit.order = data->order;
 	sort_crit.reversed = data->reversed;
@@ -262,12 +267,8 @@ window_switch_build(struct window_switch_modedata *data)
 			window_switch_add_window(data, wl[i], &order);
 		break;
 	case WINDOW_SWITCH_TYPE_INPUT:
-		cmd_find_from_pane(&fs, data->wp, 0);
-		ft = format_create(NULL, NULL, FORMAT_NONE, 0);
-		format_defaults(ft, NULL, fs.s, fs.wl, fs.wp);
 		for (i = 0; i < data->lines_size; i++)
-			window_switch_add_input(data, i, ft);
-		format_free(ft);
+			window_switch_add_input(data, i);
 		break;
 	}
 
@@ -279,7 +280,12 @@ window_switch_build(struct window_switch_modedata *data)
 			continue;
 		}
 
-		item->match = fuzzy_match(f, item->text, sx, &item->score);
+		/* Selection styling must not affect filtering. */
+		text = window_switch_format_item(data, item, 0);
+		if (text == NULL)
+			continue;
+		item->match = fuzzy_match(f, text, sx, &item->score);
+		free(text);
 		if (item->match == NULL)
 			continue;
 		m = xreallocarray(m, n + 1, sizeof *m);
@@ -338,7 +344,7 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 	struct grid_cell		 mgc, sgc, gc;
 	const struct grid_cell		*dgc = &grid_default_cell;
 	struct prompt_draw_data		 pdd;
-	const char			*text;
+	char				*text;
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
@@ -357,9 +363,10 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 		if (idx >= data->matches_size)
 			break;
 		item = data->matches[idx];
-		text = item->text;
-		if (idx == data->current && item->selected_text != NULL)
-			text = item->selected_text;
+		text = window_switch_format_item(data, item,
+		    idx == data->current);
+		if (text == NULL)
+			continue;
 
 		screen_write_cursormove(&ctx, 0, i, 0);
 		if (idx != data->current)
@@ -368,6 +375,7 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 			screen_write_clearendofline(&ctx, sgc.bg);
 			format_draw(&ctx, &sgc, sx, text, NULL, 0);
 		}
+		free(text);
 
 		if (item->match == NULL)
 			continue;

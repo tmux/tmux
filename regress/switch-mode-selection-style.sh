@@ -72,7 +72,8 @@ def cells(line):
 
 
 # Wait for both rows and the expected selection to reach the attached client.
-def expect(selected, prefix="", selection_dim=False, custom=False, match=False):
+def expect(selected, prefix="", selection_dim=False, custom=False, match=False,
+    suffix=""):
     deadline = time.monotonic() + 5
     while True:
         capture = run(outer, "capture-pane", "-pe", "-t", "outer:0.0")
@@ -85,6 +86,8 @@ def expect(selected, prefix="", selection_dim=False, custom=False, match=False):
         try:
             assert len(rows) == 2, rows
             for name, (text, styles) in rows.items():
+                if suffix:
+                    assert text.endswith(suffix), (name, text, suffix)
                 if match and not custom:
                     assert styles[0] == (frozenset({1, 2}), 6, 5), styles
                     styles = styles[1:]
@@ -188,11 +191,24 @@ try:
         expect("bravo", match=True)
         cancel()
 
-    # Custom formats can choose secondary styling with the selection flag.
-    format = "STATE #{session_name} #{?is_selected,,#[dim]}secondary"
+    # Drawing uses current format values, with selection controlling styling.
+    format = "STATE #{session_name} #{?is_selected,,#[dim]}#{@secondary-label}"
     for mode in ("-s", "-w"):
+        run(inner, "set", "-g", "@secondary-label", "before")
+        run(inner, "switch-mode", mode, "-t", "alpha:0", "-F", format)
+        expect("alpha", "STATE ", suffix="before")
+        run(inner, "set", "-g", "@secondary-label", "after")
+        run(inner, "send-keys", "-t", "alpha:0", "Down")
+        expect("bravo", "STATE ", suffix="after")
+        cancel()
+
+    # Deleted targets must be skipped safely during drawing.
+    for mode in ("-s", "-w"):
+        run(inner, "new-session", "-d", "-s", "gone", "-n", "gone",
+            "exec sleep 100")
         run(inner, "switch-mode", mode, "-t", "alpha:0", "-F", format)
         expect("alpha", "STATE ")
+        run(inner, "kill-session", "-t", "gone")
         run(inner, "send-keys", "-t", "alpha:0", "Down")
         expect("bravo", "STATE ")
         cancel()
