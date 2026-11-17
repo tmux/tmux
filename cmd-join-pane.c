@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.74 2026/08/03 20:29:52 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.79 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -36,6 +36,7 @@ static void		cmd_join_pane_mouse_move(struct client *,
 
 const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
+	.description = "Move a pane into another window.",
 	.alias = "joinp",
 
 	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
@@ -50,6 +51,7 @@ const struct cmd_entry cmd_join_pane_entry = {
 
 const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
+	.description = "Move a pane or reposition a floating pane.",
 	.alias = "movep",
 
 	.args = { "bdD::fhMvl:L::P:R::s:t:U::X:Y:z:", 0, 0, NULL },
@@ -133,7 +135,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 	} else if (strcmp(position, "back") == 0) {
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		TAILQ_FOREACH(owp, &w->z_index, zentry) {
-			if (!window_pane_is_floating(owp))
+			if (!window_pane_is_floating_with_hidden(owp))
 				break;
 		}
 		if (owp != NULL)
@@ -142,24 +144,30 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 			TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	} else if (strcmp(position, "forward") == 0) {
 		owp = TAILQ_PREV(wp, window_panes_zindex, zentry);
+		while (owp != NULL && owp->layout_cell == NULL)
+			owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
 		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
 		}
 	} else if (strcmp(position, "backward") == 0) {
 		owp = TAILQ_NEXT(wp, zentry);
+		while (owp != NULL && owp->layout_cell == NULL)
+			owp = TAILQ_NEXT(owp, zentry);
 		if (owp != NULL && window_pane_is_floating(owp)) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
 		}
 	} else if (strcmp(position, "forward-loop") == 0) {
 		owp = TAILQ_PREV(wp, window_panes_zindex, zentry);
+		while (owp != NULL && owp->layout_cell == NULL)
+			owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		if (owp != NULL)
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
 		else {
 			TAILQ_FOREACH(owp, &w->z_index, zentry) {
-				if (!window_pane_is_floating(owp))
+				if (!window_pane_is_floating_with_hidden(owp))
 					break;
 			}
 			if (owp != NULL)
@@ -169,6 +177,8 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		}
 	} else if (strcmp(position, "backward-loop") == 0) {
 		owp = TAILQ_NEXT(wp, zentry);
+		while (owp != NULL && owp->layout_cell == NULL)
+			owp = TAILQ_NEXT(owp, zentry);
 		if (owp != NULL && window_pane_is_floating(owp)) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
@@ -299,7 +309,7 @@ cmd_join_pane_mouse_move(struct client *c, struct mouse_event *m)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	int			 y, ly, x, lx;
+	int			 y, ly, x, lx, oxoff, oyoff, osx, osy;
 
 	wp = cmd_mouse_pane(m, NULL, &wl);
 	if (wp == NULL) {
@@ -314,17 +324,31 @@ cmd_join_pane_mouse_move(struct client *c, struct mouse_event *m)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= (int)m->sidewidth)
+		x -= m->sidewidth;
+	else if (m->sideat > 0 && x >= m->sideat)
+		x = m->sideat - 1;
 	ly = m->ly + m->oy; lx = m->lx + m->ox;
 	if (m->statusat == 0 && ly >= (int)m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= m->statusat)
 		ly = m->statusat - 1;
+	if (m->sideat == 0 && lx >= (int)m->sidewidth)
+		lx -= m->sidewidth;
+	else if (m->sideat > 0 && lx >= m->sideat)
+		lx = m->sideat - 1;
 
 	if (x != lx || y != ly) {
+		oxoff = wp->xoff;
+		oyoff = wp->yoff;
+		osx = wp->sx;
+		osy = wp->sy;
+
 		lc->g.xoff += x - lx;
 		lc->g.yoff += y - ly;
 		layout_fix_panes(w, NULL);
-		server_redraw_window(w);
+
+		window_redraw_floating_pane(wp, oxoff, oyoff, osx, osy);
 		server_redraw_window_borders(w);
 	}
 }
@@ -347,8 +371,10 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 
 	n = 0;
 	TAILQ_FOREACH(owp, &w->z_index, zentry) {
-		if (!window_pane_is_floating(owp))
+		if (!window_pane_is_floating_with_hidden(owp))
 			break;
+		if (owp->layout_cell == NULL)
+			continue;
 		if (n >= z)
 			break;
 		n++;
@@ -450,7 +476,6 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "pane is not floating");
 				return (CMD_RETURN_ERROR);
 			}
-			server_unzoom_window(dst_w);
 			if ((s = args_get(args, 'P')) != NULL)
 				return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
 			if ((s = args_get(args, 'z')) != NULL)
@@ -495,7 +520,8 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	layout_close_pane(src_wp);
 
 	server_client_remove_pane(src_wp);
-	window_lost_pane(src_w, src_wp);
+	if (src_w != dst_w)
+		window_lost_pane(src_w, src_wp);
 	TAILQ_REMOVE(&src_w->panes, src_wp, entry);
 	TAILQ_REMOVE(&src_w->z_index, src_wp, zentry);
 

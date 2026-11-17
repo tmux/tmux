@@ -1,4 +1,4 @@
-/* $OpenBSD: window-buffer.c,v 1.52 2026/08/24 21:19:40 nicm Exp $ */
+/* $OpenBSD: window-buffer.c,v 1.53 2026/10/08 07:50:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -606,7 +606,8 @@ window_buffer_start_edit(struct window_buffer_modedata *data,
 	ed->name = xstrdup(paste_buffer_name(pb));
 	ed->pb = pb;
 
-	ed->editor = spawn_editor(c, buf, len, window_buffer_edit_close_cb, ed);
+	ed->editor = spawn_editor(c, buf, len, NULL,
+	    window_buffer_edit_close_cb, ed);
 	if (ed->editor == NULL)
 		window_buffer_finish_edit(ed);
 	else {

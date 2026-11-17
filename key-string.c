@@ -1,4 +1,4 @@
-/* $OpenBSD: key-string.c,v 1.77 2026/03/31 11:46:43 nicm Exp $ */
+/* $OpenBSD: key-string.c,v 1.80 2026/11/12 11:26:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -124,6 +124,21 @@ static const struct {
 	{ "KP.",	KEYC_KP_PERIOD|KEYC_KEYPAD },
 
 	/* Mouse keys. */
+	{ "MouseMoveSideStatus", KEYC_MOUSEMOVE_SIDE_STATUS },
+	{ "MouseMoveSideStatusLeft", KEYC_MOUSEMOVE_SIDE_STATUS_LEFT },
+	{ "MouseMoveSideStatusRight", KEYC_MOUSEMOVE_SIDE_STATUS_RIGHT },
+	{ "MouseMoveSideStatusDefault", KEYC_MOUSEMOVE_SIDE_STATUS_DEFAULT },
+	{ "MouseMoveSideStatusBorder", KEYC_MOUSEMOVE_SIDE_STATUS_BORDER },
+	{ "MouseMoveSideStatusControl0", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL0 },
+	{ "MouseMoveSideStatusControl1", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL1 },
+	{ "MouseMoveSideStatusControl2", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL2 },
+	{ "MouseMoveSideStatusControl3", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL3 },
+	{ "MouseMoveSideStatusControl4", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL4 },
+	{ "MouseMoveSideStatusControl5", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL5 },
+	{ "MouseMoveSideStatusControl6", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL6 },
+	{ "MouseMoveSideStatusControl7", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL7 },
+	{ "MouseMoveSideStatusControl8", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL8 },
+	{ "MouseMoveSideStatusControl9", KEYC_MOUSEMOVE_SIDE_STATUS_CONTROL9 },
 	KEYC_MOUSE_STRING(MOUSEDOWN1, MouseDown1),
 	KEYC_MOUSE_STRING(MOUSEDOWN2, MouseDown2),
 	KEYC_MOUSE_STRING(MOUSEDOWN3, MouseDown3),
@@ -196,15 +211,17 @@ static key_code
 key_string_search_table(const char *string)
 {
 	u_int	i, user;
+	int	n;
 
 	for (i = 0; i < nitems(key_string_table); i++) {
 		if (strcasecmp(string, key_string_table[i].string) == 0)
 			return (key_string_table[i].key);
 	}
 
-	if (sscanf(string, "User%u", &user) == 1 && user <= KEYC_NUSER)
+	if (sscanf(string, "User%u%n", &user, &n) == 1 &&
+	    string[n] == '\0' &&
+	    user <= KEYC_NUSER)
 		return (KEYC_USER + user);
-
 	return (KEYC_UNKNOWN);
 }
 
@@ -328,7 +345,7 @@ key_string_lookup_key(key_code key, int with_flags)
 {
 	key_code		 saved = key;
 	static char		 out[64];
-	char			 tmp[8];
+	char			 tmp[16];
 	const char		*s;
 	u_int			 i;
 	struct utf8_data	 ud;

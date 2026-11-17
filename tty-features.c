@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.43 2026/08/31 12:41:03 kirill Exp $ */
+/* $OpenBSD: tty-features.c,v 1.53 2026/11/10 10:47:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -189,6 +189,18 @@ static const struct tty_feature tty_feature_focus = {
 	0
 };
 
+/* Terminal supports application escape key mode. */
+static const char *const tty_feature_appesc_capabilities[] = {
+	"Enesc=\\E[?7727h",
+	"Dsesc=\\E[?7727l",
+	NULL
+};
+static const struct tty_feature tty_feature_appesc = {
+	"appesc",
+	tty_feature_appesc_capabilities,
+	0
+};
+
 /* Terminal supports cursor styles. */
 static const char *const tty_feature_cstyle_capabilities[] = {
 	"Ss=\\E[%p1%d q",
@@ -198,7 +210,7 @@ static const char *const tty_feature_cstyle_capabilities[] = {
 static const struct tty_feature tty_feature_cstyle = {
 	"cstyle",
 	tty_feature_cstyle_capabilities,
-	0
+	TERM_NOREPLACE
 };
 
 /* Terminal supports cursor colours. */
@@ -357,6 +369,24 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
+/* Terminal supports the Kitty graphics protocol. */
+static const struct tty_feature tty_feature_kittygraphics = {
+	"kittygraphics",
+	NULL,
+	TERM_KITTYGRAPHICS
+};
+
+/* Terminal moves images with scroll regions. */
+static const char *const tty_feature_imagescroll_capabilities[] = {
+	"Iscrl",
+	NULL
+};
+static const struct tty_feature tty_feature_imagescroll = {
+	"imagescroll",
+	tty_feature_imagescroll_capabilities,
+	0
+};
+
 /* Terminal supports the OSC 9;4 progress bar. */
 static const char *const tty_feature_progressbar_capabilities[] = {
 	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
@@ -378,6 +408,7 @@ static const struct tty_feature tty_feature_utf8 = {
 /* Available terminal features. */
 static const struct tty_feature *const tty_features[] = {
 	&tty_feature_256,
+	&tty_feature_appesc,
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
@@ -386,6 +417,8 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
+	&tty_feature_imagescroll,
+	&tty_feature_kittygraphics,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,
@@ -541,11 +574,11 @@ tty_apply_features(struct tty_term *term)
 			capability = tf->capabilities;
 			while (*capability != NULL) {
 				log_debug("adding capability: %s", *capability);
-				tty_term_apply(term, *capability, 1);
+				tty_term_apply(term, *capability, 1, tf->flags);
 				capability++;
 			}
 		}
-		term->flags |= tf->flags;
+		term->flags |= (tf->flags & ~TERM_NOREPLACE);
 		if (tf == &tty_feature_utf8)
 			c->flags |= CLIENT_UTF8;
 	}
@@ -568,6 +601,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
 		{ .name = "mintty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "appesc,"
 			      "ccolour,"
 			      "cstyle,"
 			      "extkeys,"
@@ -584,7 +618,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "overline,"
 			      "usstyle,"
 			      "hyperlinks,"
-		  	      "progressbar"
+			      "progressbar"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,"
@@ -604,7 +638,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "sync,"
 			      "osc7,"
 			      "hyperlinks,"
-		  	      "progressbar"
+			      "progressbar"
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -622,7 +656,11 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
-		  	      "hyperlinks,"
+			      "hyperlinks,"
+			      "imagescroll,"
+			      "overline,"
+			      "sixel,"
+			      "sync,"
 			      "usstyle"
 		},
 		{ .name = "ghostty",
@@ -631,12 +669,29 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
+			      "imagescroll,"
+			      "margins,"
 			      "overline,"
 			      "hyperlinks,"
 			      "osc7,"
 			      "sync,"
 			      "usstyle,"
-			      "progressbar"
+			      "progressbar,"
+			      "kittygraphics"
+		},
+		{ .name = "kitty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "hyperlinks,"
+			      "imagescroll,"
+			      "osc7,"
+			      "progressbar,"
+			      "sync,"
+			      "usstyle,"
+			      "kittygraphics"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -661,7 +716,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus"
-		}
+		},
 	};
 	u_int	i;
 

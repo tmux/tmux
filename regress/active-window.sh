@@ -148,4 +148,16 @@ send2 'display-message -p "C2C #{local_active_window} #{window_name}"'
 wait_for "$OUT2" 'C2C 0 w1'
 check_server 'aw:' '#{window_name}' 'w1'
 
+# Reusing an existing window with -S must also select it locally only.
+send1 'new-window -S -t aw:0'
+send1 'display-message -p "C1_REUSE_TARGET #{window_name} #{local_active_window}"'
+wait_for "$OUT1" 'C1_REUSE_TARGET w0 1'
+check_server 'aw:' '#{window_name}' 'w1'
+send1 'new-window -S -n w3'
+send1 'display-message -p "C1_REUSE_NAME #{window_name} #{local_active_window}"'
+wait_for "$OUT1" 'C1_REUSE_NAME w3 1'
+check_server 'aw:' '#{window_name}' 'w1'
+send1 'display-message -p -t "{current}" "C1_CURRENT #{window_name}"'
+wait_for "$OUT1" 'C1_CURRENT w3'
+
 exit 0

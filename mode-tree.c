@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.101 2026/08/05 07:50:21 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.106 2026/10/23 12:18:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -277,11 +277,22 @@ mode_tree_free_items(struct mode_tree_list *mtl)
 static void
 mode_tree_check_selected(struct mode_tree_data *mtd)
 {
+	if (mtd->height == 0)
+		return;
+
+	/* If the list has shrunk, do not leave empty lines at the bottom. */
+	if (mtd->line_size <= mtd->height)
+		mtd->offset = 0;
+	else if (mtd->offset > mtd->line_size - mtd->height)
+		mtd->offset = mtd->line_size - mtd->height;
+
 	/*
-	 * If the current line would now be off screen reset the offset to the
-	 * last visible line.
+	 * If the current line would now be off screen move the offset so it is
+	 * visible.
 	 */
-	if (mtd->current > mtd->height - 1)
+	if (mtd->current < mtd->offset)
+		mtd->offset = mtd->current;
+	else if (mtd->current > mtd->offset + mtd->height - 1)
 		mtd->offset = mtd->current - mtd->height + 1;
 }
 
@@ -501,20 +512,14 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 
 	if (mode_tree_get_tag(mtd, tag, &found)) {
 		mtd->current = found;
-		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height + 1;
-		else
-			mtd->offset = 0;
+		mode_tree_check_selected(mtd);
 		return (1);
 	}
 	if (mtd->current >= mtd->line_size) {
 		if (mtd->line_size == 0)
 			return (0);
 		mtd->current = mtd->line_size - 1;
-		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height + 1;
-		else
-			mtd->offset = 0;
+		mode_tree_check_selected(mtd);
 	}
 	return (0);
 }
@@ -683,21 +688,30 @@ mode_tree_build(struct mode_tree_data *mtd)
 
 	if (mtd->line_list != NULL && tag == UINT64_MAX)
 		tag = mtd->line_list[mtd->current].item->tag;
-	mode_tree_set_current(mtd, tag);
 
 	mtd->width = screen_size_x(s);
 	if (mtd->preview != MODE_TREE_PREVIEW_OFF)
 		mode_tree_set_height(mtd);
 	else
 		mtd->height = screen_size_y(s);
+	mode_tree_set_current(mtd, tag);
 	mode_tree_check_selected(mtd);
 }
 
 static void
 mode_tree_remove_ref(struct mode_tree_data *mtd)
 {
-	if (--mtd->references == 0)
-		free(mtd);
+	if (--mtd->references != 0)
+		return;
+
+	mode_tree_clear_prompt(mtd);
+	mode_tree_free_items(&mtd->children);
+	mode_tree_clear_lines(mtd);
+	screen_free(&mtd->screen);
+
+	free(mtd->search);
+	free(mtd->filter);
+	free(mtd);
 }
 
 void
@@ -707,14 +721,6 @@ mode_tree_free(struct mode_tree_data *mtd)
 
 	if (mtd->zoomed == 0)
 		server_unzoom_window(wp->window);
-
-	mode_tree_clear_prompt(mtd);
-	mode_tree_free_items(&mtd->children);
-	mode_tree_clear_lines(mtd);
-	screen_free(&mtd->screen);
-
-	free(mtd->search);
-	free(mtd->filter);
 
 	mtd->dead = 1;
 	mode_tree_remove_ref(mtd);
@@ -951,16 +957,19 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			}
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
-			format_draw(&ctx, &gc, prefix_width, prefix, NULL, 1);
+			format_draw(&ctx, &gc, prefix_width, prefix, NULL,
+			    FORMAT_DRAW_DEFAULT_COLOURS);
 			if (left != 0) {
 				screen_write_cursormove(&ctx, prefix_width,
 				    i - mtd->offset, 0);
-				format_draw(&ctx, &gc, left, text, NULL, 1);
+				format_draw(&ctx, &gc, left, text, NULL,
+				    FORMAT_DRAW_DEFAULT_COLOURS);
 				if (mti->text != NULL && width < w) {
 					screen_write_cursormove(&ctx, width,
 					    i - mtd->offset, 0);
 					format_draw(&ctx, &gc, w - width,
-					    mti->text, NULL, 1);
+					    mti->text, NULL,
+					    FORMAT_DRAW_DEFAULT_COLOURS);
 				}
 			}
 		}
@@ -1090,7 +1099,7 @@ mode_tree_prompt_accept(struct cmdq_item *item, void *data)
 	struct client		*c = cmdq_get_client(item);
 	key_code		 key = 'y';
 
-	if (mtd->prompt != NULL && c != NULL)
+	if (!mtd->dead && mtd->prompt != NULL && c != NULL)
 		mode_tree_key(mtd, c, &key, NULL, NULL, NULL);
 
 	mode_tree_remove_ref(mtd);
@@ -1117,7 +1126,6 @@ mode_tree_prompt_free_callback(void *data)
 		mtp->mtd->prompt_data = NULL;
 	if (mtp->freecb != NULL)
 		mtp->freecb(mtp->data);
-	mode_tree_remove_ref(mtp->mtd);
 	free(mtp);
 }
 
@@ -1147,8 +1155,6 @@ mode_tree_set_prompt(struct mode_tree_data *mtd, struct client *c,
 	mtp->inputcb = inputcb;
 	mtp->freecb = freecb;
 	mtp->data = data;
-
-	mtd->references++;
 	mtd->prompt_top = options_get_number(oo, "status-position") == 0;
 
 	memset(&pd, 0, sizeof pd);
@@ -1358,7 +1364,7 @@ mode_tree_menu_callback(__unused struct menu *menu, __unused u_int idx,
 	struct mode_tree_menu	*mtm = data;
 	struct mode_tree_data	*mtd = mtm->data;
 
-	if (mtd->dead || key == KEYC_NONE)
+	if (mtd->dead || (mtm->c->flags & CLIENT_DEAD) || key == KEYC_NONE)
 		goto out;
 
 	if (mtm->line >= mtd->line_size)
@@ -1367,6 +1373,7 @@ mode_tree_menu_callback(__unused struct menu *menu, __unused u_int idx,
 	mtd->menucb(mtd->modedata, mtm->c, key);
 
 out:
+	server_client_unref(mtm->c);
 	mode_tree_remove_ref(mtd);
 	free(mtm);
 }
@@ -1375,12 +1382,14 @@ static void
 mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
     u_int y, int outside)
 {
+	struct window		*w = mtd->wp->window;
 	struct mode_tree_item	*mti;
 	struct menu		*menu;
 	const struct menu_item	*items;
 	struct mode_tree_menu	*mtm;
 	char			*title;
-	u_int			 line;
+	enum box_lines		 lines;
+	u_int			 line, sx, sy;
 
 	if (mtd->offset + y > mtd->line_size - 1)
 		line = mtd->current;
@@ -1402,17 +1411,22 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	mtm = xmalloc(sizeof *mtm);
 	mtm->data = mtd;
 	mtm->c = c;
+	mtm->c->references++;
 	mtm->line = line;
 	mtd->references++;
 
-	if (x >= (menu->width + 4) / 2)
-		x -= (menu->width + 4) / 2;
+	lines = options_get_number(w->options, "menu-border-lines");
+	menu_get_size(menu, lines, &sx, &sy);
+	if (x >= sx / 2)
+		x -= sx / 2;
 	else
 		x = 0;
 	x += mtd->wp->xoff;
 	y += mtd->wp->yoff;
-	if (menu_display(menu, 0, 0, NULL, x, y, c, BOX_LINES_DEFAULT, NULL,
-	    NULL, NULL, NULL, mode_tree_menu_callback, mtm) != 0) {
+
+	if (menu_display(menu, 0, 0, NULL, x, y, c, lines, NULL, NULL, NULL,
+	    NULL, mode_tree_menu_callback, mtm) != 0) {
+		server_client_unref(mtm->c);
 		mode_tree_remove_ref(mtd);
 		free(mtm);
 		menu_free(menu);
@@ -1514,6 +1528,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	if (mtd->prompt != NULL) {
 		redraw = 0;
 		prompt = mtd->prompt;
+		mtd->references++;
 
 		mtp = mtd->prompt_data;
 		if (mtp != NULL)
@@ -1538,6 +1553,11 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			}
 		} else
 			result = prompt_key(prompt, *key, &redraw);
+		if (mtd->dead) {
+			mode_tree_remove_ref(mtd);
+			*key = KEYC_NONE;
+			return (1);
+		}
 		if (mtd->prompt_data == mtp && mtp != NULL)
 			mtp->c = NULL;
 
@@ -1553,6 +1573,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_draw(mtd);
 			mtd->wp->flags |= PANE_REDRAW;
 		}
+		mode_tree_remove_ref(mtd);
 		if (result != PROMPT_KEY_NOT_HANDLED) {
 			*key = KEYC_NONE;
 			return (0);

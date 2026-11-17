@@ -1,12 +1,14 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests for display-panes as panes-mode.
 
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMP=$(mktemp -d) || exit 1
+TMP=$(test_tmpdir) || exit 1
 TMUX_TMPDIR="$TMP"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -14,8 +16,8 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -59,14 +61,7 @@ wait_option()
 
 wait_clients()
 {
-	i=0
-	while [ "$i" -lt 50 ]; do
-		c=$($TMUX list-clients -F x 2>/dev/null | grep -c x)
-		[ "$c" -eq "$1" ] && return 0
-		sleep 0.2
-		i=$((i + 1))
-	done
-	fail "expected $1 clients, have $c"
+	wait_for_clients "$1" $TMUX || fail "expected $1 clients"
 }
 
 $TMUX new-session -d -s m -x 80 -y 24 'cat' || exit 1
@@ -153,11 +148,13 @@ wait_format "$p0" '#{pane_in_mode}' '0'
 wait_option @picked "$p1"
 
 # Commands after display-panes run immediately while the mode remains.
+# Record the mode in the same command queue so client startup cannot race
+# the 500ms timeout.
 $TMUX set -g @after none || fail "set @after failed"
-$TMUX display-panes -Nd 500 -t "$p0" \; set -g @after fast ||
+$TMUX display-panes -Nd 500 -t "$p0" \; \
+    set -gF -t "$p0" @after '#{pane_mode}' ||
 	fail "display-panes immediate command failed"
-wait_option @after fast
-wait_format "$p0" '#{pane_mode}' 'panes-mode'
+wait_option @after 'panes-mode'
 wait_format "$p0" '#{pane_in_mode}' '0'
 
 # Existing zoom is restored on exit.
@@ -172,14 +169,43 @@ wait_format "$p0" '#{window_zoomed_flag}' '1'
 $TMUX resize-pane -Z -t "$p0" || fail "unzoom cleanup failed"
 
 # Panes mode can be stacked above another mode and returns to it on exit.
+$TMUX respawn-pane -k -t "$p0" \
+    'seq 1 200; printf "COPY-READY\n"; exec cat' ||
+	fail "write copy-mode history failed"
+wait_capture 'COPY-READY'
 $TMUX copy-mode -t "$p0" || fail "copy-mode failed"
 wait_format "$p0" '#{pane_mode}' 'copy-mode'
+$TMUX send-keys -t "$p0" -X page-up || fail "scroll copy-mode failed"
+$TMUX send-keys -t "$p0" -X begin-selection || fail "begin selection failed"
+$TMUX send-keys -t "$p0" -X cursor-up || fail "extend selection failed"
+copy_format='#{scroll_position}:#{copy_cursor_x}:#{copy_cursor_y}:#{selection_present}:#{selection_start_x}:#{selection_start_y}:#{selection_end_x}:#{selection_end_y}'
+copy_state=$($TMUX display-message -p -t "$p0" "$copy_format")
+wait_format "$p0" '#{selection_present}' '1'
+copy_top=$(capture | sed -n '2p')
 $TMUX display-panes -d 0 -t "$p0" 'set -g @picked %%' ||
 	fail "display-panes over copy-mode failed"
 wait_format "$p0" '#{pane_mode}' 'panes-mode'
+wait_capture "$copy_top"
 $TMUX send-keys -t "$p0" 1 || fail "select from stacked mode failed"
 wait_format "$p0" '#{pane_mode}' 'copy-mode'
+wait_format "$p0" "$copy_format" "$copy_state"
 wait_option @picked "$p1"
+
+# Returning at the original size must preserve state on timeout too.
+$TMUX display-panes -Nd 200 -t "$p0" || fail "timed panes mode failed"
+wait_format "$p0" '#{pane_mode}' 'copy-mode'
+wait_format "$p0" "$copy_format" "$copy_state"
+
+# Cancellation and drawing a different pane's mode use the same visible view.
+for target in "$p0" "$p1"; do
+	$TMUX display-panes -d 0 -t "$target" ||
+		fail "copy-mode preview failed"
+	wait_format "$target" '#{pane_mode}' 'panes-mode'
+	wait_capture "$copy_top"
+	$TMUX send-keys -t "$target" q || fail "cancel preview failed"
+	wait_format "$p0" '#{pane_mode}' 'copy-mode'
+	wait_format "$p0" "$copy_format" "$copy_state"
+done
 $TMUX send-keys -t "$p0" -X cancel || fail "copy-mode cancel failed"
 wait_format "$p0" '#{pane_in_mode}' '0'
 
@@ -293,5 +319,96 @@ wait_format "$fp" '#{pane_in_mode}' '0'
 $TMUX kill-pane -t "$fp" || fail "kill floating pane failed"
 $TMUX set -g display-panes-format 'P#{pane_index}' ||
 	fail "reset display-panes-format after floating failed"
+
+# Separate borders use different preview geometry. Exercise both axes, title
+# positions and scrollbar sides, including entry from an already zoomed pane.
+$TMUX set -g status off \; set -g window-size manual || exit 1
+for axis in h v; do
+	for config in separate:off:off separate:top:left separate:bottom:right \
+	    separate-active:off:off separate-active:top:right \
+	    separate-active:bottom:left; do
+		type=${config%%:*}
+		rest=${config#*:}
+		status=${rest%%:*}
+		side=${rest#*:}
+		$TMUX new-window -t m: -n separate 'cat' \; \
+		    resize-window -x 80 -y 24 \; \
+		    set -w pane-border-type "$type" \; \
+		    set -w pane-border-status "$status" \; \
+		    set -w pane-border-format 'TITLE#{pane_index}' \; \
+		    split-window -d -"$axis" 'cat' || exit 1
+		op0=$($TMUX display-message -p -t m:separate.0 '#{pane_id}')
+		op1=$($TMUX display-message -p -t m:separate.1 '#{pane_id}')
+		if [ "$side" != off ]; then
+			$TMUX set -w pane-scrollbars on \; \
+			    set -w pane-scrollbars-position "$side" \; \
+			    set -w pane-scrollbars-style 'width=2,pad=1' || exit 1
+		fi
+		$TMUX respawn-pane -k -t "$op0" \
+		    'printf "TOP0\nBODY0\n"; exec cat' || exit 1
+		$TMUX respawn-pane -k -t "$op1" \
+		    'printf "TOP1\nBODY1\n"; exec cat' || exit 1
+		wait_capture BODY0
+		wait_capture BODY1
+		op0_size=$($TMUX display-message -p -t "$op0" \
+		    '#{pane_width}x#{pane_height}')
+		op1_size=$($TMUX display-message -p -t "$op1" \
+		    '#{pane_width}x#{pane_height}')
+		$TMUX set -w display-panes-format \
+		    'O#{pane_index}:#{pane_unzoomed_width}x#{pane_unzoomed_height}' || exit 1
+		for zoom in 0 1; do
+			if [ "$zoom" = 1 ]; then
+				$TMUX resize-pane -Z -t "$op0" || exit 1
+			fi
+			op_geometry=$($TMUX list-panes -t m:separate -F \
+			    '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}')
+			$TMUX display-panes -d 0 -t "$op0" || exit 1
+			wait_format "$op0" '#{pane_mode}' panes-mode
+			wait_format "$op0" '#{window_zoomed_flag}' 1
+			# Labels and content must start immediately inside the preview
+			# border, including when a left scrollbar reserved three columns.
+			wait_capture "│O0:$op0_size"
+			wait_capture "│O1:$op1_size"
+			wait_capture '│BODY0'
+			wait_capture '│BODY1'
+			if [ "$axis" = h ]; then
+				wait_capture '││'
+			fi
+			$TMUX send-keys -t "$op0" q || exit 1
+			wait_format "$op0" '#{pane_in_mode}' 0
+			wait_format "$op0" '#{window_zoomed_flag}' "$zoom"
+			[ "$($TMUX list-panes -t m:separate -F \
+			    '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}')" = \
+			    "$op_geometry" ] || fail "$config/$axis: overlay changed pane geometry"
+		done
+		$TMUX kill-window -t m:separate || exit 1
+	done
+done
+
+# A single separate pane cannot zoom: its preview fills the area inside the
+# existing border, and leaving the mode must restore that same geometry.
+for type in separate separate-active; do
+	$TMUX new-window -t m: -n single 'printf "TOP\nONLY\n"; exec cat' \; \
+	    resize-window -x 80 -y 24 \; \
+	    set -w pane-border-type "$type" \; \
+	    set -w display-panes-format \
+	    'O#{pane_index}:#{pane_unzoomed_width}x#{pane_unzoomed_height}' || exit 1
+	only=$($TMUX display-message -p -t m:single '#{pane_id}')
+	only_size=$($TMUX display-message -p -t "$only" '#{pane_width}x#{pane_height}')
+	only_geometry=$($TMUX display-message -p -t "$only" \
+	    '#{pane_left} #{pane_top} #{pane_width} #{pane_height}')
+	wait_capture ONLY
+	$TMUX display-panes -d 0 -t "$only" || exit 1
+	wait_format "$only" '#{pane_mode}' panes-mode
+	wait_format "$only" '#{window_zoomed_flag}' 0
+	wait_capture "│O0:$only_size"
+	wait_capture '│ONLY'
+	$TMUX send-keys -t "$only" q || exit 1
+	wait_format "$only" '#{pane_in_mode}' 0
+	[ "$($TMUX display-message -p -t "$only" \
+	    '#{pane_left} #{pane_top} #{pane_width} #{pane_height}')" = \
+	    "$only_geometry" ] || fail "$type: overlay changed single-pane geometry"
+	$TMUX kill-window -t m:single || exit 1
+done
 
 exit 0

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-select-layout.c,v 1.43 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-select-layout.c,v 1.46 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_select_layout_exec(struct cmd *,
 
 const struct cmd_entry cmd_select_layout_entry = {
 	.name = "select-layout",
+	.description = "Choose or apply a layout.",
 	.alias = "selectl",
 
 	.args = { "Enopt:", 0, 1, NULL },
@@ -44,6 +45,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 
 const struct cmd_entry cmd_next_layout_entry = {
 	.name = "next-layout",
+	.description = "Select the next layout.",
 	.alias = "nextl",
 
 	.args = { "t:", 0, 0, NULL },
@@ -57,6 +59,7 @@ const struct cmd_entry cmd_next_layout_entry = {
 
 const struct cmd_entry cmd_previous_layout_entry = {
 	.name = "previous-layout",
+	.description = "Select the previous layout.",
 	.alias = "prevl",
 
 	.args = { "t:", 0, 0, NULL },
@@ -73,12 +76,13 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_target_client(item);
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp;
 	const char		*layoutname;
-	char			*oldlayout, *cause;
-	int			 next, previous, layout;
+	char			*oldlayout, *cause = NULL;
+	int			 next, previous, layout, flags = 0;
 
 	server_unzoom_window(w);
 
@@ -89,8 +93,12 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p'))
 		previous = 1;
 
+	if (c != NULL &&
+	    (c->flags & CLIENT_CONTROL) &&
+	    (~c->flags & CLIENT_CONTROL_NEWLAYOUTS))
+		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
 	oldlayout = w->old_layout;
-	w->old_layout = layout_dump(w, w->layout_root);
+	w->old_layout = layout_dump(w, w->layout_root, flags);
 
 	if (next || previous) {
 		if (next)

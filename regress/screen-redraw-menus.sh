@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise drawing of window menus in the screen-redraw.c scene. Menus are
 # window-owned and drawn as REDRAW_MENU spans over panes. Captures use -e so
 # menu-style, menu-selected-style, and menu-border-style are included.
@@ -46,16 +48,22 @@ trim() {
 	mv "$TMP2" "$TMP" || exit 1
 }
 
-compare() {
-	sleep 1
-	$TMUX capturep -pe >$TMP || exit 1
+scene_matches() {
+	$TMUX capturep -pe >"$TMP" || return 1
 	trim
+	cmp -s "$TMP" "$RESULTS/$1.result"
+}
+
+compare() {
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -pe >"$TMP" || exit 1
+		trim
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until scene_matches "$1" ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
 }
 
@@ -75,12 +83,11 @@ setup() {
 	$TMUX2 setw menu-selected-style "fg=colour16,bg=colour220" || exit 1
 	$TMUX2 setw menu-border-style "fg=colour45,bg=colour235" || exit 1
 
-	$TMUX new -d -x"$1" -y"$2" || exit 1
+	$TMUX new -d -x"$1" -y"$2" "$TMUX2 attach" || exit 1
 	$TMUX set -g status off || exit 1
 	$TMUX set -g window-size manual || exit 1
 	$TMUX set -g default-terminal "tmux-256color" || exit 1
-	$TMUX send -l "$TMUX2 attach" || exit 1
-	$TMUX send Enter || exit 1
+	wait_for_clients 1 $TMUX2 || fail "inner client did not attach"
 	sleep 1
 }
 
@@ -106,8 +113,27 @@ compare menu-over-split
 
 # Menu with no border lines.
 setup 40 14
-menu -b none -x6 -y8
+$TMUX2 display-menu -T "This title must not reserve width" -C 1 \
+    -b none -x6 -y8 \
+    "Alpha item" a "" \
+    "Beta item" b "" \
+    "" "" "" \
+    "Gamma item" g "" || exit 1
+sleep 1
 compare menu-noborder
+
+# Menu border style follows the explicitly targeted window, not the current
+# window when a different pane is selected.
+setup 40 14
+$TMUX2 set menu-border-lines none || exit 1
+$TMUX2 neww || exit 1
+$TMUX2 display-menu -t%0 -T "Menu" -C 1 \
+    "Alpha item" a "" \
+    "Beta item" b "" \
+    "" "" "" \
+    "Gamma item" g "" || exit 1
+$TMUX2 selectw -t%0 || exit 1
+compare menu-target-window-noborder
 
 # Menu with double border lines.
 setup 40 14

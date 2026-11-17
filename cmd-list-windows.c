@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-windows.c,v 1.50 2026/02/27 08:25:12 nicm Exp $ */
+/* $OpenBSD: cmd-list-windows.c,v 1.53 2026/11/09 12:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -43,10 +43,11 @@ static enum cmd_retval	cmd_list_windows_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	.name = "list-windows",
+	.description = "List windows and their state.",
 	.alias = "lsw",
 
 	.args = { "aF:f:O:rt:", 0, 0, NULL },
-	.usage = "[-ar] [-F format] [-f filter] [-O order]"
+	.usage = "[-ar] [-F format] [-f filter] [-O order] "
 		 CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
@@ -60,6 +61,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_client(item);
 	struct winlink		*wl, **l;
 	struct session		*s;
 	u_int			 i, n;
@@ -94,7 +96,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 		s = wl->session;
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
-		format_defaults(ft, NULL, s, wl, NULL);
+		format_defaults(ft, c, s, wl, NULL);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);

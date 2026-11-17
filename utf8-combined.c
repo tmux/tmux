@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8-combined.c,v 1.10 2026/06/09 11:49:36 nicm Exp $ */
+/* $OpenBSD: utf8-combined.c,v 1.11 2026/10/05 08:32:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2023 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -121,6 +121,12 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 
 	/* Emoji skin tone modifiers. */
 	switch (a) {
+	case 0x0261D:
+	case 0x026F9:
+	case 0x0270A:
+	case 0x0270B:
+	case 0x0270C:
+	case 0x0270D:
 	case 0x1F44B:
 	case 0x1F44C:
 	case 0x1F44D:

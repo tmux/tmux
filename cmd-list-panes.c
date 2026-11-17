@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-panes.c,v 1.40 2026/06/01 14:01:09 nicm Exp $ */
+/* $OpenBSD: cmd-list-panes.c,v 1.43 2026/11/09 12:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,10 +36,11 @@ static void	cmd_list_panes_window(struct cmd *, struct session *,
 
 const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
+	.description = "List panes and their state.",
 	.alias = "lsp",
 
 	.args = { "aF:f:O:rst:", 0, 0, NULL },
-	.usage = "[-asr] [-F format] [-f filter] [-O order]"
+	.usage = "[-asr] [-F format] [-f filter] [-O order] "
 		 CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
@@ -97,6 +98,7 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
     struct cmdq_item *item, int type)
 {
 	struct args		*args = cmd_get_args(self);
+	struct client		*c = cmdq_get_client(item);
 	struct window_pane	*wp, **l;
 	u_int			 i, n;
 	struct format_tree	*ft;
@@ -147,7 +149,7 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 		wp = l[i];
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
-		format_defaults(ft, NULL, s, wl, wp);
+		format_defaults(ft, c, s, wl, wp);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);

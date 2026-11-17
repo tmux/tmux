@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -7,7 +9,7 @@ LANG=C.UTF-8
 export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT=$(mktemp -d)
+OUT=$(test_tmpdir)
 TMUX_TMPDIR="$OUT"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -16,16 +18,16 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 fail()
 {
 	echo "$*" >&2
-	$TMUX kill-server 2>/dev/null || true
-	$TMUX2 kill-server 2>/dev/null || true
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$OUT"
 	exit 1
 }
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null || true
-	$TMUX2 kill-server 2>/dev/null || true
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$OUT"
 }
 trap cleanup EXIT
@@ -218,11 +220,13 @@ $TMUX set-hook -gu pane-mode-changed || fail "unset pane-mode-changed failed"
 
 # pane-exited when a pane's command exits with remain-on-exit off.
 $TMUX set -g @x 0 || fail "set @x failed"
-$TMUX set-hook -g pane-exited 'set -gF @x "#{hook}:#{hook_pane}"' ||
+$TMUX set-hook -g pane-exited \
+	'set -gF @x "#{hook}:#{hook_pane}:#{hook_exit_status}:#{hook_exit_success}"' ||
 	fail "set-hook pane-exited failed"
-pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' 'true') ||
-	fail "split-window true failed"
-wait_for @x "pane-exited:$pane"
+pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' \
+	'trap "" HUP; exec </dev/null >/dev/null 2>&1; sleep 1; exit 42') ||
+	fail "split-window exit 42 failed"
+wait_for @x "pane-exited:$pane:42:0"
 $TMUX set-hook -gu pane-exited || fail "unset pane-exited failed"
 
 # pane-died when a pane's command exits with remain-on-exit on.

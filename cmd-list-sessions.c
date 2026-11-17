@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-sessions.c,v 1.36 2026/02/27 08:25:12 nicm Exp $ */
+/* $OpenBSD: cmd-list-sessions.c,v 1.38 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -40,6 +40,7 @@ static enum cmd_retval	cmd_list_sessions_exec(struct cmd *,
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	.name = "list-sessions",
+	.description = "List sessions and their state.",
 	.alias = "ls",
 
 	.args = { "F:f:O:r", 0, 0, NULL },
@@ -53,6 +54,7 @@ static enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		 *args = cmd_get_args(self);
+	struct client		 *c = cmdq_get_client(item);
 	struct session		**l;
 	u_int		 	  n, i;
 	struct format_tree	 *ft;
@@ -76,7 +78,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", i);
-		format_defaults(ft, NULL, l[i], NULL, NULL);
+		format_defaults(ft, c, l[i], NULL, NULL);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);

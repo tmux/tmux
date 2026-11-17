@@ -1,0 +1,8 @@
+# SIXEL payload tokens consumed by sixel_parse().
+intro="q"
+raster_attributes="\"1;1;8;16"
+colour_rgb="#0;2;100;0;0"
+colour_hls="#1;1;120;50;50"
+repeat="!8~"
+carriage_return="$"
+new_line="-"

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests of tree mode (window-tree.c) as driven by choose-tree.
 #
 # Filtering: the -f filter is applied per pane and removes panes, windows and
@@ -24,7 +26,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMP=$(mktemp -d) || exit 1
+TMP=$(test_tmpdir) || exit 1
 TMUX_TMPDIR="$TMP"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -32,8 +34,8 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -89,14 +91,7 @@ wait_count()
 # Wait (up to ~10s) until the test server has exactly $n clients attached.
 wait_clients()
 {
-	i=0
-	while [ "$i" -lt 10 ]; do
-		c=$($TMUX list-clients -F x 2>/dev/null | grep -c x)
-		[ "$c" -eq "$1" ] && return 0
-		sleep 1
-		i=$((i + 1))
-	done
-	return 1
+	wait_for_clients "$1" $TMUX || fail "expected $1 clients"
 }
 
 # wait_mode $target $state
@@ -289,5 +284,113 @@ wait_count ': G4' 7
 [ "$($TMUX list-windows -t zzz -F x | grep -c x)" -eq 1 ] || \
 	fail "window 1 of zzz not killed"
 exit_mode q
+
+# --- help and information preview --------------------------------------------
+# The complete tree help is taller than the 24-line test terminal, where the
+# help renderer deliberately leaves the tree unchanged.
+$TMUX2 resize-window -t out:0 -x 80 -y 50 || exit 1
+i=0
+while [ "$i" -lt 50 ]; do
+	# The inner session has a one-line status, leaving a 49-line window.
+	[ "$($TMUX display-message -p -t aaa:0 '#{window_height}')" -ge 49 ] &&
+		break
+	sleep 0.2
+	i=$((i + 1))
+done
+[ "$i" -lt 50 ] || fail "attached client did not resize for tree help"
+$TMUX choose-tree -t aaa:0 -F 'G5' -O index || exit 1
+wait_count ': G5' 7
+$TMUX2 send-keys -t out:0 F1 || fail "send-keys F1 failed"
+wait_for 'Swap current and previous window'
+# The first key closes help; the second exits the tree.
+$TMUX send-keys -t aaa:0 q q || fail "send-keys help exit failed"
+wait_mode aaa:0 0
+
+$TMUX choose-tree -t aaa:0 -F 'G6' -O index || exit 1
+wait_count ': G6' 7
+$TMUX send-keys -t aaa:0 i || fail "send-keys info failed"
+wait_for 'Session'
+$TMUX send-keys -t aaa:0 i || fail "send-keys preview failed"
+exit_mode q
+
+# --- window swapping and command prompt for current/tagged items -------------
+# Restrict a window-only tree to two disposable windows in aaa. J (the
+# Shift-Down equivalent) swaps their window objects while leaving their indexes
+# in place.
+$TMUX new-window -d -t aaa: -n swap-a 'cat' || exit 1
+$TMUX new-window -d -t aaa: -n swap-b 'cat' || exit 1
+aidx=$($TMUX list-windows -t aaa -F '#{window_index}:#{window_name}' | \
+    awk -F: '$2 == "swap-a" {print $1}')
+bidx=$($TMUX list-windows -t aaa -F '#{window_index}:#{window_name}' | \
+    awk -F: '$2 == "swap-b" {print $1}')
+$TMUX choose-tree -w -t aaa:0 -O index -F 'WT #{window_name}' \
+	-f '#{m:swap-*,#{window_name}}' || exit 1
+wait_count 'WT swap-' 2
+$TMUX send-keys -t aaa:0 g j J || fail "window tree swap failed"
+i=0
+while [ "$i" -lt 50 ]; do
+	aname=$($TMUX display-message -p -t "aaa:$aidx" '#{window_name}')
+	bname=$($TMUX display-message -p -t "aaa:$bidx" '#{window_name}')
+	[ "$aname:$bname" = 'swap-b:swap-a' ] && break
+	sleep 0.2
+	i=$((i + 1))
+done
+[ "$i" -lt 50 ] || fail "window tree did not swap the two windows"
+
+# ':' runs an entered command for the current item and rebuilds the tree when
+# its queued command completes.
+$TMUX set-option -g @tree-command '' || exit 1
+$TMUX send-keys -t aaa:0 : || fail "window tree command prompt failed"
+wait_for '(current)'
+$TMUX send-keys -t aaa:0 -l "set-option -g @tree-command '%%'" || exit 1
+$TMUX send-keys -t aaa:0 Enter || exit 1
+i=0
+while [ "$i" -lt 50 ]; do
+	value=$($TMUX show-option -gqv @tree-command)
+	[ -n "$value" ] && break
+	sleep 0.2
+	i=$((i + 1))
+done
+[ "$i" -lt 50 ] || fail "window tree entered command did not run"
+sid=$($TMUX display-message -p -t aaa: '#{session_id}')
+case "$value" in
+"$sid":*.) ;;
+*) fail "window tree command target was '$value'" ;;
+esac
+
+# Tag both disposable windows and kill them through the tagged confirmation
+# callback. The mode-hosting window is outside the filter and survives.
+$TMUX send-keys -t aaa:0 g j t j t X || fail "tagged kill keys failed"
+wait_for 'Kill 2 tagged?'
+$TMUX send-keys -t aaa:0 y || fail "tagged kill confirmation failed"
+i=0
+while [ "$i" -lt 50 ]; do
+	left=$($TMUX list-windows -t aaa -F '#{window_name}' | \
+	    grep -c '^swap-' || true)
+	[ "$left" -eq 0 ] && break
+	sleep 0.2
+	i=$((i + 1))
+done
+[ "$i" -lt 50 ] || fail "tagged windows were not killed"
+exit_mode q
+
+# --- killing the mode's own session -----------------------------------------
+# Killing the attached session also destroys the pane hosting the tree. The
+# confirmation callback must finish without redrawing the destroyed mode.
+$TMUX set-option -g detach-on-destroy off || exit 1
+$TMUX choose-tree -s -t aaa:0 -F 'G7' -O name || exit 1
+wait_count ': G7' 2
+$TMUX send-keys -t aaa:0 g x || fail "send-keys session kill failed"
+wait_for 'Kill session aaa'
+$TMUX send-keys -t aaa:0 y || fail "session kill confirmation failed"
+i=0
+while [ "$i" -lt 50 ]; do
+	sessions=$($TMUX list-sessions -F '#{session_name}' 2>/dev/null)
+	client_session=$($TMUX list-clients -F '#{client_session}' 2>/dev/null)
+	[ "$sessions" = 'zzz' ] && [ "$client_session" = 'zzz' ] && break
+	sleep 0.2
+	i=$((i + 1))
+done
+[ "$i" -lt 50 ] || fail "killing the tree session killed the server"
 
 exit 0

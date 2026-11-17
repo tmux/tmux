@@ -7,6 +7,8 @@ TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+trap '$TMUX kill-server 2>/dev/null' 0
+trap 'exit 1' 1 2 15
 
 # test_format $format $expected_result
 test_format()
@@ -174,7 +176,7 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,#{?#{==:#{session_name},
 test_conditional_with_session_name "#{?pane_in_mode,abc,#{?#{==:#{session_name},Summer},ABC,XYZ}}" "ABC" "XYZ"
 
 # Some fancy stackings
-test_conditional_with_pane_in_mode "#{?#{==:#{?pane_in_mode,#{session_name},#(echo Spring)},Summer},abc,xyz}" "abc" "xyz"
+test_conditional_with_pane_in_mode "#{?#{==:#{?pane_in_mode,#{session_name},#{@cold}},Summer},abc,xyz}" "abc" "xyz"
 
 
 
