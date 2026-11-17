@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.77 2026/10/27 15:36:33 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.78 2026/11/17 11:16:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -27,7 +27,7 @@
 #include "tmux.h"
 
 struct utf8_width_item {
-	wchar_t				wc;
+	int				wc;
 	u_int				width;
 	int				allocated;
 
@@ -279,7 +279,7 @@ utf8_item_by_index(u_int index)
 
 /* Find a codepoint in the cache. */
 static struct utf8_width_item *
-utf8_find_in_width_cache(wchar_t wc)
+utf8_find_in_width_cache(int wc)
 {
 	struct utf8_width_item	uw;
 
@@ -289,7 +289,7 @@ utf8_find_in_width_cache(wchar_t wc)
 
 /* Add to width cache. */
 static void
-utf8_insert_width_cache(wchar_t wc, u_int width)
+utf8_insert_width_cache(int wc, u_int width)
 {
 	struct utf8_width_item	*uw, *old;
 
@@ -317,7 +317,8 @@ utf8_add_to_width_cache(const char *s)
 	u_int			 width;
 	const char		*errstr;
 	struct utf8_data	*ud;
-	wchar_t			 wc, wc_start, wc_end;
+	int			 wc, wc_start, wc_end;
+	wchar_t			 tmp;
 	unsigned long long	 n;
 
 	copy = xstrdup(s);
@@ -338,7 +339,7 @@ utf8_add_to_width_cache(const char *s)
 		n = strtoull(copy + 2, &endptr, 16);
 		if (copy[2] == '\0' ||
 		    n == 0 ||
-		    n > WCHAR_MAX ||
+		    n > INT_MAX ||
 		    (errno == ERANGE && n == ULLONG_MAX)) {
 			free(copy);
 			return;
@@ -354,9 +355,9 @@ utf8_add_to_width_cache(const char *s)
 			n = strtoull(endptr + 2, &endptr, 16);
 			if (*endptr != '\0' ||
 			    n == 0 ||
-			    n > WCHAR_MAX ||
+			    n > INT_MAX ||
 			    (errno == ERANGE && n == ULLONG_MAX) ||
-			    (wchar_t)n < wc_start) {
+			    (int)n < wc_start) {
 				free(copy);
 				return;
 			}
@@ -385,15 +386,12 @@ utf8_add_to_width_cache(const char *s)
 			free(copy);
 			return;
 		}
-#ifdef HAVE_UTF8PROC
-		if (utf8proc_mbtowc(&wc, ud[0].data, ud[0].size) <= 0) {
-#else
-		if (mbtowc(&wc, ud[0].data, ud[0].size) <= 0) {
-#endif
+		if (mbtowc(&tmp, ud[0].data, ud[0].size) <= 0) {
 			free(ud);
 			free(copy);
 			return;
 		}
+		wc = tmp;
 		free(ud);
 
 		utf8_insert_width_cache(wc, width);
@@ -553,7 +551,7 @@ static enum utf8_state
 utf8_width(struct utf8_data *ud, int *width)
 {
 	struct utf8_width_item	*uw;
-	wchar_t			 wc;
+	int			 wc;
 
 	if (utf8_towc(ud, &wc) != UTF8_DONE)
 		return (UTF8_ERROR);
@@ -580,9 +578,15 @@ utf8_width(struct utf8_data *ud, int *width)
 
 /* Convert UTF-8 character to wide character. */
 enum utf8_state
-utf8_towc(const struct utf8_data *ud, wchar_t *wc)
+utf8_towc(const struct utf8_data *ud, int *wc)
 {
-	switch (mbtowc(wc, ud->data, ud->size)) {
+	wchar_t	tmp;
+	int	n;
+
+	n = mbtowc(&tmp, ud->data, ud->size);
+	if (n > 0)
+		*wc = tmp;
+	switch (n) {
 	case -1:
 		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
 		    errno);
@@ -600,7 +604,7 @@ int
 utf8_has_whitespace(const struct utf8_data *ud)
 {
 	struct utf8_data tmp;
-	wchar_t		 wc;
+	int		 wc;
 	u_int		 offset = 0, size;
 	u_char		 ch;
 
@@ -663,7 +667,7 @@ utf8_has_whitespace(const struct utf8_data *ud)
 
 /* Convert wide character to UTF-8 character. */
 enum utf8_state
-utf8_fromwc(wchar_t wc, struct utf8_data *ud)
+utf8_fromwc(int wc, struct utf8_data *ud)
 {
 	int	size, width;
 
@@ -672,6 +676,8 @@ utf8_fromwc(wchar_t wc, struct utf8_data *ud)
 	if (wc < 0 || wc > 0x10ffff || (wc >= 0xd800 && wc <= 0xdfff))
 		return (UTF8_ERROR);
 
+	if ((u_int)wc > WCHAR_MAX)
+		return (UTF8_ERROR);
 	size = wctomb(ud->data, wc);
 	if (size < 0) {
 		log_debug("UTF-8 %d, wctomb() %d", wc, errno);
