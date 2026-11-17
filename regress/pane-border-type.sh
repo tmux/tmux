@@ -707,6 +707,9 @@ mouse_session()
 	$TMUX set -g pane-border-type "$1" || fail "set $1 failed"
 	$TMUX set -g pane-border-status "$2" || fail "set status $2 failed"
 	$TMUX split-window "$3" -t ms:0 'cat' || fail "split $3 failed"
+	# Long hostnames in the default titles can hide the border controls.
+	$TMUX select-pane -t ms:0.0 -T left &&
+	$TMUX select-pane -t ms:0.1 -T right || fail "set pane titles failed"
 	$TMUX2 new-session -d -s out -x 80 -y 24 "$TMUX attach -t ms" ||
 		exit 1
 	sleep 0.5
