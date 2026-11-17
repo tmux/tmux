@@ -1,4 +1,4 @@
-/* $OpenBSD: key-string.c,v 1.80 2026/11/12 11:26:25 nicm Exp $ */
+/* $OpenBSD: key-string.c,v 1.81 2026/11/17 11:16:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -261,11 +261,9 @@ key_string_lookup_string(const char *string)
 {
 	key_code		 key, modifiers = 0;
 	u_int			 u, i;
-	struct utf8_data	 ud, *udp;
+	struct utf8_data	 ud;
 	enum utf8_state		 more;
 	utf8_char		 uc;
-	char			 m[MB_LEN_MAX + 1];
-	int			 mlen;
 
 	/* Is this no key or any key? */
 	if (strcasecmp(string, "None") == 0)
@@ -279,20 +277,9 @@ key_string_lookup_string(const char *string)
 			return (KEYC_UNKNOWN);
 		if (u < 32)
 			return (u);
-		mlen = wctomb(m, u);
-		if (mlen <= 0 || mlen > MB_LEN_MAX)
+		if (utf8_fromwc(u, &ud) != UTF8_DONE ||
+		    utf8_from_data(&ud, &uc) != UTF8_DONE)
 			return (KEYC_UNKNOWN);
-		m[mlen] = '\0';
-
-		udp = utf8_fromcstr(m);
-		if (udp == NULL ||
-		    udp[0].size == 0 ||
-		    udp[1].size != 0 ||
-		    utf8_from_data(&udp[0], &uc) != UTF8_DONE) {
-			free(udp);
-			return (KEYC_UNKNOWN);
-		}
-		free(udp);
 		return (uc);
 	}
 

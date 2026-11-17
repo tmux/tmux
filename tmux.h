@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1481 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1482 2026/11/17 11:16:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4239,8 +4239,8 @@ void		 session_theme_changed(struct session *);
 void		 session_update_history(struct session *);
 
 /* utf8.c */
-enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
-enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
+enum utf8_state	 utf8_towc(const struct utf8_data *, int *);
+enum utf8_state	 utf8_fromwc(int wc, struct utf8_data *);
 int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
