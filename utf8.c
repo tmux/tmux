@@ -319,7 +319,9 @@ utf8_add_to_width_cache(const char *s)
 	const char		*errstr;
 	struct utf8_data	*ud;
 	int			 wc, wc_start, wc_end;
+#ifndef HAVE_UTF8PROC
 	wchar_t			 tmp;
+#endif
 	unsigned long long	 n;
 
 	copy = xstrdup(s);
@@ -387,12 +389,18 @@ utf8_add_to_width_cache(const char *s)
 			free(copy);
 			return;
 		}
+#ifdef HAVE_UTF8PROC
+		if (utf8proc_mbtowc(&wc, ud[0].data, ud[0].size) <= 0) {
+#else
 		if (mbtowc(&tmp, ud[0].data, ud[0].size) <= 0) {
+#endif
 			free(ud);
 			free(copy);
 			return;
 		}
+#ifndef HAVE_UTF8PROC
 		wc = tmp;
+#endif
 		free(ud);
 
 		utf8_insert_width_cache(wc, width);
