@@ -1,22 +1,42 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
-$TMUX2 kill-server 2>/dev/null
+stop_server $TMUX2 || exit 1
 
-TMP=$(mktemp)
-trap "rm -f $TMP" 0 1 15
+TMP=$(mktemp) || exit 1
+prompt_pid=
+
+cleanup () {
+	if [ -n "$prompt_pid" ]; then
+		kill "$prompt_pid" 2>/dev/null
+		wait "$prompt_pid" 2>/dev/null
+	fi
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
+	rm -f "$TMP"
+}
+trap cleanup 0
+trap 'exit 1' 1 2 15
+
+fail () {
+	echo "[FAIL] $*" >&2
+	exit 1
+}
 
 $TMUX2 -f/dev/null new -d || exit 1
 $TMUX -f/dev/null new -d "$TMUX2 attach" || exit 1
-sleep 1
+wait_for_clients 1 $TMUX2 || fail "inner client did not attach"
 
 exit_status=0
+assertion=0
 
 format_string () {
 	case $1 in
@@ -34,15 +54,23 @@ assert_key () {
 	expected_name=$2
 	format_string=$(format_string "$expected_name")
 
-	$TMUX2 command-prompt -k 'display-message -pl '"$format_string" > "$TMP" &
-	sleep 0.05
+	# Use a different prompt each time so a stale redraw cannot look ready.
+	assertion=$((assertion + 1))
+	prompt="tty-keys-$assertion:"
+	$TMUX2 command-prompt -k -p "$prompt" \
+	    'display-message -pl '"$format_string" > "$TMP" &
+	prompt_pid=$!
+	wait_for_text "$prompt" $TMUX capture-pane -p ||
+	    fail "$keys -> $expected_name: timed out waiting for prompt"
 
-	$TMUX send-keys $keys
+	$TMUX send-keys $keys || fail "could not send $keys"
 
-	wait
+	wait_for_exit "$prompt_pid" ||
+	    fail "$keys -> $expected_name: timed out waiting for key"
+	wait "$prompt_pid" || fail "$keys -> $expected_name: prompt failed"
+	prompt_pid=
 
-	keys=$(printf '%s' "$keys" | sed -e 's/Escape/\\\\033/g' | tr -d '[:space:]')
-	actual_name=$(tr -d '[:space:]' < "$TMP")
+	IFS= read -r actual_name <"$TMP"
 
 	if [ "$actual_name" = "$expected_name" ]; then
 		if [ -n "$VERBOSE" ]; then
@@ -293,6 +321,16 @@ assert_key 'Escape [24@' 'C-S-F12'
 assert_key 'Escape [I' 'FocusIn'
 assert_key 'Escape [O' 'FocusOut'
 
+# Focus events do not leave the prefix table.
+$TMUX2 bind C-c set -g @focus-prefix yes
+$TMUX2 set -g focus-events on
+$TMUX send-keys C-b Escape '[O' Escape '[I' C-c
+sleep 0.05
+if [ "$($TMUX2 show -gv @focus-prefix)" != yes ]; then
+	echo "[FAIL] FocusIn and FocusOut left the prefix table"
+	exit_status=1
+fi
+
 # Paste keys
 assert_key 'Escape [200~' 'PasteStart'
 assert_key 'Escape [201~' 'PasteEnd'
@@ -354,8 +392,5 @@ assert_key 'Escape [32;2u' 'S-Space'
 
 assert_key 'Escape [9;5u' 'C-Tab'
 assert_key 'Escape [1;5Z' 'C-S-Tab'
-
-$TMUX kill-server 2>/dev/null
-$TMUX2 kill-server 2>/dev/null
 
 exit $exit_status

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise screen-redraw.c when the window is smaller than the attached client,
 # so part of the client is outside the window. screen-redraw.c fills the outside
 # area and draws a real border along the window's right and/or bottom edge (not
@@ -32,14 +34,14 @@ fail() {
 }
 
 compare() {
-	sleep 1
-	$TMUX capturep -p >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -p >"$TMP" || exit 1
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until capture_matches_file "$RESULTS/$1.result" "$TMP" $TMUX capturep -p ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
 }
 
@@ -92,6 +94,15 @@ $TMUX2 selectp -t0 || exit 1
 $TMUX2 splitw -v "$C" || exit 1
 $TMUX2 select-layout tiled || exit 1
 compare outside-both-2x2
+
+# Top pane status supplies internal horizontal borders, but there is no pane
+# below the window to supply its bottom edge.
+new_scene 28 9
+$TMUX2 setw pane-border-status top || exit 1
+$TMUX2 setw pane-border-format "" || exit 1
+compare outside-both-status-top-single
+$TMUX2 splitw -v "$C" || exit 1
+compare outside-both-status-top-split
 
 # Window BIGGER than the client: only part of the window is viewed and the view
 # can be panned (refresh-client). This exercises a non-zero scene offset.

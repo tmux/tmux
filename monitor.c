@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor.c,v 1.7 2026/07/27 19:15:58 nicm Exp $ */
+/* $OpenBSD: monitor.c,v 1.9 2026/11/12 11:26:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -592,6 +592,7 @@ monitor_parse(const char *value, char **name, enum monitor_type *type, int *id,
     char **format)
 {
 	char	*copy, *what, *split;
+	int	 n;
 
 	copy = xstrdup(value);
 	*id = -1;
@@ -608,14 +609,20 @@ monitor_parse(const char *value, char **name, enum monitor_type *type, int *id,
 
 	if (strcmp(what, "%*") == 0)
 		*type = MONITOR_ALL_PANES;
-	else if (sscanf(what, "%%%d", id) == 1 && *id >= 0)
-		*type = MONITOR_PANE;
 	else if (strcmp(what, "@*") == 0)
 		*type = MONITOR_ALL_WINDOWS;
-	else if (sscanf(what, "@%d", id) == 1 && *id >= 0)
+	else if (*what == '\0')
+		*type = MONITOR_SESSION;
+	else if (sscanf(what, "%%%d%n", id, &n) == 1 &&
+	    what[n] == '\0' &&
+	    *id >= 0)
+		*type = MONITOR_PANE;
+	else if (sscanf(what, "@%d%n", id, &n) == 1 &&
+	    what[n] == '\0' &&
+	    *id >= 0)
 		*type = MONITOR_WINDOW;
 	else
-		*type = MONITOR_SESSION;
+		goto fail;
 	*name = xstrdup(copy);
 	*format = xstrdup(split);
 

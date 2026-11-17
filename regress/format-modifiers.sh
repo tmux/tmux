@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests of format modifiers as described in tmux(1) FORMATS.
 #
 # This complements format-strings.sh (which covers escapes, conditionals,
@@ -18,6 +20,24 @@ export TZ LANG LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+FIFO1="${TMPDIR:-/tmp}/fmt-l-$$-1"
+FIFO2="${TMPDIR:-/tmp}/fmt-l-$$-2"
+HOLD1=
+HOLD2=
+CC1=
+CC2=
+
+cleanup()
+{
+	for pid in $HOLD1 $HOLD2 $CC1 $CC2; do
+		kill "$pid" 2>/dev/null
+		wait "$pid" 2>/dev/null
+	done
+	stop_server $TMUX || exit 1
+	rm -f "$FIFO1" "$FIFO2"
+}
+trap cleanup 0
+trap 'exit 1' 1 2 15
 
 ESC=$(printf '\033')
 
@@ -80,8 +100,7 @@ assert_alive()
 	fi
 }
 
-$TMUX kill-server 2>/dev/null
-sleep 0.1
+stop_server $TMUX || exit 1
 $TMUX new-session -d -s main -x 80 -y 24 || exit 1
 
 # Single-window session used by test_expand for format_expand-context tests.
@@ -104,6 +123,8 @@ $TMUX set -g @sq "a'b" || exit 1       # a single quote for q/s:
 $TMUX set -g @sub 'abABab' || exit 1
 $TMUX set -g @slash 'foo/bar foo/' || exit 1
 $TMUX set -g @nl "$(printf 'a\nb')" || exit 1
+$TMUX set -g @pad '  ab  ' || exit 1
+$TMUX set -g @ff 'foofoo' || exit 1
 q_s_nl=$(printf "'a\nb'")
 
 
@@ -208,10 +229,24 @@ test_format "#{e|/|f|2:10,3}" "3.33"
 # Default number of decimal places for float is two.
 test_format "#{e|*|f:2.5,2}" "5.00"
 
-# Division by zero must not crash the server (result is unspecified).
-$TMUX display-message -p "#{e|/|:5,0}" >/dev/null 2>&1
-$TMUX display-message -p "#{e|/|f:5,0}" >/dev/null 2>&1
-assert_alive "division by zero"
+# An integer expression with a side or result that is NaN or out of the range
+# of a long long expands to empty: division or modulus by zero, nan or inf, or
+# 1e30. LLONG_MAX written out is 2^63 as a double, which is out of range; the
+# largest double below 2^63 and -2^63 still convert. Comparisons are integer
+# expressions too. Floating point gives inf.
+test_format "#{e|/|:5,0}" ""
+test_format "#{e|m|:0,0}" ""
+test_format "#{e|m|:7,0}" ""
+test_format "#{e|+|:nan,0}" ""
+test_format "#{e|+|:-inf,1}" ""
+test_format "#{e|-|:1e30,1e30}" ""
+test_format "#{e|*|:1e30,1}" ""
+test_format "#{e|+|:9223372036854775807,0}" ""
+test_format "#{e|<|:nan,1}" ""
+test_format "#{e|+|:9223372036854774784,0}" "9223372036854774784"
+test_format "#{e|-|:-9223372036854775808,0}" "-9223372036854775808"
+test_format "#{e|/|f:5,0}" "inf"
+assert_alive "expressions with no integer value"
 
 
 # --- ASCII and repeat ----------------------------------------------------
@@ -227,6 +262,19 @@ test_format "#{R:a,3}" "aaa"
 test_format "#{R:ab,2}" "abab"
 # A long repeat exercises output-buffer growth during expansion.
 test_format "#{n:#{R:x,300}}" "300"
+# Limit the result size as well as the repeat count, including nested repeats.
+test_format "#{n:#{R:abcdefgh,8192}}" "65536"
+test_format "#{R:abcdefgh,8193}" ""
+test_format "#{R:,10000}" ""
+test_format "#{n:#{R:#{R:x,256},256}}" "65536"
+test_format "#{R:#{R:x,256},257}" ""
+test_format "#{R:#{R:abcdefgh,8192}x,1}" ""
+test_format "#{n:#{R:中文中,7281}}" "65529"
+test_format "#{R:中文中,7282}" ""
+test_format "#{n:#{R:x,10000}}" "10000"
+test_format "#{R:x,10001}" ""
+# Fuzzy matching must not receive an enormous string from nested repeats.
+test_format "#{m/p:a,#{R:#{R:#{R:a,353},38},90}}" ""
 
 
 # --- Width, padding and truncation ---------------------------------------
@@ -461,6 +509,9 @@ test_format "#{s/^x*/X/:@s}" "Xabcdefghij"
 test_format "#{s/$/X/:@s}" "abcdefghijX"
 test_format "#{s/x*//:@s}" "abcdefghij"
 test_format "#{s/x*/X/:@s}" "aXbXcXdXeXfXgXhXiXjX"
+# ^ matches only at the start, including after an alternation or in a group.
+test_format "#{s/^ +| +$//:@pad}" "ab"
+test_format "#{s/(^| )foo/X/:@ff}" "Xfoo"
 # An invalid regular expression leaves the text unchanged.
 test_format "#{s/[/X/:@s}" "abcdefghij"
 
@@ -513,8 +564,7 @@ assert_alive "verbose expansion"
 # These need a fully controlled server so the set of sessions, windows and
 # panes (and their order) is known, so start from a clean server.  This must be
 # the last section as it discards the setup above.
-$TMUX kill-server 2>/dev/null
-sleep 0.1
+stop_server $TMUX || exit 1
 
 # Sessions, created in this order, so session ids (and hence creation order)
 # are zeta=$0, alpha=$1, mike=$2.
@@ -579,8 +629,6 @@ assert_alive "verbose loop expansion"
 
 # L loops over attached clients.  Attach two control-mode clients, each held
 # open by a background process keeping a FIFO's write end open.
-FIFO1="${TMPDIR:-/tmp}/fmt-l-$$-1"
-FIFO2="${TMPDIR:-/tmp}/fmt-l-$$-2"
 rm -f "$FIFO1" "$FIFO2"
 mkfifo "$FIFO1" "$FIFO2" || exit 1
 # Hold the write ends open so the control clients stay attached.
@@ -605,9 +653,9 @@ test_format "#{L/nr:x}" "xx"
 test_format "#{L/r:x}" "xx"
 # Now detach one and confirm the count drops to one.
 kill $HOLD2 2>/dev/null
+wait $HOLD2 2>/dev/null
+HOLD2=
 sleep 1
 test_format "#{L:x}" "x"
-kill $HOLD1 $CC1 $CC2 2>/dev/null
-rm -f "$FIFO1" "$FIFO2"
 
 exit 0

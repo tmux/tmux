@@ -1,4 +1,4 @@
-/* $OpenBSD: prompt.c,v 1.6 2026/08/17 06:45:16 nicm Exp $ */
+/* $OpenBSD: prompt.c,v 1.10 2026/11/13 10:54:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -297,6 +297,8 @@ prompt_update(struct prompt *pr, const char *msg, const char *input)
 		tmp = format_expand_time(ft, input);
 	pr->buffer = utf8_fromcstr(tmp);
 	pr->index = utf8_strlen(pr->buffer);
+	if (pr->flags & PROMPT_COMMANDMODE && pr->index != 0)
+		pr->index--;
 	free(tmp);
 
 	memset(pr->hindex, 0, sizeof pr->hindex);
@@ -596,20 +598,10 @@ prompt_mouse_complete(struct prompt *pr, u_int x, u_int cx, u_int ax, u_int aw,
 	return (PROMPT_KEY_HANDLED);
 }
 
-/* Draw prompt. */
+/* Set screen cursor defaults for a prompt. */
 void
-prompt_draw(struct prompt *pr, struct prompt_draw_data *pd)
+prompt_set_cursor(struct prompt *pr, struct screen *s)
 {
-	struct screen_write_ctx	*ctx = pd->ctx;
-	struct screen		*s = ctx->s;
-	u_int			 ax = pd->area_x, py = pd->prompt_line, *cx;
-	u_int			 aw = pd->area_width;
-	struct grid_cell	 gc;
-	struct prompt_layout	 pl;
-	struct style		 sy;
-	u_int			 i, width, pcursor;
-	char			*expanded;
-
 	if (pr->flags & PROMPT_COMMANDMODE) {
 		s->default_cstyle = pr->command_cstyle;
 		s->default_mode = pr->command_cmode;
@@ -619,7 +611,22 @@ prompt_draw(struct prompt *pr, struct prompt_draw_data *pd)
 		s->default_mode = pr->cmode;
 		s->default_ccolour = pr->ccolour;
 	}
+}
 
+/* Draw prompt. */
+void
+prompt_draw(struct prompt *pr, struct prompt_draw_data *pd)
+{
+	struct screen_write_ctx	*ctx = pd->ctx;
+	u_int			 ax = pd->area_x, py = pd->prompt_line, *cx;
+	u_int			 aw = pd->area_width;
+	struct grid_cell	 gc;
+	struct prompt_layout	 pl;
+	struct style		 sy;
+	u_int			 i, width, pcursor;
+	char			*expanded;
+
+	prompt_set_cursor(pr, ctx->s);
 	prompt_layout(pr, ax, aw, &pl, &expanded, &sy);
 	memcpy(&gc, &sy.gc, sizeof gc);
 	cx = pd->cursor_x;
@@ -701,6 +708,10 @@ prompt_mouse(struct prompt *pr, u_int x, u_int ax, u_int aw, int *redraw)
 			break;
 		width += ud->width;
 	}
+	if (pr->flags & PROMPT_COMMANDMODE &&
+	    idx != 0 &&
+	    pr->buffer[idx].size == 0)
+		idx--;
 	if (idx == pr->index)
 		return (PROMPT_KEY_HANDLED);
 
@@ -1485,6 +1496,10 @@ process_key:
 		goto append_key;
 	}
 
+	if (pr->flags & PROMPT_COMMANDMODE &&
+	    pr->index != 0 &&
+	    pr->buffer[pr->index].size == 0)
+		pr->index--;
 	*redraw = 1;
 	return (PROMPT_KEY_HANDLED);
 
@@ -1493,9 +1508,11 @@ append_key:
 		utf8_set(&tmp, key);
 		if (key <= 0x1f || key == 0x7f)
 			tmp.width = 2;
-	} else if (KEYC_IS_UNICODE(key))
+	} else if (KEYC_IS_UNICODE(key)) {
 		utf8_to_data(key, &tmp);
-	else
+		if (tmp.size == 0)
+			return (PROMPT_KEY_HANDLED);
+	} else
 		return (PROMPT_KEY_HANDLED);
 
 	pr->buffer = xreallocarray(pr->buffer, size + 2,
@@ -1526,6 +1543,10 @@ append_key:
 	}
 
 changed:
+	if (pr->flags & PROMPT_COMMANDMODE &&
+	    pr->index != 0 &&
+	    pr->buffer[pr->index].size == 0)
+		pr->index--;
 	*redraw = 1;
 	if (pr->flags & PROMPT_INCREMENTAL) {
 		s = utf8_tocstr(pr->buffer);
@@ -1553,14 +1574,25 @@ prompt_complete_add(char ***list, u_int *size, const char *s)
 
 /* Build completion list. */
 static char **
-prompt_complete_commands(u_int *size, const char *s)
+prompt_complete_commands(u_int *size, const char *s, int at_start)
 {
-	char				**list = NULL, *tmp;
-	const char			*value, *cp;
-	const struct cmd_entry		**cmdent;
-	size_t				 slen = strlen(s), valuelen;
-	struct options_entry		*o;
-	struct options_array_item	*a;
+	char				 **list = NULL, *tmp;
+	const char			 **layout, *value, *cp;
+	const struct cmd_entry		 **cmdent;
+	const struct options_table_entry  *oe;
+	size_t				  slen = strlen(s), valuelen;
+	struct options_entry		 *o;
+	struct options_array_item	 *a;
+	const char			 *layouts[] = {
+		"even-horizontal",
+		"even-vertical",
+		"main-horizontal",
+		"main-horizontal-mirrored",
+		"main-vertical",
+		"main-vertical-mirrored",
+		"tiled",
+		NULL
+	};
 
 	*size = 0;
 	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
@@ -1585,6 +1617,16 @@ prompt_complete_commands(u_int *size, const char *s)
 		next:
 			a = options_array_next(a);
 		}
+	}
+	if (at_start)
+		return (list);
+	for (oe = options_table; oe->name != NULL; oe++) {
+		if (strncmp(oe->name, s, slen) == 0)
+			prompt_complete_add(&list, size, oe->name);
+	}
+	for (layout = layouts; *layout != NULL; layout++) {
+		if (strncmp(*layout, s, slen) == 0)
+			prompt_complete_add(&list, size, *layout);
 	}
 	return (list);
 }
@@ -1669,11 +1711,10 @@ prompt_complete(struct prompt *pr, const char *word, u_int offset)
 	char	**list = NULL, *out = NULL;
 	u_int	  size = 0, i;
 
-	if (pr->type != PROMPT_TYPE_COMMAND || offset != 0 ||
-	    *word == '\0')
+	if (pr->type != PROMPT_TYPE_COMMAND || *word == '\0')
 		return (NULL);
 
-	list = prompt_complete_commands(&size, word);
+	list = prompt_complete_commands(&size, word, offset == 0);
 	if (size == 0) {
 		free(list);
 		return (NULL);

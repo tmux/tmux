@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.109 2026/08/25 08:37:08 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.115 2026/11/12 11:19:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -90,6 +90,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_DL1] = { TTYCODE_STRING, "dl1" },
 	[TTYC_DL] = { TTYCODE_STRING, "dl" },
 	[TTYC_DSEKS] = { TTYCODE_STRING, "Dseks" },
+	[TTYC_DSESC] = { TTYCODE_STRING, "Dsesc" },
 	[TTYC_DSFCS] = { TTYCODE_STRING, "Dsfcs" },
 	[TTYC_DSBP] = { TTYCODE_STRING, "Dsbp" },
 	[TTYC_DSMG] = { TTYCODE_STRING, "Dsmg" },
@@ -101,6 +102,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_ENACS] = { TTYCODE_STRING, "enacs" },
 	[TTYC_ENBP] = { TTYCODE_STRING, "Enbp" },
 	[TTYC_ENEKS] = { TTYCODE_STRING, "Eneks" },
+	[TTYC_ENESC] = { TTYCODE_STRING, "Enesc" },
 	[TTYC_ENFCS] = { TTYCODE_STRING, "Enfcs" },
 	[TTYC_ENMG] = { TTYCODE_STRING, "Enmg" },
 	[TTYC_FSL] = { TTYCODE_STRING, "fsl" },
@@ -114,6 +116,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_IND] = { TTYCODE_STRING, "ind" },
 	[TTYC_INDN] = { TTYCODE_STRING, "indn" },
 	[TTYC_INVIS] = { TTYCODE_STRING, "invis" },
+	[TTYC_ISCRL] = { TTYCODE_FLAG, "Iscrl" },
 	[TTYC_KCBT] = { TTYCODE_STRING, "kcbt" },
 	[TTYC_KCUB1] = { TTYCODE_STRING, "kcub1" },
 	[TTYC_KCUD1] = { TTYCODE_STRING, "kcud1" },
@@ -252,6 +255,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_KUP6] = { TTYCODE_STRING, "kUP6" },
 	[TTYC_KUP7] = { TTYCODE_STRING, "kUP7" },
 	[TTYC_MS] = { TTYCODE_STRING, "Ms" },
+	[TTYC_NCV] = { TTYCODE_NUMBER, "ncv" },
 	[TTYC_NOBR] = { TTYCODE_STRING, "Nobr" },
 	[TTYC_OL] = { TTYCODE_STRING, "ol" },
 	[TTYC_OP] = { TTYCODE_STRING, "op" },
@@ -362,7 +366,8 @@ tty_term_override_next(const char *s, size_t *offset)
 }
 
 void
-tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
+tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
+    int flags)
 {
 	const struct tty_term_code_entry	*ent;
 	struct tty_code				*code;
@@ -405,8 +410,13 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
 			if (strcmp(s, ent->name) != 0)
 				continue;
 			code = &term->codes[i];
+			if ((flags & TERM_NOREPLACE) &&
+			    code->type != TTYCODE_NONE)
+				continue;
 
 			if (remove) {
+				if (code->type == TTYCODE_STRING)
+					free(code->value.string);
 				code->type = TTYCODE_NONE;
 				continue;
 			}
@@ -437,6 +447,42 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
 	}
 }
 
+static void
+tty_term_free_colours(struct tty_term *term)
+{
+	u_int	i;
+
+	for (i = 0; i < nitems(term->setaf); i++) {
+		free(term->setaf[i]);
+		term->setaf[i] = NULL;
+		free(term->setab[i]);
+		term->setab[i] = NULL;
+	}
+}
+
+static void
+tty_term_build_colours(struct tty_term *term)
+{
+	u_int		 i;
+	int		 setaf, setab;
+	const char	*s;
+
+	tty_term_free_colours(term);
+
+	setaf = tty_term_has(term, TTYC_SETAF);
+	setab = tty_term_has(term, TTYC_SETAB);
+	for (i = 0; i < nitems(term->setaf); i++) {
+		if (setaf) {
+			s = tty_term_string_i(term, TTYC_SETAF, i);
+			term->setaf[i] = xstrdup(s);
+		}
+		if (setab) {
+			s = tty_term_string_i(term, TTYC_SETAB, i);
+			term->setab[i] = xstrdup(s);
+		}
+	}
+}
+
 void
 tty_term_apply_overrides(struct tty_term *term)
 {
@@ -457,7 +503,7 @@ tty_term_apply_overrides(struct tty_term *term)
 		offset = 0;
 		first = tty_term_override_next(s, &offset);
 		if (first != NULL && fnmatch(first, term->name, 0) == 0)
-			tty_term_apply(term, s + offset, 0);
+			tty_term_apply(term, s + offset, 0, 0);
 		a = options_array_next(a);
 	}
 
@@ -522,6 +568,7 @@ tty_term_apply_overrides(struct tty_term *term)
 	for (; acs[0] != '\0' && acs[1] != '\0'; acs += 2)
 		term->acs[(u_char) acs[0]][0] = acs[1];
 
+	tty_term_build_colours(term);
 	tty_term_validate(term);
 }
 
@@ -703,6 +750,7 @@ tty_term_free(struct tty_term *term)
 			free(term->codes[i].value.string);
 	}
 	free(term->codes);
+	tty_term_free_colours(term);
 
 	LIST_REMOVE(term, entry);
 	free(term->name);
@@ -824,7 +872,15 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 const char *
 tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 {
-	const char	*x = tty_term_string(term, code), *s;
+	const char	*x, *s;
+
+	if (a >= 0 && (u_int)a < nitems(term->setaf)) {
+		if (code == TTYC_SETAF && term->setaf[a] != NULL)
+			return (term->setaf[a]);
+		if (code == TTYC_SETAB && term->setab[a] != NULL)
+			return (term->setab[a]);
+	}
+	x = tty_term_string(term, code);
 
 #if defined(HAVE_TIPARM_S)
 	s = tiparm_s(1, 0, x, a);

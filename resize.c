@@ -1,4 +1,4 @@
-/* $OpenBSD: resize.c,v 1.59 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: resize.c,v 1.62 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -152,7 +152,13 @@ clients_calculate_size(int type, int current, struct client *c,
 		*sx = UINT_MAX;
 		*sy = UINT_MAX;
 	}
-	*xpixel = *ypixel = 0;
+	if (w != NULL && type == WINDOW_SIZE_MANUAL) {
+		*xpixel = w->xpixel;
+		*ypixel = w->ypixel;
+	} else {
+		*xpixel = 0;
+		*ypixel = 0;
+	}
 
 	/*
 	 * For latest, count the number of clients with this window. We only
@@ -190,7 +196,7 @@ clients_calculate_size(int type, int current, struct client *c,
 		if (w == NULL ||
 		    !control_get_window_size(loop, w->id, &cx, &cy) ||
 		    cx == 0 || cy == 0) {
-			cx = loop->tty.sx;
+			cx = loop->tty.sx - status_side_size(loop);
 			cy = loop->tty.sy - status_line_size(loop);
 		}
 
@@ -295,7 +301,7 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	 * client and no window, use the default size as for manual type.
 	 */
 	if (type == WINDOW_SIZE_LATEST && c != NULL && !ignore_client_size(c)) {
-		*sx = c->tty.sx;
+		*sx = c->tty.sx - status_side_size(c);
 		*sy = c->tty.sy - status_line_size(c);
 		*xpixel = c->tty.xpixel;
 		*ypixel = c->tty.ypixel;
@@ -380,16 +386,30 @@ recalculate_size(struct window *w, int now)
 	/* Look for a suitable client and get the new size. */
 	changed = clients_calculate_size(type, current, NULL, NULL, w,
 	    recalculate_size_skip_client, &sx, &sy, &xpixel, &ypixel);
+	if (xpixel == 0)
+		xpixel = DEFAULT_XPIXEL;
+	if (ypixel == 0)
+		ypixel = DEFAULT_YPIXEL;
 
 	/*
 	 * Make sure the size has actually changed. If the window has already
 	 * got a resize scheduled, then use the new size; otherwise the old.
 	 */
 	if (w->flags & WINDOW_RESIZE) {
-		if (!now && changed && w->new_sx == sx && w->new_sy == sy)
+		if (!now &&
+		    changed &&
+		    w->new_sx == sx &&
+		    w->new_sy == sy &&
+		    w->new_xpixel == xpixel &&
+		    w->new_ypixel == ypixel)
 			changed = 0;
 	} else {
-		if (!now && changed && w->sx == sx && w->sy == sy)
+		if (!now &&
+		    changed &&
+		    w->sx == sx &&
+		    w->sy == sy &&
+		    w->xpixel == xpixel &&
+		    w->ypixel == ypixel)
 			changed = 0;
 	}
 
@@ -452,12 +472,16 @@ recalculate_sizes_now(int now)
 		s = c->session;
 		if (s != NULL && !(c->flags & CLIENT_UNATTACHEDFLAGS))
 			s->attached++;
-		if (ignore_client_size(c))
+		if (s == NULL)
 			continue;
 		if (c->tty.sy <= s->statuslines || (c->flags & CLIENT_CONTROL))
 			c->flags |= CLIENT_STATUSOFF;
 		else
 			c->flags &= ~CLIENT_STATUSOFF;
+		if (s->sidestatusat != -1 && c->tty.sx <= s->sidestatuswidth)
+			c->flags |= CLIENT_SIDESTATUSOFF;
+		else
+			c->flags &= ~CLIENT_SIDESTATUSOFF;
 	}
 
 	/* Walk each window and adjust the size. */

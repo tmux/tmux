@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise screen-redraw.c drawing of floating panes: their borders and titles,
 # clipping at the window edge, and the interaction with the area outside the
 # window (when the window is smaller than the attached client).
@@ -30,21 +32,34 @@ fail() {
 }
 
 compare() {
-	sleep 1
-	$TMUX capturep -p $2 >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -p $2 >"$TMP" || exit 1
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until capture_matches_file "$RESULTS/$1.result" "$TMP" $TMUX capturep -p $2 ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
+}
+
+wait_for_pids() {
+	for pid in $1; do
+		wait_for_exit "$pid" || fail "timed out waiting for pane $pid to exit"
+	done
 }
 
 # new_scene <width> <height>: fresh inner window of the given window size.
 new_scene() {
-	$TMUX2 neww -d "sh -c 'printf base; exec sleep 100'" || exit 1
-	$TMUX2 selectw -t:\$ || exit 1
+	if [ -n "$window" ]; then
+		pids=$($TMUX2 list-panes -t"$window" -F '#{pane_pid}') || exit 1
+		$TMUX2 killw -t"$window" || exit 1
+		wait_for_pids "$pids"
+	fi
+
+	window=$($TMUX2 neww -dP -F '#{window_id}' \
+	    "sh -c 'printf base; exec sleep 100'") || exit 1
+	$TMUX2 selectw -t"$window" || exit 1
 	$TMUX2 resizew -x$1 -y$2 || exit 1
 }
 
@@ -74,6 +89,7 @@ $TMUX kill-server 2>/dev/null
 $TMUX2 kill-server 2>/dev/null
 
 $TMUX2 new -d -x40 -y12 "sh -c 'printf base; exec sleep 100'" || exit 1
+window=
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g window-size manual || exit 1
 $TMUX2 set -g pane-border-format " #{pane_title} " || exit 1
@@ -106,6 +122,12 @@ new_scene 40 12
 $TMUX2 new-pane -x28 -y8 -X4 -Y1 -B double \
 	"sh -c 'printf FLOAT; exec sleep 100'" || exit 1
 compare floating-border-double
+
+# Larger floating pane with rounded border lines.
+new_scene 40 12
+$TMUX2 new-pane -x28 -y8 -X4 -Y1 -B rounded \
+	"sh -c 'printf FLOAT; exec sleep 100'" || exit 1
+compare floating-border-rounded
 
 # Floating pane with no border lines: redraw_mark_pane_borders returns early so
 # the float has no border at all, only its (clipped) content over the base pane.

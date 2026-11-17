@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-run-shell.c,v 1.94 2026/08/25 06:04:33 nicm Exp $ */
+/* $OpenBSD: cmd-run-shell.c,v 1.96 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -42,6 +42,7 @@ static void	cmd_run_shell_print(struct job *, const char *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
+	.description = "Run a shell command.",
 	.alias = "run",
 
 	.args = { "bd:Ct:Es:c:", 0, -1, cmd_run_shell_args_parse },
@@ -170,7 +171,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (cdata->client != NULL)
 		cdata->client->references++;
 	if (args_has(args, 'c'))
-		cdata->cwd = xstrdup(args_get(args, 'c'));
+		cdata->cwd = format_single_from_target(item, args_get(args, 'c'));
 	else
 		cdata->cwd = xstrdup(server_client_get_cwd(c, s));
 

@@ -1,0 +1,60 @@
+#!/bin/sh
+
+. ./regress-common.inc
+
+# Exercise list-commands for the full table, a single command, aliases, custom
+# and empty formats, and lookup errors.
+
+PATH=/bin:/usr/bin
+TERM=screen
+export PATH TERM
+
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+DIR=$(test_tmpdir) || exit 1
+TMUX_TMPDIR=$DIR
+export TMUX_TMPDIR
+TMUX="$TEST_TMUX -Ltest$$ -f/dev/null"
+
+cleanup()
+{
+	stop_server $TMUX || exit 1
+	rm -rf "$DIR"
+}
+trap cleanup 0 1 15
+
+# Keep a server alive across commands. Otherwise a STARTSERVER-only command
+# may exit between invocations and leave a short socket-cleanup race.
+$TMUX new-session -d -s list-commands 'exec sleep 100' || exit 1
+
+all=$($TMUX list-commands) || exit 1
+printf '%s\n' "$all" | grep -q '^attach-session (attach)' || exit 1
+printf '%s\n' "$all" | grep -q '^list-commands (lscm)' || exit 1
+
+one=$($TMUX list-commands -F \
+    '#{command_list_name}|#{command_list_alias}|#{command_list_usage}' \
+    list-commands) || exit 1
+case "$one" in
+'list-commands|lscm|'*) ;;
+*) exit 1 ;;
+esac
+
+# Aliases resolve to their command, while an empty expansion prints no line.
+[ "$($TMUX list-commands -F '#{command_list_name}' lscm)" = list-commands ] ||
+	exit 1
+[ -z "$($TMUX list-commands -F '' list-commands)" ] || exit 1
+
+$TMUX list-commands tmux-no-command-$$ >/dev/null 2>&1 && exit 1
+$TMUX list-commands list >/dev/null 2>&1 && exit 1
+
+# Options in usage strings are separated by spaces.
+printf '%s\n' "$all" | grep -F '][' && exit 1
+
+# Usage strings show the flags each command accepts.
+for i in list-buffers:r list-clients:r load-buffer:w choose-buffer:y \
+    choose-client:y choose-tree:y customize-mode:y; do
+	usage=$($TMUX list-commands -F '#{command_list_usage}' "${i%:*}") ||
+		exit 1
+	printf '%s\n' "$usage" | grep -o '\[-[[:alnum:]]*\]' |
+		grep -q "${i#*:}" || exit 1
+done
+exit 0

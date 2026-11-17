@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-find.c,v 1.87 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: cmd-find.c,v 1.90 2026/11/12 18:15:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2015 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -54,6 +54,7 @@ static const char *cmd_find_window_table[][2] = {
 	{ "{end}", "$" },
 	{ "{next}", "+" },
 	{ "{previous}", "-" },
+	{ "{current}", "@" },
 	{ NULL, NULL }
 };
 static const char *cmd_find_pane_table[][2] = {
@@ -329,8 +330,11 @@ cmd_find_get_window(struct cmd_find_state *fs, const char *window, int only)
 {
 	log_debug("%s: %s", __func__, window);
 
-	/* Check for window ids starting with @. */
-	if (*window == '@') {
+	/*
+	 * Check for window ids starting with @. A bare @ is the current window
+	 * token, which is handled later.
+	 */
+	if (window[0] == '@' && window[1] != '\0') {
 		fs->w = window_find_by_id_str(window);
 		if (fs->w == NULL)
 			return (-1);
@@ -378,6 +382,15 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 	fs->wl = fs->s->curw;
 	fs->w = fs->wl->window;
 
+	/*
+	 * A bare @ is the current window, which is already the default. This
+	 * must come before the window id check.
+	 */
+	if (!exact && strcmp(window, "@") == 0) {
+		fs->idx = fs->wl->idx;
+		return (0);
+	}
+
 	/* Check for window ids starting with @. */
 	if (*window == '@') {
 		fs->w = window_find_by_id_str(window);
@@ -388,9 +401,11 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 
 	/* Try as an offset. */
 	if (!exact && (window[0] == '+' || window[0] == '-')) {
-		if (window[1] != '\0')
-			n = strtonum(window + 1, 1, INT_MAX, NULL);
-		else
+		if (window[1] != '\0') {
+			n = strtonum(window + 1, 1, INT_MAX, &errstr);
+			if (errstr != NULL)
+				return (-1);
+		} else
 			n = 1;
 		s = fs->s;
 		if (fs->flags & CMD_FIND_WINDOW_INDEX) {
@@ -626,9 +641,11 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 
 	/* Try as an offset. */
 	if (pane[0] == '+' || pane[0] == '-') {
-		if (pane[1] != '\0')
-			n = strtonum(pane + 1, 1, INT_MAX, NULL);
-		else
+		if (pane[1] != '\0') {
+			n = strtonum(pane + 1, 1, INT_MAX, &errstr);
+			if (errstr != NULL)
+				return (-1);
+		} else
 			n = 1;
 		wp = fs->w->active;
 		if (pane[0] == '+')
@@ -1065,9 +1082,10 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 			cmdq_error(item, "no current client");
 			goto error;
 		}
+		fs->s = c->session;
 		fs->wl = active_get_effective_winlink(c, c->session);
-		fs->wp = fs->wl->window->active;
 		fs->w = fs->wl->window;
+		fs->wp = active_get_effective_pane(c, fs->w);
 		goto found;
 	}
 

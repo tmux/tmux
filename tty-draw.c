@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.15 2026/07/26 09:02:08 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.20 2026/11/13 09:24:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -52,8 +52,7 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 		return;
 
 	/* If genuine BCE is available, can try escape sequences. */
-	if (tty->client->overlay_check == NULL &&
-	    !wrapped &&
+	if (!wrapped &&
 	    nx >= 10 &&
 	    !tty_fake_bce(tty, defaults, bg)) {
 		/* Off the end of the line, use EL if available. */
@@ -132,6 +131,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	enum tty_draw_line_state current_state, next_state;
 	struct tty_style_ctx	 default_style_ctx = { 0 };
 	const struct grid_cell	*defaults;
+#ifdef ENABLE_IMAGES
+	struct image		*im;
+	u_int			 x, y;
+#endif
 
 	if (style_ctx == NULL) {
 		default_style_ctx.defaults = &grid_default_cell;
@@ -178,7 +181,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	/* Start with the default cell as the last cell. */
 	memcpy(&last, &grid_default_cell, sizeof last);
 	last.bg = defaults->bg;
-	tty_default_attributes(tty, 8, style_ctx);
 
 	/*
 	 * If there is padding at the start, we must have truncated a wide
@@ -189,6 +191,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		grid_view_get_cell(gd, i, py, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
+#ifdef ENABLE_IMAGES
+		if (image_grid_get_at(gd, i, gd->hsize + py, &im, &x, &y) == 1)
+			break;
+#endif
 		cx++;
 	}
 	if (cx != 0) {
@@ -219,7 +225,12 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	}
 
 	/* Did the previous line wrap on to this one? */
-	if (py != 0 && atx == 0 && tty->cx >= tty->sx && nx == tty->sx) {
+	if (py != 0 &&
+	    atx == 0 &&
+	    tty->cx >= tty->sx &&
+	    tty->cy != UINT_MAX &&
+	    tty->cy + 1 == aty &&
+	    nx == tty->sx) {
 		gl = grid_get_line(gd, gd->hsize + py - 1);
 		if (gl->flags & GRID_LINE_WRAPPED)
 			wrapped = 1;
@@ -249,18 +260,33 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				/* Outside the area being drawn. */
 				empty = nx - i;
 				gcp = &grid_default_cell;
+
+#ifdef ENABLE_IMAGES
+				/* Map an image cell if needed. */
+				gcp = image_map_cell(tty, gd, px + i,
+				    gd->hsize + py, gcp, &gc, &empty);
+#endif
+
+				/* Flush the background before clearing. */
+				if (empty != 0 && gcp->bg != last.bg)
+					empty = 0;
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
+				gcp = &gc;
+
+#ifdef ENABLE_IMAGES
+				/* Map an image cell if needed. */
+				gcp = image_map_cell(tty, gd, px + i,
+				    gd->hsize + py, gcp, &gc, NULL);
+#endif
 
 				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(&gc, &last,
+				empty = tty_draw_line_get_empty(gcp, &last,
 				    nx - i);
-				if (empty != 0)
-					gcp = &gc;
-				else {
+				if (empty == 0) {
 					/* Update for codeset if needed. */
-					gcp = tty_check_codeset(tty, &gc);
+					gcp = tty_check_codeset(tty, gcp);
 
 					/* And for selection. */
 					if (gcp->flags & GRID_FLAG_SELECTED) {
