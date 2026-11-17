@@ -1374,6 +1374,10 @@ grid_reflow_move_osc133(struct grid_line *to, struct grid_line *from,
 		from->flags &= ~flag;
 		*src_col[i] = 0;
 		if (flag == GRID_LINE_END_OUTPUT) {
+			/* Keep status presence with the D marker. */
+			to->flags &= ~GRID_LINE_END_OUTPUT_STATUS;
+			to->flags |= from->flags & GRID_LINE_END_OUTPUT_STATUS;
+			from->flags &= ~GRID_LINE_END_OUTPUT_STATUS;
 			dst->exit_status = src->exit_status;
 			src->exit_status = 0;
 		}
@@ -1819,6 +1823,8 @@ grid_line_flags_string(int flags)
 		strlcat(s, "START_OUTPUT,", sizeof s);
 	if (flags & GRID_LINE_END_OUTPUT)
 		strlcat(s, "END_OUTPUT,", sizeof s);
+	if (flags & GRID_LINE_END_OUTPUT_STATUS)
+		strlcat(s, "END_OUTPUT_STATUS,", sizeof s);
 	if (flags & GRID_LINE_HYPERLINK)
 		strlcat(s, "HYPERLINK,", sizeof s);
 	if (*s == '\0')
