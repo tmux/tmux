@@ -1751,6 +1751,38 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 }
 
 /*
+ * Copy an OSC body starting at buf[start] up to \033\ or \007 into tmp and
+ * terminate it. Returns 0 for success, -1 for failure, 1 for partial.
+ */
+static int
+tty_keys_osc_body(const char *buf, size_t len, size_t start, char *tmp,
+    size_t tmpsize, size_t *size, size_t *ilen)
+{
+	size_t	i;
+
+	for (i = 0; i < tmpsize - 1; i++) {
+		if (start + i == len)
+			return (1);
+		if (buf[start + i - 1] == '\033' && buf[start + i] == '\\')
+			break;
+		if (buf[start + i] == '\007')
+			break;
+		tmp[i] = buf[start + i];
+	}
+	if (i == tmpsize - 1)
+		return (-1);
+	*size = start + 1 + i;
+	*ilen = i;
+	if (i == 0)
+		return (0);
+	if (tmp[i - 1] == '\033')
+		tmp[i - 1] = '\0';
+	else
+		tmp[i] = '\0';
+	return (0);
+}
+
+/*
  * Handle foreground or background input. Returns 0 for success, -1 for
  * failure, 1 for partial. If fg is NULL, only check the reply.
  */
@@ -1759,7 +1791,7 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
     int *fg, int *bg)
 {
 	struct client	*c = tty->client;
-	u_int		 i;
+	size_t		 ilen;
 	char		 tmp[128];
 	int		 n;
 
@@ -1788,24 +1820,11 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 		return (1);
 
 	/* Copy the rest up to \033\ or \007. */
-	for (i = 0; i < (sizeof tmp) - 1; i++) {
-		if (5 + i == len)
-			return (1);
-		if (buf[5 + i - 1] == '\033' && buf[5 + i] == '\\')
-			break;
-		if (buf[5 + i] == '\007')
-			break;
-		tmp[i] = buf[5 + i];
-	}
-	if (i == (sizeof tmp) - 1)
-		return (-1);
-	*size = 6 + i;
-	if (i == 0 || fg == NULL)
+	n = tty_keys_osc_body(buf, len, 5, tmp, sizeof tmp, size, &ilen);
+	if (n != 0)
+		return (n);
+	if (ilen == 0 || fg == NULL)
 		return (0);
-	if (tmp[i - 1] == '\033')
-		tmp[i - 1] = '\0';
-	else
-		tmp[i] = '\0';
 
 	/* Work out the colour. */
 	n = colour_parseX11(tmp);
@@ -1858,9 +1877,9 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size,
     int apply)
 {
 	struct client			 *c = tty->client;
-	u_int				  i;
+	size_t				  ilen;
 	char				  tmp[128], *endptr;
-	int				  idx;
+	int				  idx, n;
 	struct input_request_palette_data pd;
 
 	*size = 0;
@@ -1884,24 +1903,11 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size,
 		return (1);
 
 	/* Copy the rest up to \033\ or \007. */
-	for (i = 0; i < (sizeof tmp) - 1; i++) {
-		if (4 + i == len)
-			return (1);
-		if (buf[4 + i - 1] == '\033' && buf[4 + i] == '\\')
-			break;
-		if (buf[4 + i] == '\007')
-			break;
-		tmp[i] = buf[4 + i];
-	}
-	if (i == (sizeof tmp) - 1)
-		return (-1);
-	*size = 5 + i;
-	if (i == 0)
+	n = tty_keys_osc_body(buf, len, 4, tmp, sizeof tmp, size, &ilen);
+	if (n != 0)
+		return (n);
+	if (ilen == 0)
 		return (0);
-	if (tmp[i - 1] == '\033')
-		tmp[i - 1] = '\0';
-	else
-		tmp[i] = '\0';
 
 	/* Parse index. */
 	idx = strtol(tmp, &endptr, 10);
@@ -1916,6 +1922,7 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size,
 	pd.c = colour_parseX11(endptr + 1);
 	if (pd.c == -1)
 		return (0);
+	tty_set_ansi_colour(tty, idx, pd.c);
 	pd.idx = idx;
 	input_request_reply(c, INPUT_REQUEST_PALETTE, &pd);
 
