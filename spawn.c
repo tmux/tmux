@@ -197,6 +197,12 @@ spawn_window(struct spawn_context *sc, char **cause)
 			xasprintf(cause, "couldn't create window %d", idx);
 			return (NULL);
 		}
+		if (options_collect(w->options, OPTIONS_TABLE_WINDOW,
+				    sc->options, sc->noptions, cause) != 0) {
+			winlink_remove(&s->windows, sc->wl);
+			window_destroy(w);
+			return (NULL);
+		}
 		if (s->curw == NULL)
 			s->curw = sc->wl;
 		sc->wl->session = s;
