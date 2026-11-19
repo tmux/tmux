@@ -4855,7 +4855,9 @@ found:
 			if (time_format != NULL) {
 				if (localtime_r(&t, &tm) == NULL)
 					return (NULL);
-				format_strftime(s, sizeof s, time_format, &tm);
+				if (format_strftime(s, sizeof s, time_format,
+				    &tm) == 0)
+					s[0] = '\0';
 			} else {
 				if (ctime_r(&t, s) == NULL)
 					return (NULL);
