@@ -276,7 +276,7 @@ session_update_activity(struct session *s, struct timeval *from)
 struct session *
 session_next_session(struct session *s, struct sort_criteria *sort_crit)
 {
-	struct session	**l;
+	struct session	**l, *next;
 	u_int		  n, i;
 
 	if (RB_EMPTY(&sessions) || !session_alive(s))
@@ -292,14 +292,16 @@ session_next_session(struct session *s, struct sort_criteria *sort_crit)
 	i++;
 	if (i == n)
 		i = 0;
-	return (l[i]);
+	next = l[i];
+	free(l);
+	return (next);
 }
 
 /* Find the previous usable session. */
 struct session *
 session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 {
-	struct session	**l;
+	struct session	**l, *prev;
 	u_int		  n, i;
 
 	if (RB_EMPTY(&sessions) || !session_alive(s))
@@ -315,7 +317,9 @@ session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 	if (i == 0)
 		i = n;
 	i--;
-	return (l[i]);
+	prev = l[i];
+	free(l);
+	return (prev);
 }
 
 /* Attach a window to a session. */

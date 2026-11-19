@@ -5447,6 +5447,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 
@@ -5584,6 +5585,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 
@@ -5649,6 +5651,7 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 
@@ -5960,6 +5963,7 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 

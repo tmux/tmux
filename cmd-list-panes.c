@@ -165,4 +165,5 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 
 		format_free(ft);
 	}
+	free(l);
 }
