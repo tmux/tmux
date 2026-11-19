@@ -577,6 +577,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	key_code		 newkey;
 	struct utf8_data	 ud;
 
+	/* Keys sent with send-keys -K are like any other key here. */
+	key &= ~KEYC_SENT;
+
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
 		return (0);
