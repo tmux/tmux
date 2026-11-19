@@ -531,14 +531,14 @@ server_destroy_session(struct session *s)
 void
 server_check_unattached(void)
 {
-	struct session		*s;
+	struct session		*s, *s1;
 	struct session_group	*sg;
 
 	/*
 	 * If any sessions are no longer attached and have destroy-unattached
 	 * set, collect them.
 	 */
-	RB_FOREACH(s, sessions, &sessions) {
+	RB_FOREACH_SAFE(s, sessions, &sessions, s1) {
 		if (s->attached != 0)
 			continue;
 		switch (options_get_number(s->options, "destroy-unattached")) {
