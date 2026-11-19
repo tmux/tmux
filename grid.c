@@ -1228,6 +1228,8 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 	if (has_link) {
 		grid_string_cells_add_hyperlink(code, sizeof code, "", "",
 		    flags);
+		if (lastgc != NULL)
+			(*lastgc)->link = 0;
 		codelen = strlen(code);
 		while (len < off + size + codelen + 1) {
 			buf = xreallocarray(buf, 2, len);

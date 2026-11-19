@@ -36,6 +36,12 @@ do_test "$(link_sequence "$LONG_URI" test2)" \
 HUGE_URI=https://example.com/?$(head -c 5000 /dev/zero | tr '\0' a)
 do_test "$(link_sequence "$HUGE_URI" test3)" 'test3\n' || exit 1
 
+# A link wrapped onto the next line is opened again there.
+A=$(head -c 80 /dev/zero | tr '\0' a)
+B=$(link_sequence https://github.com bbbbb)
+do_test "$(link_sequence https://github.com ${A}bbbbb)" \
+    "$(link_sequence https://github.com $A)${B%\\n}" || exit 1
+
 $TMUX has 2>/dev/null && exit 1
 
 exit 0
