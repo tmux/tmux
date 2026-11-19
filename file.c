@@ -754,6 +754,9 @@ file_read_callback(__unused struct bufferevent *bev, void *arg)
 	free(msg);
 }
 
+/* Has stdin been given to a read and closed? */
+static int file_stdin_closed;
+
 /* Handle a file read open message (client). */
 void
 file_read_open(struct client_files *files, struct tmuxpeer *peer,
@@ -791,12 +794,14 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 	if (msg->fd == -1)
 		cf->fd = open(path, flags);
 	else if (allow_streams) {
-		if (msg->fd != STDIN_FILENO)
+		if (msg->fd != STDIN_FILENO || file_stdin_closed)
 			errno = EBADF;
 		else {
 			cf->fd = dup(msg->fd);
-			if (close_received)
+			if (close_received) {
 				close(msg->fd); /* can only be used once */
+				file_stdin_closed = 1;
+			}
 		}
 	} else
 		errno = EBADF;
