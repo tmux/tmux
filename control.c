@@ -664,6 +664,7 @@ control_write_output(struct client *c, struct window_pane *wp)
 
 ignore:
 	log_debug("%s: %s: ignoring pane %%%u", __func__, c->name, wp->id);
+	control_discard_pane(c, cp);
 	window_pane_update_used_data(wp, &cp->offset, SIZE_MAX);
 	window_pane_update_used_data(wp, &cp->queued, SIZE_MAX);
 }
