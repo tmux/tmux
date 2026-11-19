@@ -541,7 +541,7 @@ server_client_suspend(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	if (s == NULL || (c->flags & (CLIENT_UNATTACHEDFLAGS|CLIENT_CONTROL)))
 		return;
 
 	tty_stop_tty(&c->tty);
