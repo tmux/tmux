@@ -41,6 +41,12 @@ def run(server, *args, check=True):
     return p.stdout.strip()
 
 
+def stop_server(server):
+    subprocess.run(["/bin/sh", "-c",
+        '. ./regress-common.inc; stop_server "$@"', "sh"] + server,
+        check=True, timeout=15)
+
+
 def cells(text):
     colours = [None, None, None]
     bold = False
@@ -154,9 +160,9 @@ try:
                 ("A", (18, 171, 52), (171, 18, 52), None, False),
                 ("B", (18, 171, 52) if nobr else (52, 171, 18),
                     (171, 18, 52), None, True)], ("theme", theme, nobr))
-        run(outer, "kill-server")
-        run(inner, "kill-server")
+        stop_server(outer)
+        stop_server(inner)
 finally:
-    run(outer, "kill-server", check=False)
-    run(inner, "kill-server", check=False)
+    stop_server(outer)
+    stop_server(inner)
 PY
