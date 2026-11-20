@@ -277,7 +277,8 @@ check_PROGRAMS = \
 	fuzz/json-fuzzer \
 	fuzz/imsg-frame-fuzzer \
 	fuzz/modes-tree-fuzzer \
-	fuzz/session-cmds-fuzzer
+	fuzz/session-cmds-fuzzer \
+	fuzz/copy-mode-fuzzer
 fuzz_input_fuzzer_LDFLAGS = $(FUZZING_LIBS)
 fuzz_input_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
 fuzz_cmd_parse_fuzzer_LDFLAGS = $(FUZZING_LIBS)
@@ -296,6 +297,8 @@ fuzz_modes_tree_fuzzer_LDFLAGS = $(FUZZING_LIBS)
 fuzz_modes_tree_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
 fuzz_session_cmds_fuzzer_LDFLAGS = $(FUZZING_LIBS)
 fuzz_session_cmds_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
+fuzz_copy_mode_fuzzer_LDFLAGS = $(FUZZING_LIBS)
+fuzz_copy_mode_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
 endif
 
 # Install tmux.1 in the right format.

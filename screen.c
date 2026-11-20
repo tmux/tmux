@@ -381,6 +381,9 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 {
 	struct grid	*gd = s->grid;
 	u_int		 needed, available, oldy, i;
+#ifdef ENABLE_IMAGES
+	u_int		 oldsize = gd->hsize + gd->sy;
+#endif
 
 	if (sy == 0)
 		fatalx("zero size");
@@ -435,6 +438,12 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 			(*cy) -= available;
 		}
 	}
+
+#ifdef ENABLE_IMAGES
+	/* Free any images. */
+	for (i = gd->hsize + sy; i < oldsize; i++)
+		image_grid_free_line(gd, &gd->linedata[i]);
+#endif
 
 	/* Resize line array. */
 	grid_adjust_lines(gd, gd->hsize + sy);

@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1197 2026/11/09 13:49:07 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1200 2026/11/16 14:00:11 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 9 2026 $
+.Dd $Mdocdate: November 16 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3323,7 +3323,7 @@ option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
-.Op Fl kNZ
+.Op Fl kNPZ
 .Op Fl d Ar duration
 .Op Fl s Ar source\-window
 .Op Fl t Ar target\-pane
@@ -3376,6 +3376,9 @@ substituted by the pane ID.
 The default
 .Ar template
 is "select\-pane \-t \[aq]%%\[aq]".
+If
+.Fl P
+is given, the selected pane ID is printed.
 .Tg findw
 .It Xo Ic find\-window
 .Op Fl iCNrTZ
@@ -6267,6 +6270,20 @@ see the
 section.
 Attributes are ignored.
 .Pp
+.It Xo Ic pane\-border\-type
+.Op Ic joined | separate | separate\-active
+.Xc
+Set how pane borders are drawn.
+If
+.Ic joined ,
+adjacent panes share a single border;
+.Ic separate ,
+a full border is drawn around each pane; and
+.Ic separate\-active ,
+panes are laid out as for
+.Ic separate
+but the border is only drawn around the active pane.
+.Pp
 .It Xo Ic pane\-scrollbars
 .Op Cm off | modal | on | auto\-hide
 .Xc
@@ -7687,6 +7704,9 @@ The following variables are available, where appropriate:
 .It Li "pane_private_modes" Ta "" Ta "List of enabled DECSET private modes"
 .It Li "pane_pb_state" Ta "" Ta "Pane progress bar state, one of hidden, normal, error, indeterminate, paused (can be set by application)"
 .It Li "pane_pb_progress" Ta "" Ta "Pane progress bar progress percentage (can be set by application)"
+.It Li "pane_program_message" Ta "" Ta "OSC 7501 program message"
+.It Li "pane_program_name" Ta "" Ta "OSC 7501 program name"
+.It Li "pane_program_state" Ta "" Ta "OSC 7501 program state: idle, working, done, blocked or error"
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"

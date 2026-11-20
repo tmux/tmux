@@ -192,6 +192,35 @@ check_fail "no mouse target" "{mouse}"
 check_fail "no mouse target" "="
 assert_alive "after whole-target special tokens"
 
+# --- current window tokens as part of a target ----------------------------
+#
+# @ and {current} also name a window when they are the window part of a
+# session:window target, rather than only working as a whole target.  They
+# mean the current window of the session named, not of the client.
+check_ok select-window -t alpha:2
+check_ok rename-window -t 'alpha:@' renamed-at
+check "alpha:2" "renamed-at" '#{window_name}'
+check_ok rename-window -t alpha:2 shell
+check_ok rename-window -t 'alpha:{current}' renamed-cur
+check "alpha:2" "renamed-cur" '#{window_name}'
+check_ok rename-window -t alpha:2 shell
+check_ok select-window -t alpha:0
+
+# The current window of the session named is used, not the client's.
+check_ok select-window -t beta:1
+check_ok rename-window -t 'beta:@' beta-current
+check "beta:1" "beta-current" '#{window_name}'
+check_ok rename-window -t beta:1 bw1
+check_ok select-window -t beta:0
+
+# An empty session part is the current session.
+TMUX_PANE=$pane
+export TMUX_PANE
+check_ok rename-window -t ':@' colon-form
+check "alpha:0" "colon-form" '#{window_name}'
+check_ok rename-window -t alpha:0 editor
+unset TMUX_PANE
+
 # --- CMD_FIND_WINDOW_INDEX rejects a pane part ----------------------------
 out=$($TMUX new-window -d -t 'alpha:1.%0' 2>&1)
 [ $? -ne 0 ] || { echo "new-window with pane target succeeded"; exit 1; }

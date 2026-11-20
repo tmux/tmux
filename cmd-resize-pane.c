@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-pane.c,v 1.72 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.74 2026/11/17 10:34:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -65,7 +65,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*errstr, *argval;
 	const char		 flags[4] = { 'U', 'D', 'L', 'R' };
 	char			*cause = NULL, flag;
-	int			 adjust, x, y, status, opposite = 0;
+	int			 adjust, x, y, status = PANE_STATUS_OFF, opposite = 0;
 	long unsigned		 i;
 	struct grid		*gd = wp->base.grid;
 
@@ -120,7 +120,9 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		status = window_get_pane_status(w);
+		if (!window_pane_is_floating(wp) &&
+		    !window_border_type_is_separate(w))
+			status = window_get_pane_status(w);
 		switch (status) {
 		case PANE_STATUS_TOP:
 			if (y != INT_MAX && wp->yoff == 1)

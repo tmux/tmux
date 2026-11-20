@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.7 2026/10/16 17:28:19 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.9 2026/11/16 12:56:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -41,14 +41,21 @@ static enum prompt_result window_switch_prompt_callback(void *, const char *,
 #define WINDOW_SWITCH_DEFAULT_FORMAT		\
 	"#{?window_format," \
 		"#{window_name} " \
-		"#[dim]#{session_name}:#{window_index}#{window_flags}#[default] " \
-		"#[dim]#{pane_current_command}#[default] " \
-	        "#[dim]#{?#{!=:#{pane_title},#{host_short}},#{pane_title},}#[default]" \
+		"#{?is_selected,,#[dim]}" \
+		"#{session_name}:#{window_index}#{window_flags}#[default] " \
+		"#{?is_selected,,#[dim]}#{pane_current_command}#[default] " \
+		"#{?is_selected,,#[dim]}" \
+		"#{?#{!=:#{pane_title},#{host_short}},#{pane_title},}" \
+		"#[default]" \
+		"#{?pane_program_state, #{?is_selected,,#[dim]}" \
+		"#{pane_program_name} #{pane_program_state}#[default],}" \
 	"," \
 		"#{session_name} " \
-		"#[dim]#{session_windows} windows#[default] " \
-		"#{?session_attached,attached,#[dim]detached#[default]} " \
-		"#[dim]#{window_name}#[default]" \
+		"#{?is_selected,,#[dim]}" \
+		"#{session_windows} windows#[default] " \
+		"#{?session_attached,attached," \
+		"#{?is_selected,,#[dim]}detached#[default]} " \
+		"#{?is_selected,,#[dim]}#{window_name}#[default]" \
 	"}"
 
 const struct window_mode window_switch_mode = {
@@ -74,6 +81,7 @@ struct window_switch_itemdata {
 
 	uint64_t		 tag;
 	char			*text;
+	char			*selected_text; /* NULL if identical to text. */
 	const char		*value;
 	bitstr_t		*match;
 
@@ -114,6 +122,7 @@ window_switch_free_item(struct window_switch_itemdata *item)
 {
 	free(item->match);
 	free(item->text);
+	free(item->selected_text);
 	free(item);
 }
 
@@ -126,6 +135,22 @@ window_switch_add_item(struct window_switch_modedata *data)
 	    sizeof *data->item_list);
 	item = data->item_list[data->item_size++] = xcalloc(1, sizeof *item);
 	return (item);
+}
+
+static void
+window_switch_format_item(struct window_switch_modedata *data,
+    struct window_switch_itemdata *item, struct format_tree *ft)
+{
+	char	*text;
+
+	format_add(ft, "is_selected", "0");
+	item->text = format_expand(ft, data->format);
+	format_add(ft, "is_selected", "1");
+	text = format_expand(ft, data->format);
+	if (strcmp(text, item->text) == 0)
+		free(text);
+	else
+		item->selected_text = text;
 }
 
 static void
@@ -144,7 +169,7 @@ window_switch_add_session(struct window_switch_modedata *data,
 	item->winlink = -1;
 	item->tag = (uint64_t)s;
 	item->order = (*order)++;
-	item->text = format_expand(ft, data->format);
+	window_switch_format_item(data, item, ft);
 
 	format_free(ft);
 }
@@ -165,7 +190,7 @@ window_switch_add_window(struct window_switch_modedata *data,
 	item->winlink = wl->idx;
 	item->tag = (uint64_t)wl;
 	item->order = (*order)++;
-	item->text = format_expand(ft, data->format);
+	window_switch_format_item(data, item, ft);
 
 	format_free(ft);
 }
@@ -181,7 +206,7 @@ window_switch_add_input(struct window_switch_modedata *data, u_int idx,
 	item->value = data->lines[idx];
 	item->order = data->reversed ? data->lines_size - idx - 1 : idx;
 	format_add(ft, "switch_item", "%s", item->value);
-	item->text = format_expand(ft, data->format);
+	window_switch_format_item(data, item, ft);
 }
 
 static int
@@ -312,6 +337,9 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 	struct grid_cell		 mgc, sgc, gc;
 	const struct grid_cell		*dgc = &grid_default_cell;
 	struct prompt_draw_data		 pdd;
+	const char			*text, *filter = data->filter;
+	bitstr_t			*match;
+
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
 
@@ -329,19 +357,26 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 		if (idx >= data->matches_size)
 			break;
 		item = data->matches[idx];
+		text = item->text;
+		match = item->match;
+		if (idx == data->current && item->selected_text != NULL) {
+			text = item->selected_text;
+			if (match != NULL)
+				match = fuzzy_match(filter, text, sx, NULL);
+		}
 
 		screen_write_cursormove(&ctx, 0, i, 0);
 		if (idx != data->current)
-			format_draw(&ctx, dgc, sx, item->text, NULL, 0);
+			format_draw(&ctx, dgc, sx, text, NULL, 0);
 		else {
 			screen_write_clearendofline(&ctx, sgc.bg);
-			format_draw(&ctx, &sgc, sx, item->text, NULL, 0);
+			format_draw(&ctx, &sgc, sx, text, NULL, 0);
 		}
 
-		if (item->match == NULL)
+		if (match == NULL)
 			continue;
 		for (j = 0; j < sx; j++) {
-			if (!bit_test(item->match, j))
+			if (!bit_test(match, j))
 				continue;
 			grid_get_cell(s->grid, j, i, &gc);
 			gc.attr = mgc.attr;
@@ -350,6 +385,8 @@ window_switch_draw_screen(struct window_mode_entry *wme)
 			screen_write_cursormove(&ctx, j, i, 0);
 			screen_write_cell(&ctx, &gc);
 		}
+		if (match != item->match)
+			free(match);
 	}
 
 	if (data->prompt != NULL) {
@@ -381,11 +418,9 @@ window_switch_init(struct window_mode_entry *wme,
 	data->order = SORT_NAME;
 	data->reversed = 0;
 	if (args != NULL) {
-		if (args_has(args, 'O')) {
-			data->order = sort_order_from_string(args_get(args, 'O'));
-			if (data->order == SORT_END)
-				data->order = SORT_NAME;
-		}
+		data->order = sort_order_from_string(args_get(args, 'O'));
+		if (data->order == SORT_END)
+			data->order = SORT_NAME;
 		if (args_has(args, 'r'))
 			data->reversed = 1;
 	}

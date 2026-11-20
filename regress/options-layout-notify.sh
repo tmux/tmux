@@ -114,4 +114,41 @@ check_change "$other" 1 set -g pane-scrollbars on
 check_change "$main" 2 resize-pane -t notify:main.0 -R 1
 check_change "$main" 1 split-window -dh -t notify:main.0 'cat'
 
+# Fitting hidden panes while zoomed may redistribute only the saved layout.
+# Notify even when the window and the visible pane keep their existing size.
+for nested in no yes; do
+	$TMUX new-window -d -t notify: -n fit 'cat' || exit 1
+	fit=$($TMUX display -p -t notify:fit '#{window_id}') || exit 1
+	$TMUX resize-window -t notify:fit -x 20 -y 10 \; \
+	    set -w -t notify:fit pane-border-type separate || exit 1
+	if [ "$nested" = yes ]; then
+		$TMUX split-window -dv -t notify:fit.0 'cat' || exit 1
+		pane=1
+		hidden=2
+	else
+		pane=0
+		hidden=1
+	fi
+	$TMUX split-window -dh -t notify:fit.$pane 'cat' \; \
+	    select-layout -E -t notify:fit.$pane \; \
+	    resize-pane -Z -t notify:fit.0 || exit 1
+	saved_before=$($TMUX display -p -t notify:fit '#{window_layout}')
+	visible=$($TMUX display -p -t notify:fit '#{window_visible_layout}')
+	check_change "$fit" 1 set -p -t notify:fit.$hidden \
+	    pane-scrollbars-style 'width=8,pad=0'
+	saved_after=$($TMUX display -p -t notify:fit '#{window_layout}')
+	[ "$saved_after" != "$saved_before" ] || fail "saved layout did not change"
+	[ "$($TMUX display -p -t notify:fit '#{window_visible_layout}')" = "$visible" ] ||
+		fail "fitting saved layout changed visible layout"
+	[ "$($TMUX display -p -t notify:fit '#{window_width}x#{window_height}')" = 20x10 ] ||
+		fail "fitting saved layout resized window"
+	last_layout=$(awk '/^%layout-change / { layout = $3 } END { print layout }' "$OUT")
+	[ "$last_layout" = "$saved_after" ] || fail "notification has stale saved layout"
+	check_change none 0 set -p -t notify:fit.$hidden \
+	    pane-scrollbars-style 'width=8,pad=0'
+	check_change none 0 set -p -t notify:fit.$hidden \
+	    pane-scrollbars-style 'fg=red,width=8,pad=0'
+	$TMUX kill-window -t notify:fit || exit 1
+done
+
 exit 0

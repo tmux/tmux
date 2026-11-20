@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.19 2026/10/13 22:44:53 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.20 2026/11/13 09:24:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -181,7 +181,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	/* Start with the default cell as the last cell. */
 	memcpy(&last, &grid_default_cell, sizeof last);
 	last.bg = defaults->bg;
-	tty_default_attributes(tty, 8, style_ctx);
 
 	/*
 	 * If there is padding at the start, we must have truncated a wide

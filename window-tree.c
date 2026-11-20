@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.99 2026/11/09 13:49:07 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.101 2026/11/13 19:25:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,10 +42,12 @@ static void		 window_tree_key(struct window_mode_entry *,
 		"#{?pane_marked,#[fg=thememagenta],}#{?pane_floating_flag,#[underscore],}" \
 		"#{pane_current_command}#[fg=themelightgrey]#{pane_flags}" \
 		"#{?#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}},: \"#{pane_title}\",}" \
+		"#{?pane_program_state, [#{pane_program_name} #{pane_program_state}],}" \
 	",window_format," \
 		"#{?window_marked_flag,#[fg=thememagenta],}" \
 		"#{window_name}#[fg=themelightgrey]#{window_flags}" \
 		"#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}}},: \"#{pane_title}\",}" \
+		"#{?pane_program_state, [#{pane_program_name} #{pane_program_state}],}" \
 	"," \
 		"#[fg=themelightgrey]#{session_windows} windows" \
 		"#{?session_grouped, " \
@@ -153,6 +155,12 @@ static const char *window_tree_pane_info_lines[] = {
 	"#{pane_title}",
 	"#[fg=themelightgrey]Command       #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{pane_current_command} #[fg=themelightgrey](PID #{pane_pid})#[default]",
+	"#[fg=themelightgrey]Program       #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?pane_program_state,"
+	"#{?pane_program_name,#{pane_program_name} ,}"
+	"[#{pane_program_state}]"
+	"#{?pane_program_message,: #{pane_program_message},}"
+	",not set}",
 	"#[fg=themelightgrey]Path          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{pane_current_path}",
 	"#[fg=themelightgrey]TTY           #[#{E:tree-mode-border-style},acs]x#[default] "
@@ -161,13 +169,22 @@ static const char *window_tree_pane_info_lines[] = {
 	"#{pane_x},#{pane_y} #{pane_width}x#{pane_height}",
 	"#[fg=themelightgrey]Mode          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?pane_in_mode,#{pane_mode},none}",
+	"#[fg=themelightgrey]Command Line  #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{!=:#{pane_command_line},},#{pane_command_line},not set}",
+	"#[fg=themelightgrey]Command Start #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{t:pane_command_start_time},#{t:pane_command_start_time},never}",
+	"#[fg=themelightgrey]Command End   #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{t:pane_command_end_time},#{t:pane_command_end_time},never}"
+	"#{?#{!=:#{pane_command_status},}, "
+	"#[fg=themelightgrey](status #{pane_command_status})#[default],}",
 	"#[fg=themelightgrey]Flags         #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_TREE_FLAG("active", "pane_active") " "
 	WINDOW_TREE_FLAG("zoomed", "window_zoomed_flag") " "
 	WINDOW_TREE_FLAG("marked", "pane_marked") " "
 	WINDOW_TREE_FLAG("sync", "pane_synchronized") " "
 	WINDOW_TREE_FLAG("dead", "pane_dead") " "
-	WINDOW_TREE_FLAG("piped", "pane_pipe"),
+	WINDOW_TREE_FLAG("piped", "pane_pipe") " "
+	WINDOW_TREE_FLAG("running", "pane_command_running"),
 };
 
 static const char *window_tree_window_info_lines[] = {

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1475 2026/11/10 10:36:22 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1482 2026/11/17 11:16:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -114,6 +114,9 @@ struct winlink;
 /* Minimum and maximum window size. */
 #define WINDOW_MINIMUM PANE_MINIMUM
 #define WINDOW_MAXIMUM 10000
+
+/* Maximum length of a hyperlink URI. */
+#define MAX_HYPERLINK_URI 4096
 
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
@@ -1203,6 +1206,10 @@ enum pane_lines {
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
 
+#define PANE_BORDER_TYPE_JOINED 0
+#define PANE_BORDER_TYPE_SEPARATE 1
+#define PANE_BORDER_TYPE_SEPARATE_ACTIVE 2
+
 /* Mode returned by window_pane_mode function. */
 #define WINDOW_PANE_NO_MODE 0
 #define WINDOW_PANE_COPY_MODE 1
@@ -1387,8 +1394,9 @@ struct window_pane {
 #define PANE_CLOSEONCANCEL 0x400000
 #define PANE_UTMP 0x800000
 
-	bitstr_t	*sync_dirty;
-	u_int		 sync_dirty_size;
+	bitstr_t       **sync_dirty;
+	u_int		 sync_dirty_sx;
+	u_int		 sync_dirty_sy;
 	u_int		 sync_scrolled;
 	u_int		 sync_rupper;
 	u_int		 sync_rlower;
@@ -1432,6 +1440,10 @@ struct window_pane {
 
 	struct input_ctx *ictx;
 
+	char		*program_state;
+	char		*program_name;
+	char		*program_message;
+
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
 	u_int		 cached_dim;
@@ -1449,6 +1461,7 @@ struct window_pane {
 	struct screen	 base;
 
 	struct screen	 status_screen;
+	u_int		 status_dim;
 	u_int		 status_generation;
 
 	TAILQ_HEAD(, window_mode_entry) modes;
@@ -1462,8 +1475,10 @@ struct window_pane {
 
 	int		 border_gc_set;
 	struct grid_cell border_gc;
+	u_int		 border_dim;
 	int		 active_border_gc_set;
 	struct grid_cell active_border_gc;
+	u_int		 active_border_dim;
 
 	int		 control_bg;
 	int		 control_fg;
@@ -1799,6 +1814,8 @@ struct tty_term {
 	char		 acs[UCHAR_MAX + 1][2];
 
 	struct tty_code	*codes;
+	char		*setaf[256];
+	char		*setab[256];
 
 #define TERM_256COLOURS 0x1
 #define TERM_NOAM 0x2
@@ -3879,6 +3896,7 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
+void		 window_pane_clear_program_status(struct window_pane *, int);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
 		     const char *);
@@ -3932,6 +3950,7 @@ void		 window_pane_send_theme_update(struct window_pane *);
 enum pane_lines	 window_pane_get_pane_lines(struct window_pane *);
 enum pane_lines	 window_get_pane_lines(struct window *);
 int		 window_get_pane_status(struct window *);
+int		 window_border_type_is_separate(struct window *);
 int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
@@ -3948,7 +3967,7 @@ void		 window_get_fill_cell(struct window *, int, struct grid_cell *);
 void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,
-		     struct client *, struct grid_cell *);
+		     struct client *, struct grid_cell *, u_int *);
 int		 window_make_pane_status(struct window_pane *, struct client *,
 		     u_int, struct redraw_span *);
 
@@ -3974,6 +3993,9 @@ int		 layout_cell_is_tiled(struct layout_cell *);
 int		 layout_cell_has_tiled_child(struct layout_cell *);
 int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
+struct layout_cell *layout_fit(struct window *, int *);
+void		 layout_apply_borders(struct window *, struct layout_cell *,
+		    struct layout_cell *, int *, int *, u_int *, u_int *);
 void		 layout_fix_offsets(struct window *);
 int		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
@@ -3996,8 +4018,8 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
 int		 layout_split_check_space(struct window_pane *,
 		     struct layout_cell *, enum layout_type);
-void		 layout_split_sizes(struct layout_cell *, int, int,
-		     enum layout_type, u_int *, u_int *, u_int *);
+void		 layout_split_sizes(struct window *, struct layout_cell *, int,
+		     int, enum layout_type, u_int *, u_int *, u_int *);
 struct layout_cell *layout_replace_with_node(struct window *,
 		     struct layout_cell *, enum layout_type);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
@@ -4217,8 +4239,8 @@ void		 session_theme_changed(struct session *);
 void		 session_update_history(struct session *);
 
 /* utf8.c */
-enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
-enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
+enum utf8_state	 utf8_towc(const struct utf8_data *, int *);
+enum utf8_state	 utf8_fromwc(int wc, struct utf8_data *);
 int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
