@@ -2011,21 +2011,31 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 	window_fire_pane_prompt("pane-prompt-opened", wp, type);
 }
 
+/* Replace program status, taking ownership of the new values. */
+void
+window_pane_set_program_status(struct window_pane *wp, char *state, char *name,
+    char *message)
+{
+	free(wp->program_state);
+	free(wp->program_name);
+	free(wp->program_message);
+	wp->program_state = state;
+	wp->program_name = name;
+	wp->program_message = message;
+	if (~wp->flags & PANE_DESTROYED)
+		server_clients_program_status_changed(wp);
+}
+
 /* Clear program status. */
 void
 window_pane_clear_program_status(struct window_pane *wp, int all)
 {
-	if (!all && wp->program_state != NULL) {
-		if (strcmp(wp->program_state, "done") == 0 ||
-		    strcmp(wp->program_state, "error") == 0)
-			return;
-	}
-	free(wp->program_state);
-	free(wp->program_name);
-	free(wp->program_message);
-	wp->program_state = NULL;
-	wp->program_name = NULL;
-	wp->program_message = NULL;
+	if (wp->program_state == NULL)
+		return;
+	if (!all && (strcmp(wp->program_state, "done") == 0 ||
+	    strcmp(wp->program_state, "error") == 0))
+		return;
+	window_pane_set_program_status(wp, NULL, NULL, NULL);
 }
 
 /* Close a pane prompt. */
