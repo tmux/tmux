@@ -38,6 +38,9 @@ static int	tty_log_fd = -1;
 static void	tty_start_timer_callback(int, short, void *);
 static void	tty_start_start_timer(struct tty *);
 static void	tty_clipboard_query_callback(int, short, void *);
+static void	tty_program_status_timeout(int, short, void *);
+static void	tty_program_status_cancel(struct tty *);
+static void	tty_program_status_reset(struct tty *);
 static void	tty_send_size_query(struct tty *, int);
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
@@ -81,6 +84,8 @@ static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 
 #define TTY_QUERY_TIMEOUT 5
 #define TTY_REQUEST_LIMIT 30
+
+static const char tty_program_status_clear[] = "\033]7501;state=clear\033\\";
 
 static struct tty_style_ctx tty_default_style_ctx = {
 	&grid_default_cell, NULL, 0, NULL
@@ -251,6 +256,7 @@ tty_block_maybe(struct tty *tty)
 	log_debug("%s: can't keep up, %zu discarded", c->name, size);
 
 	evbuffer_drain(tty->out, size);
+	tty_program_status_reset(tty);
 	c->discarded += size;
 
 	tty->discarded = 0;
@@ -283,6 +289,9 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 
 	if (EVBUFFER_LENGTH(tty->out) != 0)
 		event_add(&tty->event_out, NULL);
+	else if (tty->program_status_last != NULL &&
+	    strcmp(tty->program_status_last, tty_program_status_clear) == 0)
+		tty->program_status_set = 0;
 }
 
 int
@@ -318,6 +327,7 @@ tty_open(struct tty *tty, char **cause)
 	evtimer_set(&tty->clipboard_timer, tty_clipboard_query_callback, tty);
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_set(&tty->timer, tty_timer_callback, tty);
+	evtimer_set(&tty->program_status_timer, tty_program_status_timeout, tty);
 
 	tty_start_tty(tty);
 	tty_keys_build(tty);
@@ -496,6 +506,7 @@ tty_stop_tty(struct tty *tty)
 
 	evtimer_del(&tty->start_timer);
 	evtimer_del(&tty->clipboard_timer);
+	tty_program_status_reset(tty);
 	tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZPIXELS|TTY_WINSZAPPLY);
 
 	event_del(&tty->timer);
@@ -514,6 +525,8 @@ tty_stop_tty(struct tty *tty)
 	if (tcsetattr(c->fd, TCSANOW, &tty->tio) == -1)
 		return;
 
+	if (tty->program_status_set)
+		tty_raw(tty, tty_program_status_clear);
 	tty_raw(tty, tty_term_string_ii(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
 	if (tty_acs_needed(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
@@ -578,6 +591,8 @@ tty_close(struct tty *tty)
 		tty_term_free(tty->term);
 		tty_keys_free(tty);
 
+		tty->program_status = TTY_PROGRAM_STATUS_UNTRIED;
+		tty->program_status_set = 0;
 		tty->flags &= ~TTY_OPENED;
 	}
 }
@@ -3073,4 +3088,142 @@ tty_set_progress_bar(struct tty *tty, struct progress_bar *pb)
 {
 	if (tty_term_has(tty->term, TTYC_SPB))
 		tty_putcode_ii(tty, TTYC_SPB, pb->state, pb->progress);
+}
+
+static void
+tty_program_status_timeout(__unused int fd, __unused short events, void *data)
+{
+	struct tty	*tty = data;
+
+	tty->program_status = TTY_PROGRAM_STATUS_UNSUPPORTED;
+}
+
+static void
+tty_program_status_cancel(struct tty *tty)
+{
+	if (tty->program_status != TTY_PROGRAM_STATUS_PENDING)
+		return;
+	evtimer_del(&tty->program_status_timer);
+	tty->program_status = TTY_PROGRAM_STATUS_UNTRIED;
+}
+
+/* Forget queued status. The terminal may still need a clear. */
+static void
+tty_program_status_reset(struct tty *tty)
+{
+	tty_program_status_cancel(tty);
+	free(tty->program_status_last);
+	tty->program_status_last = NULL;
+}
+
+void
+tty_program_status_reply(struct tty *tty)
+{
+	if (tty->program_status != TTY_PROGRAM_STATUS_PENDING)
+		return;
+	evtimer_del(&tty->program_status_timer);
+	tty->program_status = TTY_PROGRAM_STATUS_SUPPORTED;
+	server_redraw_client(tty->client);
+}
+
+/* Restrict app to the OSC 7501 identifier grammar. */
+static int
+tty_program_status_app(const char *app)
+{
+	size_t	len;
+
+	if (app == NULL || *app == '\0')
+		return (0);
+	len = strspn(app, "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	    "abcdefghijklmnopqrstuvwxyz0123456789_.+-");
+	return (len <= 32 && app[len] == '\0');
+}
+
+/* The stored message already contains valid UTF-8. Exclude controls. */
+static int
+tty_program_status_message(const char *message, char *encoded, size_t size)
+{
+	const u_char	*cp = (const u_char *)message;
+	size_t		 len;
+
+	if (message == NULL)
+		return (0);
+	len = strlen(message);
+	if (len > 2048)
+		return (0);
+	for (; *cp != '\0'; cp++) {
+		if (*cp < 0x20 || *cp == 0x7f ||
+		    (*cp == 0xc2 && cp[1] >= 0x80 && cp[1] <= 0x9f))
+			return (0);
+	}
+	return (b64_ntop(message, len, encoded, size) != -1);
+}
+
+static char *
+tty_program_status_frame(const struct window_pane *wp)
+{
+	char		 encoded[2733], *frame;
+	const char	*app = wp->program_name, *app_key = "", *message_key = "";
+
+	if (tty_program_status_app(app))
+		app_key = ":app=";
+	else
+		app = "";
+	if (tty_program_status_message(wp->program_message, encoded,
+	    sizeof encoded))
+		message_key = ":msg=";
+	else
+		*encoded = '\0';
+
+	xasprintf(&frame, "\033]7501;state=%s%s%s%s%s\033\\",
+	    wp->program_state, app_key, app, message_key, encoded);
+	return (frame);
+}
+
+void
+tty_set_program_status(struct tty *tty, const struct window_pane *wp)
+{
+	struct client	*c = tty->client;
+	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
+	char		*frame;
+	int		 clear, enabled;
+
+	if (!(tty->flags & TTY_STARTED) || c->session == NULL ||
+	    (c->flags & (CLIENT_CONTROL|CLIENT_UNATTACHEDFLAGS)))
+		return;
+
+	enabled = options_get_number(global_options, "forward-program-status");
+	if (!enabled) {
+		tty_program_status_cancel(tty);
+		if (!tty->program_status_set)
+			return;
+		wp = NULL;
+	}
+	if (tty->flags & TTY_BLOCK)
+		return;
+
+	if (enabled && tty->program_status == TTY_PROGRAM_STATUS_UNTRIED) {
+		tty_puts(tty, "\033]7501;?\033\\");
+		tty->program_status = TTY_PROGRAM_STATUS_PENDING;
+		evtimer_add(&tty->program_status_timer, &tv);
+		return;
+	}
+	if (tty->program_status != TTY_PROGRAM_STATUS_SUPPORTED)
+		return;
+
+	clear = (wp == NULL || wp->program_state == NULL);
+	if (clear)
+		frame = xstrdup(tty_program_status_clear);
+	else
+		frame = tty_program_status_frame(wp);
+	if (tty->program_status_last == NULL ||
+	    strcmp(tty->program_status_last, frame) != 0) {
+		tty_puts(tty, frame);
+		free(tty->program_status_last);
+		tty->program_status_last = frame;
+		frame = NULL;
+		if (!clear)
+			tty->program_status_set = 1;
+	}
+	free(frame);
 }
