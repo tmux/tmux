@@ -57,4 +57,11 @@ for width in 4 8 3 8; do
 	esac
 done
 
+# Leave one cell free so the next wide character does not fit.
+text='abcd中'
+start_pane_history join 2 4 "${text}\\n"
+width=5
+$TMUX resize-window -t join: -x "$width" -y 4 || exit 1
+check_reflow join J
+
 exit $exit_status
