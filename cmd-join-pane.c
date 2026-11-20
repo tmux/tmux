@@ -522,10 +522,16 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	if (flags & SPAWN_BEFORE) {
-		TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
+		if (flags & SPAWN_FULLSIZE)
+			TAILQ_INSERT_HEAD(&dst_w->panes, src_wp, entry);
+		else
+			TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, zentry);
 	} else {
-		TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
+		if (flags & SPAWN_FULLSIZE)
+			TAILQ_INSERT_TAIL(&dst_w->panes, src_wp, entry);
+		else
+			TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
 		TAILQ_INSERT_AFTER(&dst_w->z_index, dst_wp, src_wp, zentry);
 	}
 	layout_assign_pane(lc, src_wp, 0);

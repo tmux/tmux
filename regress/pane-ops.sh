@@ -229,6 +229,26 @@ check_ok move-pane -d -v -s "$p1" -t "$p2"
 check_fmt 'P:0' '#{window_panes}' '4'
 check_fmt 'P:5' '#{window_panes}' '1'
 
+# Full-size joins go at the corresponding edge of the pane list, matching
+# their layout position. Check both the join-pane and move-pane aliases.
+check_ok new-window -d -t P:15 -n fullsize-right
+f0=$($TMUX display-message -p -t P:15.0 '#{pane_id}')
+check_ok split-window -d -h -t "$f0"
+f1=$($TMUX display-message -p -t P:15.1 '#{pane_id}')
+check_ok split-window -d -v -t "$f1"
+f2=$($TMUX display-message -p -t P:15.2 '#{pane_id}')
+check_ok join-pane -d -f -h -s "$f1" -t "$f0"
+check_panes P:15 "0:$f0 1:$f2 2:$f1"
+
+check_ok new-window -d -t P:16 -n fullsize-left
+b0=$($TMUX display-message -p -t P:16.0 '#{pane_id}')
+check_ok split-window -d -h -t "$b0"
+b1=$($TMUX display-message -p -t P:16.1 '#{pane_id}')
+check_ok split-window -d -v -t "$b1"
+b2=$($TMUX display-message -p -t P:16.2 '#{pane_id}')
+check_ok move-pane -d -b -f -h -s "$b2" -t "$b1"
+check_panes P:16 "0:$b2 1:$b0 2:$b1"
+
 # ---------------------------------------------------------------------------
 # swap-pane.
 
