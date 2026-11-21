@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.311 2026/11/21 15:36:05 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.313 2026/11/21 19:38:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -385,12 +385,28 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	}
 }
 
+/* Mark lines as possibly having collected items. */
+static void
+screen_write_mark_lines(struct screen *s, u_int start, u_int end)
+{
+	if (s->write_start == s->write_end) {
+		s->write_start = start;
+		s->write_end = end;
+	} else {
+		if (start < s->write_start)
+			s->write_start = start;
+		if (end > s->write_end)
+			s->write_end = end;
+	}
+}
+
 /* Make write list. */
 void
 screen_write_make_list(struct screen *s)
 {
 	u_int	y;
 
+	s->write_start = s->write_end = 0;
 	s->write_list = xcalloc(screen_size_y(s), sizeof *s->write_list);
 	for (y = 0; y < screen_size_y(s); y++)
 		TAILQ_INIT(&s->write_list[y].items);
@@ -1873,6 +1889,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	ci->type = CLEAR;
 	ci->bg = bg;
 	TAILQ_INSERT_TAIL(&ctx->s->write_list[s->cy].items, ci, entry);
+	screen_write_mark_lines(s, s->cy, s->cy + 1);
 	ctx->item = screen_write_get_citem();
 }
 
@@ -2526,6 +2543,7 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 	ci->type = CLEAR;
 	ci->bg = bg;
 	TAILQ_INSERT_TAIL(&ctx->s->write_list[s->rlower].items, ci, entry);
+	screen_write_mark_lines(s, s->rupper, s->rlower + 1);
 }
 
 /* Flush collected scrolling. */
@@ -2592,8 +2610,10 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 		xoff = 0;
 		yoff = 0;
 	}
-	if (y + yoff >= wsy)
+	if (y + yoff >= wsy) {
+		screen_write_collect_clear(ctx, y, 1);
 		return (0);
+	}
 
 	r = window_visible_ranges(wp, 0, y + yoff, wsx, NULL);
 	TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
@@ -2653,11 +2673,10 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 			items++;
 			written = 1;
 		}
-		if (written) {
+		if (written)
 			last = ci->x;
-			TAILQ_REMOVE(&cl->items, ci, entry);
-			screen_write_free_citem(ci);
-		}
+		TAILQ_REMOVE(&cl->items, ci, entry);
+		screen_write_free_citem(ci);
 	}
 	return (items);
 }
@@ -2669,7 +2688,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 {
 	struct screen			*s = ctx->s;
 	struct window_pane		*wp = ctx->wp;
-	u_int				 y, cx, cy, items = 0;
+	u_int				 y, cx, cy, end, items = 0;
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
 
@@ -2699,8 +2718,12 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		return;
 
 	cx = s->cx; cy = s->cy;
-	for (y = 0; y < screen_size_y(s); y++)
+	end = s->write_end;
+	if (end > screen_size_y(s))
+		end = screen_size_y(s);
+	for (y = s->write_start; y < end; y++)
 		items += screen_write_collect_flush_line(ctx, y);
+	s->write_start = s->write_end = 0;
 	s->cx = cx; s->cy = cy;
 
 	log_debug("%s: flushed %u items (%s)", __func__, items, from);
@@ -2714,6 +2737,7 @@ discard:
 			screen_write_free_citem(ci);
 		}
 	}
+	s->write_start = s->write_end = 0;
 	ctx->scrolled = 0;
 	ctx->bg = 8;
 }
@@ -2733,6 +2757,7 @@ screen_write_collect_insert(struct screen_write_ctx *ctx,
 		TAILQ_INSERT_TAIL(&cl->items, ci, entry);
 	else
 		TAILQ_INSERT_BEFORE(before, ci, entry);
+	screen_write_mark_lines(s, s->cy, s->cy + 1);
 	ctx->item = screen_write_get_citem();
 }
 
