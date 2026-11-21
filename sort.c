@@ -1,4 +1,4 @@
-/* $OpenBSD: sort.c,v 1.12 2026/09/28 10:42:01 nicm Exp $ */
+/* $OpenBSD: sort.c,v 1.13 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Dane Jensen <dhcjensen@gmail.com>
@@ -430,8 +430,8 @@ sort_get_buffers(u_int *n, struct sort_criteria *sort_crit)
 {
 	struct paste_buffer		 *pb = NULL;
 	u_int				  i;
-	static struct paste_buffer	**l = NULL;
-	static u_int			  lsz = 0;
+	struct paste_buffer		**l = NULL;
+	u_int				  lsz = 0;
 
 	i = 0;
 	while ((pb = paste_walk(pb)) != NULL) {
@@ -453,8 +453,8 @@ sort_get_clients(u_int *n, struct sort_criteria *sort_crit)
 {
 	struct client		 *c;
 	u_int			  i;
-	static struct client	**l = NULL;
-	static u_int		  lsz = 0;
+	struct client		**l = NULL;
+	u_int			  lsz = 0;
 
 	i = 0;
 	TAILQ_FOREACH(c, &clients, entry) {
@@ -480,8 +480,8 @@ sort_get_sessions(u_int *n, struct sort_criteria *sort_crit)
 {
 	struct session		 *s;
 	u_int			  i;
-	static struct session	**l = NULL;
-	static u_int		  lsz = 0;
+	struct session		**l = NULL;
+	u_int			  lsz = 0;
 
 	i = 0;
 	RB_FOREACH(s, sessions, &sessions) {
@@ -506,8 +506,8 @@ sort_get_panes(u_int *n, struct sort_criteria *sort_crit)
 	struct window			 *w;
 	struct window_pane		 *wp;
 	u_int				  i;
-	static struct window_pane	**l = NULL;
-	static u_int			  lsz = 0;
+	struct window_pane		**l = NULL;
+	u_int				  lsz = 0;
 
 	i = 0;
 	RB_FOREACH(s, sessions, &sessions) {
@@ -537,8 +537,8 @@ sort_get_panes_session(struct session *s, u_int *n,
 	struct window			 *w = NULL;
 	struct window_pane		 *wp = NULL;
 	u_int				  i;
-	static struct window_pane	**l = NULL;
-	static u_int			  lsz = 0;
+	struct window_pane		**l = NULL;
+	u_int				  lsz = 0;
 
 	i = 0;
 	RB_FOREACH(wl, winlinks, &s->windows)  {
@@ -564,8 +564,8 @@ sort_get_panes_window(struct window *w, u_int *n,
 {
 	struct window_pane		 *wp;
 	u_int				  i;
-	static struct window_pane	**l = NULL;
-	static u_int			  lsz = 0;
+	struct window_pane		**l = NULL;
+	u_int				  lsz = 0;
 
 	i = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -588,8 +588,8 @@ sort_get_winlinks(u_int *n, struct sort_criteria *sort_crit)
 	struct session		 *s;
 	struct winlink		 *wl;
 	u_int			  i;
-	static struct winlink	**l = NULL;
-	static u_int		  lsz = 0;
+	struct winlink		**l = NULL;
+	u_int			  lsz = 0;
 
 	i = 0;
 	RB_FOREACH(s, sessions, &sessions) {
@@ -614,8 +614,8 @@ sort_get_winlinks_session(struct session *s, u_int *n,
 {
 	struct winlink		 *wl;
 	u_int			  i;
-	static struct winlink	**l = NULL;
-	static u_int		  lsz = 0;
+	struct winlink		**l = NULL;
+	u_int			  lsz = 0;
 
 	i = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
@@ -638,8 +638,8 @@ sort_get_key_bindings(u_int *n, struct sort_criteria *sort_crit)
 	struct key_table		 *table;
 	struct key_binding		 *bd;
 	u_int				  i = 0;
-	static struct key_binding	**l = NULL;
-	static u_int			  lsz = 0;
+	struct key_binding		**l = NULL;
+	u_int				  lsz = 0;
 
 	table = key_bindings_first_table();
 	while (table != NULL) {
@@ -667,8 +667,8 @@ sort_get_key_bindings_table(struct key_table *table, u_int *n,
 {
 	struct key_binding		 *bd;
 	u_int				  i = 0;
-	static struct key_binding	**l = NULL;
-	static u_int			  lsz = 0;
+	struct key_binding		**l = NULL;
+	u_int				  lsz = 0;
 
 	bd = key_bindings_first(table);
 	while (bd != NULL) {

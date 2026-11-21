@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-panes.c,v 1.43 2026/11/09 12:27:36 nicm Exp $ */
+/* $OpenBSD: cmd-list-panes.c,v 1.44 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -165,4 +165,5 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 
 		format_free(ft);
 	}
+	free(l);
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-clients.c,v 1.44 2026/11/09 12:27:36 nicm Exp $ */
+/* $OpenBSD: cmd-list-clients.c,v 1.45 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -105,6 +105,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 
 		format_free(ft);
 	}
+	free(l);
 
 	return (CMD_RETURN_NORMAL);
 }

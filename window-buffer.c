@@ -1,4 +1,4 @@
-/* $OpenBSD: window-buffer.c,v 1.53 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: window-buffer.c,v 1.54 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -160,6 +160,7 @@ window_buffer_build(void *modedata, struct sort_criteria *sort_crit,
 		paste_buffer_data(l[i], &item->size);
 		item->order = paste_buffer_order(l[i]);
 	}
+	free(l);
 
 	if (cmd_find_valid_state(&data->fs)) {
 		s = data->fs.s;

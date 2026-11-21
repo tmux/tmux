@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.438 2026/11/21 12:42:18 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.439 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -5432,6 +5432,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 
@@ -5569,6 +5570,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 
@@ -5634,6 +5636,7 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 
@@ -5945,6 +5948,7 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	else
 		value = xstrdup("");
 	evbuffer_free(buffer);
+	free(l);
 	return (value);
 }
 

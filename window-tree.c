@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.101 2026/11/13 19:25:32 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.102 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -385,6 +385,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 			continue;
 		window_tree_build_pane(s, wl, l[i], modedata, mti);
 	}
+	free(l);
 	if (found == 0) {
 		window_tree_free_item(item);
 		data->item_size--;
@@ -436,6 +437,7 @@ window_tree_build_session(struct session *s, void *modedata,
 		    filter))
 			empty++;
 	}
+	free(l);
 	if (empty == n) {
 		window_tree_free_item(item);
 		data->item_size--;
@@ -473,6 +475,7 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 		}
 		window_tree_build_session(s, modedata, sort_crit, filter);
 	}
+	free(l);
 
 	switch (data->type) {
 	case WINDOW_TREE_NONE:
