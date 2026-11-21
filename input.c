@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.284 2026/11/12 14:03:43 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.285 2026/11/21 15:36:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -965,6 +965,31 @@ input_set_state(struct input_ctx *ictx, const struct input_transition *itr)
 		ictx->state->enter(ictx);
 }
 
+/* Try collecting multiple printable ASCII characters. */
+static size_t
+input_try_multiple(struct input_ctx *ictx, const struct input_transition *itr,
+    const u_char *buf, size_t len)
+{
+	struct grid_cell	*gc = &ictx->cell.cell;
+	size_t			 n;
+	int			 set;
+
+	if (itr->handler != input_print || ictx->utf8started)
+		return (0);
+	set = ictx->cell.set == 0 ? ictx->cell.g0set : ictx->cell.g1set;
+	if (set == 1)
+		return (0);
+
+	n = screen_write_collect_multiple(&ictx->ctx, gc, buf, len);
+	if (n == 0)
+		return (0);
+	ictx->ch = buf[n - 1];
+	utf8_set(&gc->data, ictx->ch);
+	memcpy(&ictx->last, &gc->data, sizeof ictx->last);
+	ictx->flags |= INPUT_LAST;
+	return (n);
+}
+
 /* Parse data. */
 static void
 input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
@@ -972,7 +997,7 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 	struct screen_write_ctx		*sctx = &ictx->ctx;
 	const struct input_state	*state = NULL;
 	const struct input_transition	*itr = NULL;
-	size_t				 off = 0;
+	size_t				 off = 0, n;
 
 	/* Parse the input. */
 	while (off < len) {
@@ -996,6 +1021,12 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 			}
 		}
 		state = ictx->state;
+
+		n = input_try_multiple(ictx, itr, buf + off - 1, len - off + 1);
+		if (n != 0) {
+			off += n - 1;
+			continue;
+		}
 
 		/*
 		 * Any state except print stops the current collection. This is

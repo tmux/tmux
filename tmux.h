@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1482 2026/11/17 11:16:27 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1483 2026/11/21 15:36:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3726,6 +3726,8 @@ void	 screen_write_fullredraw(struct screen_write_ctx *);
 void	 screen_write_collect_end(struct screen_write_ctx *);
 void	 screen_write_collect_add(struct screen_write_ctx *,
 	     const struct grid_cell *);
+size_t	 screen_write_collect_multiple(struct screen_write_ctx *,
+	     const struct grid_cell *, const u_char *, size_t);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, const char *,
 	     u_char *, u_int);

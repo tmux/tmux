@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.310 2026/11/13 09:51:30 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.311 2026/11/21 15:36:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2753,6 +2753,47 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
 	    ci->used);
 	screen_write_set_cursor(ctx, end, -1);
+}
+
+/* Collect printable ASCII that fits before the next wrap or slow cell. */
+size_t
+screen_write_collect_multiple(struct screen_write_ctx *ctx,
+    const struct grid_cell *gc, const u_char *data, size_t len)
+{
+	struct screen			*s = ctx->s;
+	struct screen_write_citem	*ci = ctx->item;
+	struct screen_write_cline	*cl = &s->write_list[s->cy];
+	u_int				 sx = screen_size_x(s), available;
+	size_t				 n;
+
+	if ((gc->flags & GRID_FLAG_TAB) ||
+	    (gc->attr & GRID_ATTR_CHARSET) ||
+	    (s->mode & MODE_INSERT) ||
+	    s->sel != NULL ||
+	    s->cx >= sx ||
+	    ci->used >= sx - s->cx)
+		return (0);
+	available = sx - s->cx - ci->used;
+	if (~s->mode & MODE_WRAP)
+		available--; /* the last column must use screen_write_cell */
+	if (len > available)
+		len = available;
+	for (n = 0; n < len; n++) {
+		if (data[n] < 0x20 || data[n] > 0x7e)
+			break;
+	}
+	if (n == 0)
+		return (0);
+
+	if (ci->used == 0) {
+		memcpy(&ci->gc, gc, sizeof ci->gc);
+		utf8_set(&ci->gc.data, *data);
+	}
+	if (cl->data == NULL)
+		cl->data = xmalloc(sx);
+	memcpy(cl->data + s->cx + ci->used, data, n);
+	ci->used += n;
+	return (n);
 }
 
 /* Write cell data, collecting if necessary. */
