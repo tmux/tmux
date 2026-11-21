@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.20 2026/11/13 09:24:18 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.21 2026/11/21 16:09:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -114,6 +114,44 @@ tty_draw_line_get_empty(const struct grid_cell *gc,
 	return (empty);
 }
 
+/* Collect more compact ASCII cells with the same style. */
+static u_int
+tty_draw_line_collect(const struct grid_line *gl, u_int px, u_int end,
+    char *buf, size_t len)
+{
+	const struct grid_cell_entry	*gce, *next;
+	u_int				 n, nx;
+	u_char				 ch;
+
+	if (px >= end || end - px <= 1 || len == 0)
+		return (0);
+	gce = &gl->celldata[px];
+	if (gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256|GRID_FLAG_NOPALETTE))
+		return (0);
+	if (gce->data.attr & GRID_ATTR_CHARSET)
+		return (0);
+	if (gce->data.data < 0x20 || gce->data.data > 0x7e)
+		return (0);
+
+	nx = end - px - 1;
+	if (nx > len)
+		nx = len;
+	for (n = 0, next = gce + 1; n < nx; n++, next++) {
+		if (next->flags != gce->flags ||
+		    next->data.attr != gce->data.attr ||
+		    next->data.fg != gce->data.fg ||
+		    next->data.bg != gce->data.bg)
+			break;
+		ch = next->data.data;
+		if (ch < 0x20 ||
+		    ch > 0x7e ||
+		    (ch == ' ' && gce->data.attr == 0))
+			break;
+		buf[n] = ch;
+	}
+	return (n);
+}
+
 /* Draw a line from screen to tty. */
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
@@ -124,7 +162,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_cell	 gc, ngc, last;
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
-	u_int			 cellsize, bg;
+	u_int			 cellsize, bg, end, n;
 	int			 flags, empty, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
@@ -158,7 +196,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	 * Clamp the width to cellsize - note this is not cellused, because
 	 * there may be empty background cells after it (from BCE).
 	 */
-	cellsize = grid_get_line(gd, gd->hsize + py)->cellsize;
+	gl = grid_get_line(gd, gd->hsize + py);
+	cellsize = gl->cellsize;
 	if (screen_size_x(s) > cellsize)
 		ex = cellsize;
 	else
@@ -223,12 +262,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	    tty->cy != UINT_MAX &&
 	    tty->cy + 1 == aty &&
 	    nx == tty->sx) {
-		gl = grid_get_line(gd, gd->hsize + py - 1);
-		if (gl->flags & GRID_LINE_WRAPPED)
+		if (grid_get_line(gd, gd->hsize + py - 1)->flags & GRID_LINE_WRAPPED)
 			wrapped = 1;
 	}
 
 	/* Loop over each character in the range. */
+	end = px + nx;
+	if (end > ex)
+		end = ex;
 	last_i = i = 0;
 	len = 0;
 	width = 0;
@@ -341,8 +382,20 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		memcpy(&last, gcp, sizeof last);
 		if (empty != 0)
 			i += empty;
-		else
+		else {
 			i += gcp->data.width;
+			if (gcp->data.size == 1 && gcp->data.width == 1) {
+				n = tty_draw_line_collect(gl, px + i - 1, end,
+				    buf + len, (sizeof buf) - len);
+				if (n != 0) {
+					len += n;
+					width += n;
+					i += n;
+					last.data.data[0] = buf[len - 1];
+					current_state = TTY_DRAW_LINE_SAME;
+				}
+			}
+		}
 	}
 
 out:
