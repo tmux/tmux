@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.79 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.80 2026/11/21 13:29:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -522,10 +522,16 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	if (flags & SPAWN_BEFORE) {
-		TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
+		if (flags & SPAWN_FULLSIZE)
+			TAILQ_INSERT_HEAD(&dst_w->panes, src_wp, entry);
+		else
+			TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, zentry);
 	} else {
-		TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
+		if (flags & SPAWN_FULLSIZE)
+			TAILQ_INSERT_TAIL(&dst_w->panes, src_wp, entry);
+		else
+			TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
 		TAILQ_INSERT_AFTER(&dst_w->z_index, dst_wp, src_wp, zentry);
 	}
 	layout_assign_pane(lc, src_wp, 0);
