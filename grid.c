@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.161 2026/10/12 15:40:17 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.162 2026/11/21 12:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1204,6 +1204,8 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 	if (has_link) {
 		grid_string_cells_add_hyperlink(code, sizeof code, "", "",
 		    flags);
+		if (lastgc != NULL)
+			(*lastgc)->link = 0;
 		codelen = strlen(code);
 		while (len < off + size + codelen + 1) {
 			buf = xreallocarray(buf, 2, len);
