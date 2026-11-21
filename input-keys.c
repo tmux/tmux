@@ -1,4 +1,4 @@
-/* $OpenBSD: input-keys.c,v 1.116 2026/11/17 11:16:27 nicm Exp $ */
+/* $OpenBSD: input-keys.c,v 1.117 2026/11/21 12:46:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -577,6 +577,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	struct input_key_entry	*ike = NULL;
 	key_code		 newkey;
 	struct utf8_data	 ud;
+
+	/* Send keys are like any other key here. */
+	key &= ~KEYC_SENT;
 
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
