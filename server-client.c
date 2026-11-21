@@ -2779,7 +2779,7 @@ server_client_set_program_status(struct client *c)
 
 /* Forward a status change to clients showing the pane as active. */
 void
-server_clients_program_status_changed(struct window_pane *wp)
+server_client_program_status_changed(struct window_pane *wp)
 {
 	struct client	*c;
 	struct session	*s;

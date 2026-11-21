@@ -1854,23 +1854,12 @@ struct tty_style_ctx {
 /* Maximum reported terminal size. */
 #define CLIENT_MAX_TERM_SIZE 10000
 
-/* Outer terminal support for OSC 7501. */
-enum tty_program_status {
-	TTY_PROGRAM_STATUS_UNTRIED,
-	TTY_PROGRAM_STATUS_PENDING,
-	TTY_PROGRAM_STATUS_UNSUPPORTED,
-	TTY_PROGRAM_STATUS_SUPPORTED
-};
-
 /* Client terminal. */
 struct tty {
 	struct client	*client;
 	struct event	 start_timer;
 	struct event	 clipboard_timer;
-	struct event	 program_status_timer;
-	enum tty_program_status program_status;
 	char		*program_status_last;
-	int		 program_status_set;
 	time_t		 last_requests;
 
 	u_int		 sx;
@@ -1938,8 +1927,11 @@ struct tty {
 #define TTY_WINSZAPPLY 0x80000
 #define TTY_GRACE 0x100000
 #define TTY_NOBACKOFF 0x200000
+#define TTY_HAVEPROGRAMSTATUS 0x400000
+#define TTY_PROGRAMSTATUS 0x800000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC|TTY_HAVEKITTYGRAPHICS)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC|TTY_HAVEKITTYGRAPHICS|\
+	 TTY_HAVEPROGRAMSTATUS)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -3097,7 +3089,6 @@ void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
 void	tty_set_progress_bar(struct tty *, struct progress_bar *);
 void	tty_set_program_status(struct tty *, const struct window_pane *);
-void	tty_program_status_reply(struct tty *);
 void	tty_default_attributes(struct tty *, u_int,
 	    const struct tty_style_ctx *);
 void	tty_update_mode(struct tty *, int, struct screen *);
@@ -3466,7 +3457,7 @@ int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_set_session(struct client *, struct session *);
 void	 server_client_set_program_status(struct client *);
-void	 server_clients_program_status_changed(struct window_pane *);
+void	 server_client_program_status_changed(struct window_pane *);
 void	 server_client_lost(struct client *);
 void	 server_client_suspend(struct client *);
 void	 server_client_detach(struct client *, enum msgtype);

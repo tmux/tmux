@@ -1834,6 +1834,14 @@ and
 commands may be used to swap panes without changing their position.
 Panes are numbered beginning from zero in the order they are created.
 .Pp
+When a client terminal reports support for OSC 7501,
+.Nm
+sets its root program status from the active pane in the client's current
+window.
+If the pane has no program status,
+.Nm
+clears the terminal's root program status.
+.Pp
 By default, a
 .Nm
 pane permits direct access to the terminal contained in the pane.
@@ -5137,20 +5145,6 @@ option.
 When enabled and
 .Ic mouse
 is on, moving the mouse into a pane selects it.
-.It Xo Ic forward\-program\-status
-.Op Cm on | off
-.Xc
-For each terminal that reports OSC 7501 support,
-.Nm
-sets the terminal's root program status from the active pane in the client's
-current window.
-If the pane has no program status,
-.Nm
-clears the terminal's root program status.
-.Nm
-omits program names and messages outside the OSC 7501 syntax or size limits.
-The default is
-.Cm off .
 .It Xo Ic get\-clipboard
 .Op Cm both | request | buffer | off
 .Xc

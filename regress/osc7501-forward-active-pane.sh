@@ -182,21 +182,11 @@ class Test:
         until(f"{pane} status {status!r}",
               lambda: self.run("display-message", "-pt", pane, fmt) == status)
 
-    def enable(self):
-        self.run("set-option", "-s", "forward-program-status", "on")
-
 
 def probe(test):
-    first, second = test.attach(), test.attach()
     test.report(test.pane, b"state=working")
     test.wait_status(test.pane, "working||")
-
-    # Let ordinary startup queries expire. Only the OSC 7501 query
-    # can then explain holding the fragments past escape-time.
-    first.drain(5.2)
-    first.expect()
-    second.expect()
-    test.enable()
+    first, second = test.attach(), test.attach()
     for terminal in (first, second):
         terminal.expect(b"?")
 
@@ -205,24 +195,20 @@ def probe(test):
     first.send(prefix[4:] + reply + b"\033")
     time.sleep(.05)
     first.send(b"\\")
-    second.send(prefix + b"unsupported\007")
+    first.expect(b"state=working")
+    second.expect()
 
-    # An unsupported reply is consumed, but cannot confirm support.
-    # A valid reply after the probe deadline also cannot confirm it.
-    first.drain(5.2)
-    second.send(prefix + reply + b"\007" + b"AFTER-REPLY\r")
+    first.send(prefix + reply + b"\007" + b"AFTER-REPLY\r")
     until("the ordinary key after the replies",
           lambda: "AFTER-REPLY" in test.capture(test.pane))
     pane = test.capture(test.pane)
     assert pane.splitlines() == ["PANE-READY", "AFTER-REPLY"], pane
-    assert b"?" not in frame.findall(first.output), first.output
-    second.expect()
+    first.expect()
     return first, second
 
 
 def publication(test):
     first, second = probe(test)
-    first.expect(b"state=working")
     pane = test.pane
 
     # A shell prompt clears a working status on the outer terminal.
@@ -236,17 +222,18 @@ def publication(test):
 
     test.report(pane, b"state=working:app=bad/name:msg=SGk=")
     test.wait_status(pane, "working|bad/name|Hi")
-    first.expect(b"state=working:msg=SGk=")
+    first.expect(b"state=working:app=bad/name:msg=SGk=")
 
     # Tabs fit the incoming length limit and expand during storage.
     test.report(pane, b"state=working:app=build:msg=" +
                 base64.b64encode(b"\t" * 1025))
     test.wait_status(pane, "working|build|" + r"\t" * 1025)
-    first.expect(b"state=working:app=build")
+    first.expect(b"state=working:app=build:msg=" +
+                 base64.b64encode((r"\t" * 1025).encode()))
 
     test.report(pane, b"state=idle:msg=woU=")
     test.wait_status(pane, "idle||\u0085")
-    first.expect(b"state=idle")
+    first.expect(b"state=idle:msg=woU=")
 
     background = test.run("split-window", "-dP", "-F", "#{pane_id}",
                           "-t", pane, pane_command)
@@ -270,10 +257,9 @@ def publication(test):
 
 
 def connect(test, session="status"):
-    test.enable()
     terminal = test.attach(session)
     terminal.expect(b"?")
-    terminal.send(prefix + reply + b"\007")
+    terminal.send(prefix + b"?\007")
     terminal.expect(b"state=clear")
     return terminal
 
@@ -315,45 +301,22 @@ def output_lifecycle(test):
     discarded = count("discarded")
     # Stop consuming output while the screen scrolls.
     flood = b"0123456789abcdefghijklmnopqrstuvwxyz" * 2 + b"\r\n"
-    for _ in range(24):
+    for _ in range(64):
         test.pane_write(pane, flood * 64)
         if count("discarded") > discarded:
             break
 
     def output_discarded():
-        # The write callback discards the backlog once the fd is writable.
-        terminal.drain(.02)
+        # Let tmux write without draining the backlog during its grace period.
+        terminal.drain(0)
         return count("discarded") > discarded
 
     until("tty output discard", output_discarded)
     terminal.expect(b"state=working:app=build")
 
-    # Fill the kernel PTY without making the tmux backlog large
-    # enough to discard. The marker follows that output.
-    slave = os.open(terminal.name, os.O_WRONLY | os.O_NOCTTY)
-    try:
-        for _ in range(24):
-            if not select.select([], [slave], [], 0)[1]:
-                break
-            test.pane_write(pane, flood * 16)
-        else:
-            raise AssertionError("tty did not become backlogged")
-    finally:
-        os.close(slave)
-    discarded = count("discarded")
-    written = count("written")
-    marker = b"BEFORE-DISABLE"
-    test.pane_write(pane, marker + b"\r\n")
-    until("the marker to be queued", lambda: count("written") > written)
-    test.run("set-option", "-s", "forward-program-status", "off")
-    found = until("the queued clear", lambda: frame.search(terminal.drain(.05)))
-    assert marker in terminal.output, "queued output was lost"
-    assert terminal.output.index(marker) < found.start(), "clear overtook output"
+    test.report(pane, b"state=clear")
     terminal.expect(b"state=clear")
-    assert count("discarded") == discarded, "disable discarded tty output"
-
-    test.enable()
-    terminal.expect(b"state=working:app=build")
+    terminal.drain(.1)
     test.run("detach-client", "-t", terminal.name)
     terminal.process.wait(timeout=5)
     terminal.expect(b"state=clear")

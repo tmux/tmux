@@ -496,14 +496,6 @@ const struct options_table_entry options_table[] = {
 	  .text = "Whether to send focus events to applications."
 	},
 
-	{ .name = "forward-program-status",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_SERVER,
-	  .default_num = 0,
-	  .text = "Whether to forward active pane program status to "
-		  "terminals that support it."
-	},
-
 	{ .name = "get-clipboard",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SERVER,

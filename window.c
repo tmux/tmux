@@ -2023,7 +2023,7 @@ window_pane_set_program_status(struct window_pane *wp, char *state, char *name,
 	wp->program_name = name;
 	wp->program_message = message;
 	if (~wp->flags & PANE_DESTROYED)
-		server_clients_program_status_changed(wp);
+		server_client_program_status_changed(wp);
 }
 
 /* Clear program status. */

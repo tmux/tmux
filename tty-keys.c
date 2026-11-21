@@ -952,7 +952,6 @@ partial_key:
 	if (tty->flags & (TTY_WAITFG|TTY_WAITBG|TTY_OSC52QUERY) ||
 	    tty->flags & (TTY_WINSZQUERY|TTY_WINSZPIXELS) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
-	    tty->program_status == TTY_PROGRAM_STATUS_PENDING ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay (active query)", c->name);
 		if (delay < 500)
@@ -1414,37 +1413,51 @@ static int
 tty_keys_program_status(struct tty *tty, const char *buf, size_t len,
     size_t *size, int apply)
 {
-	static const char	prefix[] = "\033]7501;";
-	size_t			start = sizeof prefix - 1, end, limit = len;
+	static const char	prefix[] = "\033]7501;?";
+	size_t			i, end, limit;
 
-	if (memcmp(buf, prefix, len < start ? len : start) != 0)
-		return (-1);
-	if (len < start)
+	*size = 0;
+	for (i = 0; i < sizeof prefix - 1; i++) {
+		if (i == len)
+			return (1);
+		if (buf[i] != prefix[i])
+			return (-1);
+	}
+	if (i == len)
 		return (1);
+	if (buf[i] != ':' && buf[i] != '\007' && buf[i] != '\033')
+		return (-1);
+	if (buf[i] == '\033' && i + 1 < len && buf[i + 1] != '\\')
+		return (-1);
 
-	/* Bound the scan if the terminal never sends a terminator. */
+	limit = len;
 	if (limit > TTY_PROGRAM_STATUS_REPLY_LIMIT)
 		limit = TTY_PROGRAM_STATUS_REPLY_LIMIT;
-	for (end = start; end < limit; end++) {
+	for (end = i; end < limit; end++) {
 		if (buf[end] == '\007') {
 			*size = end + 1;
 			break;
 		}
-		if (buf[end] == '\033' && end + 1 < limit &&
-		    buf[end + 1] == '\\') {
-			*size = end + 2;
-			break;
+		if (buf[end] == '\033') {
+			if (end + 1 < limit && buf[end + 1] == '\\') {
+				*size = end + 2;
+				break;
+			}
 		}
 	}
-	if (end == limit) {
-		if (limit == TTY_PROGRAM_STATUS_REPLY_LIMIT)
+	if (*size == 0) {
+		if (len >= TTY_PROGRAM_STATUS_REPLY_LIMIT)
 			return (-1);
 		return (1);
 	}
-	if (!apply || end == start || buf[start] != '?')
+	if (!apply)
 		return (0);
-	if (end == start + 1 || buf[start + 1] == ':')
-		tty_program_status_reply(tty);
+
+	tty->flags |= TTY_HAVEPROGRAMSTATUS;
+	if (~tty->flags & TTY_PROGRAMSTATUS) {
+		tty->flags |= TTY_PROGRAMSTATUS;
+		server_client_set_program_status(tty->client);
+	}
 	return (0);
 }
 
