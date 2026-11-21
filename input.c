@@ -2909,14 +2909,8 @@ input_program_status(struct window_pane *wp, const char *p)
 	else if (message != NULL && strcmp(message, wp->program_message) != 0)
 		changed = 1;
 	if (changed) {
-		window_pane_clear_program_status(wp, 1);
-
-		wp->program_state = state;
-		state = NULL;
-		wp->program_name = name;
-		name = NULL;
-		wp->program_message = message;
-		message = NULL;
+		window_pane_set_program_status(wp, state, name, message);
+		state = name = message = NULL;
 
 		server_status_window(wp->window);
 		server_redraw_window_borders(wp->window);

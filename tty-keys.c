@@ -51,6 +51,8 @@ struct tty_key_parse {
 #define TTY_KEY_PARSE_NO_META 0x1
 };
 
+#define TTY_PROGRAM_STATUS_REPLY_LIMIT 4096
+
 static void	tty_keys_add1(struct tty_key **, const char *, key_code);
 static void	tty_keys_add(struct tty *, const char *, key_code);
 static void	tty_keys_free1(struct tty_key *);
@@ -71,6 +73,8 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *, int);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *, int);
+static int	tty_keys_program_status(struct tty *, const char *, size_t,
+		    size_t *, int);
 static int	tty_keys_sync(struct tty *, const char *, size_t, size_t *,
 		    int);
 #ifdef ENABLE_IMAGES
@@ -92,6 +96,7 @@ static const struct {
 	int	      (*fn)(struct tty *, const char *, size_t, size_t *, int);
 } tty_keys_replies[] = {
 	{ KEYC_REPORT_CLIPBOARD, tty_keys_clipboard },
+	{ KEYC_REPORT_PROGRAM_STATUS, tty_keys_program_status },
 	{ KEYC_REPORT_SYNC, tty_keys_sync },
 	{ KEYC_REPORT_DA, tty_keys_device_attributes },
 	{ KEYC_REPORT_DA2, tty_keys_device_attributes2 },
@@ -947,6 +952,7 @@ partial_key:
 	if (tty->flags & (TTY_WAITFG|TTY_WAITBG|TTY_OSC52QUERY) ||
 	    tty->flags & (TTY_WINSZQUERY|TTY_WINSZPIXELS) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
+	    tty->program_status == TTY_PROGRAM_STATUS_PENDING ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay (active query)", c->name);
 		if (delay < 500)
@@ -1402,6 +1408,45 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size,
 	}
 
 	free(out);
+	return (0);
+}
+
+/* Handle an OSC 7501 program status reply. */
+static int
+tty_keys_program_status(struct tty *tty, const char *buf, size_t len,
+    size_t *size, int apply)
+{
+	static const char	prefix[] = "\033]7501;";
+	size_t			start = sizeof prefix - 1, end, limit = len;
+
+	if (memcmp(buf, prefix, len < start ? len : start) != 0)
+		return (-1);
+	if (len < start)
+		return (1);
+
+	/* Bound the scan if the terminal never sends a terminator. */
+	if (limit > TTY_PROGRAM_STATUS_REPLY_LIMIT)
+		limit = TTY_PROGRAM_STATUS_REPLY_LIMIT;
+	for (end = start; end < limit; end++) {
+		if (buf[end] == '\007') {
+			*size = end + 1;
+			break;
+		}
+		if (buf[end] == '\033' && end + 1 < limit &&
+		    buf[end + 1] == '\\') {
+			*size = end + 2;
+			break;
+		}
+	}
+	if (end == limit) {
+		if (limit == TTY_PROGRAM_STATUS_REPLY_LIMIT)
+			return (-1);
+		return (1);
+	}
+	if (!apply || end == start || buf[start] != '?')
+		return (0);
+	if (end == start + 1 || buf[start + 1] == ':')
+		tty_program_status_reply(tty);
 	return (0);
 }
 

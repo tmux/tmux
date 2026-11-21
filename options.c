@@ -1503,8 +1503,11 @@ options_push_changes(const char *name)
 
 	recalculate_sizes();
 	TAILQ_FOREACH(loop, &clients, entry) {
-		if (loop->session != NULL)
-			server_redraw_client(loop);
+		if (loop->session == NULL)
+			continue;
+		if (strcmp(name, "forward-program-status") == 0)
+			server_client_set_program_status(loop);
+		server_redraw_client(loop);
 	}
 }
 

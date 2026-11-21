@@ -468,6 +468,7 @@ enum {
 	KEYC_REPORT_COLOURS,
 	KEYC_REPORT_PALETTE,
 	KEYC_REPORT_WINSZ,
+	KEYC_REPORT_PROGRAM_STATUS,
 
 	/* Mouse state. */
 	KEYC_MOUSE, /* unclassified mouse event */
@@ -1844,11 +1845,23 @@ struct tty_style_ctx {
 /* Maximum reported terminal size. */
 #define CLIENT_MAX_TERM_SIZE 10000
 
+/* Outer terminal support for OSC 7501. */
+enum tty_program_status {
+	TTY_PROGRAM_STATUS_UNTRIED,
+	TTY_PROGRAM_STATUS_PENDING,
+	TTY_PROGRAM_STATUS_UNSUPPORTED,
+	TTY_PROGRAM_STATUS_SUPPORTED
+};
+
 /* Client terminal. */
 struct tty {
 	struct client	*client;
 	struct event	 start_timer;
 	struct event	 clipboard_timer;
+	struct event	 program_status_timer;
+	enum tty_program_status program_status;
+	char		*program_status_last;
+	int		 program_status_set;
 	time_t		 last_requests;
 
 	u_int		 sx;
@@ -3070,6 +3083,8 @@ void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
 void	tty_set_progress_bar(struct tty *, struct progress_bar *);
+void	tty_set_program_status(struct tty *, const struct window_pane *);
+void	tty_program_status_reply(struct tty *);
 void	tty_default_attributes(struct tty *, u_int,
 	    const struct tty_style_ctx *);
 void	tty_update_mode(struct tty *, int, struct screen *);
@@ -3437,6 +3452,8 @@ struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_set_session(struct client *, struct session *);
+void	 server_client_set_program_status(struct client *);
+void	 server_clients_program_status_changed(struct window_pane *);
 void	 server_client_lost(struct client *);
 void	 server_client_suspend(struct client *);
 void	 server_client_detach(struct client *, enum msgtype);
@@ -3896,6 +3913,8 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
+void		 window_pane_set_program_status(struct window_pane *, char *,
+		     char *, char *);
 void		 window_pane_clear_program_status(struct window_pane *, int);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
