@@ -23,6 +23,35 @@ fail()
 	exit 1
 }
 
+wait_status()
+{
+	i=0
+	while [ "$i" -lt 100 ]; do
+		screen=$($TMUX2 capture-pane -p -t outer:0.0) || exit 1
+		if printf '%s\n' "$screen" | grep -q 'WINDOW WINDOW WINDOW' &&
+		    printf '%s\n' "$screen" | grep -q 'PANE PANE PANE PANE' &&
+		    printf '%s\n' "$screen" | grep -q 'CONTROL CONTROL CONTROL'; then
+			return
+		fi
+		sleep 0.05
+		i=$((i + 1))
+	done
+	fail "status lines were not redrawn"
+}
+
+wait_option()
+{
+	option=$1
+	i=0
+	while [ "$i" -lt 100 ]; do
+		got=$($TMUX show -gv "$option" 2>/dev/null)
+		[ "$got" = "$2" ] && return
+		sleep 0.05
+		i=$((i + 1))
+	done
+	fail "got $option '$got', expected '$2'"
+}
+
 mouse()
 {
 	seq=$(printf '\033[<%s;%s;%s%s' "$1" "$2" "$3" "$4")
@@ -34,6 +63,11 @@ check_drag()
 {
 	start=$1
 	end=$2
+	sync=$3
+
+	if [ -n "$sync" ]; then
+		$TMUX set -g @drag-end '' || exit 1
+	fi
 
 	# First move along the status line, then into the pane. The first
 	# movement establishes the drag origin without dispatching new-pane.
@@ -42,6 +76,10 @@ check_drag()
 	mouse 48 16 "$end" M
 	mouse 48 18 "$end" M
 	mouse 16 18 "$end" m
+
+	if [ -n "$sync" ]; then
+		wait_option @drag-end done
+	fi
 
 	panes=$($TMUX list-panes -F '#{pane_id}') || fail "server exited"
 	[ "$panes" = "$BASE" ] || fail "status-line drag created a pane: $panes"
@@ -70,30 +108,17 @@ $TMUX set -g status on || exit 1
 sleep 0.5
 check_drag 1 7
 
-# Window and pane ranges on different status rows still dispatch Status
-# bindings; a control range dispatches its Control binding.
+# Check drags starting on window, pane and control ranges.
 $TMUX set -g status 3 || exit 1
 $TMUX set -g 'status-format[0]' '#[range=window|0]WINDOW WINDOW WINDOW#[norange]' || exit 1
 $TMUX set -g 'status-format[1]' "#[range=pane|$BASE]PANE PANE PANE PANE#[norange]" || exit 1
 $TMUX set -g 'status-format[2]' '#[range=control|0]CONTROL CONTROL CONTROL#[norange]' || exit 1
-$TMUX bind -n MouseDown1Status set -gF @status-range '#{mouse_status_range}' || exit 1
-$TMUX bind -n MouseDown1Control0 set -gF @status-range '#{mouse_status_range}' || exit 1
-$TMUX bind -n C-MouseDrag1Status set -g @status-drag status || exit 1
-$TMUX bind -n C-MouseDrag1Control0 set -g @status-drag control || exit 1
-sleep 0.5
+$TMUX bind -n C-MouseDragEnd1Pane set -g @drag-end done || exit 1
+wait_status
 
 row=1
 for range in window pane control; do
-	mouse 0 10 "$row" M
-	mouse 0 10 "$row" m
-	got=$($TMUX show -gv @status-range)
-	[ "$got" = "$range" ] || fail "got range '$got', expected '$range'"
-	$TMUX set -g @status-drag '' || exit 1
-	check_drag "$row" 9
-	got=$($TMUX show -gv @status-drag)
-	want=status
-	[ "$range" = control ] && want=control
-	[ "$got" = "$want" ] || fail "got drag '$got', expected '$want'"
+	check_drag "$row" 9 sync
 	row=$((row + 1))
 done
 

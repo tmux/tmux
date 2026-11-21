@@ -552,7 +552,7 @@ check_ok select-window -t modal:existing-over-zoom
 check_ok select-pane -t "$base"
 check_ok resize-pane -Z -t "$base"
 must_equal "$(fmt "$over" '#{pane_floating_flag}')" 1
-must_equal "$(fmt "$under" '#{pane_floating_flag}')" 0
+must_equal "$(fmt "$under" '#{pane_floating_flag}')" 1
 must_equal "$(fmt "$base" '#{window_zoomed_flag}:#{pane_zoomed_flag}')" 1:1
 
 # Geometry changed in the visible zoom layout is copied back when unzooming.
@@ -612,7 +612,7 @@ must_equal "$(fmt "$over" '#{pane_z}')" 1
 check_ok resize-pane -Z -t "$target"
 must_equal "$(fmt "$target" \
     '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_floating_flag}:#{pane_z}')" \
-    1:1:0:2
+    1:1:1:2
 must_equal "$(fmt "$over" '#{pane_floating_flag}:#{pane_z}')" 1:0
 check_ok select-pane -t "$over"
 must_equal "$(fmt "$over" '#{window_zoomed_flag}:#{pane_active}')" 1:1

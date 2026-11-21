@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-kill-pane.c,v 1.34 2026/06/09 21:22:22 nicm Exp $ */
+/* $OpenBSD: cmd-kill-pane.c,v 1.35 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -34,6 +34,7 @@ static int		cmd_kill_pane_filter(struct cmdq_item *,
 
 const struct cmd_entry cmd_kill_pane_entry = {
 	.name = "kill-pane",
+	.description = "Destroy one or more panes.",
 	.alias = "killp",
 
 	.args = { "af:t:", 0, 0, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: hooks.c,v 1.16 2026/07/27 19:15:58 nicm Exp $ */
+/* $OpenBSD: hooks.c,v 1.17 2026/10/15 08:21:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>

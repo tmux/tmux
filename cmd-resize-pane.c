@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-pane.c,v 1.70 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.74 2026/11/17 10:34:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -39,6 +39,7 @@ static void		cmd_resize_pane_mouse_resize_tiled(struct client *,
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
+	.description = "Resize or zoom a pane.",
 	.alias = "resizep",
 
 	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
@@ -64,7 +65,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*errstr, *argval;
 	const char		 flags[4] = { 'U', 'D', 'L', 'R' };
 	char			*cause = NULL, flag;
-	int			 adjust, x, y, status, opposite = 0;
+	int			 adjust, x, y, status = PANE_STATUS_OFF, opposite = 0;
 	long unsigned		 i;
 	struct grid		*gd = wp->base.grid;
 
@@ -119,7 +120,9 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		status = window_get_pane_status(w);
+		if (!window_pane_is_floating(wp) &&
+		    !window_border_type_is_separate(w))
+			status = window_get_pane_status(w);
 		switch (status) {
 		case PANE_STATUS_TOP:
 			if (y != INT_MAX && wp->yoff == 1)
@@ -266,11 +269,19 @@ cmd_resize_pane_mouse_resize_move_floating(struct client *c,
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= (int)m->sidewidth)
+		x -= m->sidewidth;
+	else if (m->sideat > 0 && x >= m->sideat)
+		x = m->sideat - 1;
 	ly = m->ly + m->oy; lx = m->lx + m->ox;
 	if (m->statusat == 0 && ly >= (int)m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= m->statusat)
 		ly = m->statusat - 1;
+	if (m->sideat == 0 && lx >= (int)m->sidewidth)
+		lx -= m->sidewidth;
+	else if (m->sideat > 0 && lx >= m->sideat)
+		lx = m->sideat - 1;
 
 	if ((lx == left || lx == left + 1) && ly == wp->yoff - 1) {
 		/* Top left corner. */
@@ -380,11 +391,19 @@ cmd_resize_pane_mouse_resize_tiled(struct client *c, struct mouse_event *m)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= (u_int)m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= m->sidewidth)
+		x -= m->sidewidth;
+	else if (m->sideat > 0 && x >= (u_int)m->sideat)
+		x = m->sideat - 1;
 	ly = m->ly + m->oy; lx = m->lx + m->ox;
 	if (m->statusat == 0 && ly >= m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
+	if (m->sideat == 0 && lx >= m->sidewidth)
+		lx -= m->sidewidth;
+	else if (m->sideat > 0 && lx >= (u_int)m->sideat)
+		lx = m->sideat - 1;
 
 	for (i = 0; i < nitems(cells); i++) {
 		lc = layout_search_by_border(w->layout_root, lx + offsets[i][0],

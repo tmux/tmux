@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # End-of-life hooks: pane-exited, pane-died, window-unlinked and
 # session-closed when the pane, window or session they refer to is being
 # or has been destroyed. Each hook appends to @log so the order hooks fire
@@ -12,7 +14,7 @@ LANG=C.UTF-8
 export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT=$(mktemp -d)
+OUT=$(test_tmpdir)
 TMUX_TMPDIR="$OUT"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -20,14 +22,14 @@ TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 fail()
 {
 	echo "$*" >&2
-	$TMUX kill-server 2>/dev/null || true
+	stop_server $TMUX || exit 1
 	rm -rf "$OUT"
 	exit 1
 }
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null || true
+	stop_server $TMUX || exit 1
 	rm -rf "$OUT"
 }
 trap cleanup EXIT

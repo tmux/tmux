@@ -29,7 +29,6 @@ struct event_base *libevent;
 int
 LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 {
-	struct bufferevent	*vpty[2];
 	struct window		*w;
 	struct window_pane 	*wp;
 	int			 error;
@@ -43,8 +42,7 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 
 	w = window_create(PANE_WIDTH, PANE_HEIGHT, 0, 0);
 	wp = window_add_pane(w, NULL, 0, 0);
-	bufferevent_pair_new(libevent, BEV_OPT_CLOSE_ON_FREE, vpty);
-	wp->ictx = input_init(wp, vpty[0], NULL);
+	wp->ictx = input_init(wp, NULL);
 	window_add_ref(w, __func__);
 
 	wp->fd = open("/dev/null", O_WRONLY);
@@ -61,9 +59,6 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 
 	assert(w->references == 1);
 	window_remove_ref(w, __func__);
-
-	bufferevent_free(vpty[0]);
-	bufferevent_free(vpty[1]);
 
 	return 0;
 }

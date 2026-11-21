@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-panes.c,v 1.41 2026/09/08 10:20:08 nicm Exp $ */
+/* $OpenBSD: cmd-list-panes.c,v 1.43 2026/11/09 12:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,10 +36,11 @@ static void	cmd_list_panes_window(struct cmd *, struct session *,
 
 const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
+	.description = "List panes and their state.",
 	.alias = "lsp",
 
 	.args = { "aF:f:O:rst:", 0, 0, NULL },
-	.usage = "[-asr] [-F format] [-f filter] [-O order]"
+	.usage = "[-asr] [-F format] [-f filter] [-O order] "
 		 CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },

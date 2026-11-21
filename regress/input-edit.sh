@@ -45,6 +45,10 @@ check_capture irm 'abcXYZef'
 start_pane rep 10 3 'A\033[4bB\n'
 check_capture rep 'AAAAAB'
 
+start_pane repwrap 10 3 'A\033[12bB\n'
+check_capture repwrap 'AAAAAAAAAA
+AAAB'
+
 start_pane decaln 6 3 '\033#8'
 check_capture decaln 'EEEEEE
 EEEEEE

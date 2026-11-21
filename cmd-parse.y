@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-parse.y,v 1.61 2026/10/05 13:45:49 nicm Exp $ */
+/* $OpenBSD: cmd-parse.y,v 1.64 2026/10/27 15:36:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -61,6 +61,14 @@ struct cmd_parse_tree {
 	struct cmd_parse_node		*root;
 };
 
+struct cmd_parse_owned_value {
+	void				*value;
+	int				 node;
+
+	TAILQ_ENTRY(cmd_parse_owned_value)	 entry;
+};
+TAILQ_HEAD(cmd_parse_owned_values, cmd_parse_owned_value);
+
 struct cmd_parse_state {
 	FILE				*f;
 
@@ -76,6 +84,7 @@ struct cmd_parse_state {
 
 	char				*error;
 	struct cmd_parse_nodes		*commands;
+	struct cmd_parse_owned_values	*values;
 };
 static struct cmd_parse_state parse_state;
 
@@ -87,6 +96,8 @@ struct cmd_parse_scan {
 };
 
 static char	*cmd_parse_get_error(const char *, u_int, const char *);
+static void	*cmd_parse_own(void *, int);
+static void	*cmd_parse_take(void *);
 static struct cmd_parse_node	*cmd_parse_new_node(enum cmd_parse_node_type,
 		    u_int);
 static struct cmd_parse_node	*cmd_parse_copy_node(struct cmd_parse_node *);
@@ -439,7 +450,7 @@ cmd_parse_new_node(enum cmd_parse_node_type type, u_int line)
 	node->type = type;
 	node->line = line;
 	TAILQ_INIT(&node->children);
-	return (node);
+	return (cmd_parse_own(node, 1));
 }
 
 static struct cmd_parse_nodes *
@@ -449,7 +460,7 @@ cmd_parse_new_nodes(void)
 
 	nodes = xmalloc(sizeof *nodes);
 	TAILQ_INIT(nodes);
-	return (nodes);
+	return (cmd_parse_own(nodes, 0));
 }
 
 static void
@@ -465,7 +476,42 @@ cmd_parse_free_node(struct cmd_parse_node *node)
 		cmd_parse_free_node(child);
 	}
 	free(node->value);
-	free(node);
+	free(cmd_parse_take(node));
+}
+
+/* Track allocations individually so incomplete trees can be freed on error. */
+static void *
+cmd_parse_own(void *value, int node)
+{
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_owned_value	*v;
+
+	if (ps->values != NULL) {
+		v = xmalloc(sizeof *v);
+		v->value = value;
+		v->node = node;
+		TAILQ_INSERT_TAIL(ps->values, v, entry);
+	}
+	return (value);
+}
+
+static void *
+cmd_parse_take(void *value)
+{
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_owned_value	*v;
+
+	if (ps->values != NULL) {
+		TAILQ_FOREACH_REVERSE(v, ps->values, cmd_parse_owned_values,
+		    entry) {
+			if (v->value == value) {
+				TAILQ_REMOVE(ps->values, v, entry);
+				free(v);
+				break;
+			}
+		}
+	}
+	return (value);
 }
 
 /* Recursively copy a node and all of its descendants. */
@@ -490,7 +536,7 @@ static void
 cmd_parse_append(struct cmd_parse_nodes *dst, struct cmd_parse_nodes *src)
 {
 	TAILQ_CONCAT(dst, src, entry);
-	free(src);
+	free(cmd_parse_take(src));
 }
 
 /* Wrap a single item node in a new sequence and return a one-element list. */
@@ -596,15 +642,32 @@ cmd_parse_onegroup(struct cmd_parse_node *node)
 static struct cmd_parse_tree *
 cmd_parse_run_parser(char **cause)
 {
-	struct cmd_parse_state	*ps = &parse_state;
-	struct cmd_parse_node	*root;
-	struct cmd_parse_tree	*tree;
-	int			 retval;
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_node		*root, *node;
+	struct cmd_parse_tree		*tree;
+	struct cmd_parse_owned_values	 values;
+	struct cmd_parse_owned_value	*v, *v1;
+	int				 retval;
 
 	ps->commands = NULL;
+	TAILQ_INIT(&values);
+	ps->values = &values;
 
 	retval = yyparse();
+	ps->values = NULL;
+	TAILQ_FOREACH_SAFE(v, &values, entry, v1) {
+		TAILQ_REMOVE(&values, v, entry);
+		if (retval != 0) {
+			if (v->node) {
+				node = v->value;
+				free(node->value);
+			}
+			free(v->value);
+		}
+		free(v);
+	}
 	if (retval != 0) {
+		ps->commands = NULL;
 		*cause = ps->error;
 		return (NULL);
 	}
@@ -1663,9 +1726,10 @@ cmd_parse_scan_part(struct cmd_parse_scan *scan, enum cmd_parse_node_type type,
 static int
 yylex_token_escape(struct cmd_parse_scan *scan)
 {
-	int	 ch, type, o2, o3, mlen;
-	u_int	 size, i, tmp;
-	char	 s[9], m[MB_LEN_MAX];
+	struct utf8_data	ud;
+	int			ch, type, o2, o3;
+	u_int			size, i, tmp;
+	char			s[9];
 
 	ch = yylex_getc();
 
@@ -1750,12 +1814,15 @@ unicode:
 		yyerror("invalid \\%c argument", type);
 		return (0);
 	}
-	mlen = wctomb(m, tmp);
-	if (mlen <= 0 || mlen > (int)sizeof m) {
+	if (tmp == 0) {
 		yyerror("invalid \\%c argument", type);
 		return (0);
 	}
-	cmd_parse_scan_add(scan, m, mlen);
+	if (utf8_fromwc(tmp, &ud) != UTF8_DONE && ud.size == 0) {
+		yyerror("invalid \\%c argument", type);
+		return (0);
+	}
+	cmd_parse_scan_add(scan, ud.data, ud.size);
 	return (1);
 }
 

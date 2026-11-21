@@ -129,13 +129,13 @@ AM_CONDITIONAL(NEED_FUZZING, test "x$enable_fuzzing" = xyes)
 AM_CONDITIONAL(IS_GCC, test "x$GCC" = xyes -a "x$enable_fuzzing" != xyes)
 
 # Is this Sun CC?
-AC_EGREP_CPP(
-	yes,
+AC_COMPILE_IFELSE([AC_LANG_SOURCE(
 	[
-		#ifdef __SUNPRO_C
-		yes
+		#ifndef __SUNPRO_C
+		#error __SUNPRO_C is not defined
 		#endif
-	],
+		int dummy;
+	])],
 	found_suncc=yes,
 	found_suncc=no
 )
@@ -465,7 +465,7 @@ if test "x$try_utf8proc" = xyes; then
 		libutf8proc,
 		[
 			AM_CPPFLAGS="$LIBUTF8PROC_CFLAGS $AM_CPPFLAGS"
-			CPPFLAGS="$LIBUTF8PROC_CFLAGS $SAVED_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBUTF8PROC_LIBS $LIBS"
 			utf8proc_version=`$PKG_CONFIG --modversion libutf8proc 2>/dev/null`
 			test "x$utf8proc_version" = x && utf8proc_version=on
@@ -541,15 +541,75 @@ if test "x$enable_cgroups" = xyes; then
 	fi
 fi
 
-# Enable sixel support.
+# Look for linux/keyctl.h, compat/keyring-linux.c used if found and enabled.
+AC_ARG_ENABLE(
+	keyring,
+	AS_HELP_STRING(--disable-keyring, disable giving the server its own Linux session keyring)
+)
+if test "x$enable_keyring" != xno; then
+	AC_CHECK_HEADER(linux/keyctl.h, found_keyctl=yes, found_keyctl=no)
+	if test "x$found_keyctl" = xyes; then
+		AC_DEFINE(HAVE_KEYCTL)
+	elif test "x$enable_keyring" = xyes; then
+		AC_MSG_ERROR("linux/keyctl.h not found")
+	fi
+fi
+AM_CONDITIONAL(HAVE_KEYCTL, [test "x$found_keyctl" = xyes])
+
+# Enable image support.
+libpng_version=off
+libz_version=off
+AC_ARG_ENABLE(
+	images,
+	AS_HELP_STRING(--enable-images, enable image support)
+)
 AC_ARG_ENABLE(
 	sixel,
-	AS_HELP_STRING(--enable-sixel, enable sixel images)
+	AS_HELP_STRING(--enable-sixel, alias for --enable-images),
+	[
+		if test "x$enable_images" = x; then
+			enable_images=$enable_sixel
+		fi
+	]
 )
-if test "x$enable_sixel" = xyes; then
-	AC_DEFINE(ENABLE_SIXEL)
+if test "x$enable_images" = xyes; then
+	PKG_CHECK_MODULES(
+		LIBZ,
+		zlib,
+		[
+			AM_CPPFLAGS="$LIBZ_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBZ_LIBS $LIBS"
+			AC_DEFINE(HAVE_LIBZ)
+			libz_version=`$PKG_CONFIG --modversion zlib 2>/dev/null`
+			test "x$libz_version" = x && libz_version=on
+		],
+		[
+			AC_CHECK_HEADER(zlib.h, [
+				AC_CHECK_LIB(z, uncompress, [
+					LIBS="-lz $LIBS"
+					AC_DEFINE(HAVE_LIBZ)
+					libz_version=on
+				])
+			])
+		]
+	)
+	PKG_CHECK_MODULES(
+		LIBPNG,
+		[libpng >= 1.6],
+		[
+			AM_CPPFLAGS="$LIBPNG_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBPNG_LIBS $LIBS"
+			AC_DEFINE(HAVE_LIBPNG)
+			libpng_version=`$PKG_CONFIG --modversion libpng 2>/dev/null`
+			test "x$libpng_version" = x && libpng_version=on
+		],
+		[:]
+	)
+	AC_DEFINE(ENABLE_IMAGES)
 fi
-AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel" = xyes])
+AM_CONDITIONAL(ENABLE_IMAGES, [test "x$enable_images" = xyes])
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
@@ -701,30 +761,28 @@ fi
 # others, UNIX 03 (_XOPEN_SOURCE 600, see standards(7) on Solaris).
 XOPEN_DEFINES=
 AC_MSG_CHECKING(for CMSG_DATA)
-AC_EGREP_CPP(
-	yes,
+AC_COMPILE_IFELSE([AC_LANG_SOURCE(
 	[
 		#include <sys/socket.h>
-		#ifdef CMSG_DATA
-		yes
+		#ifndef CMSG_DATA
+		#error CMSG_DATA is not defined
 		#endif
-	],
+	])],
 	found_cmsg_data=yes,
 	found_cmsg_data=no
 )
 AC_MSG_RESULT($found_cmsg_data)
 if test "x$found_cmsg_data" = xno; then
 	AC_MSG_CHECKING(if CMSG_DATA needs _XOPEN_SOURCE_EXTENDED)
-	AC_EGREP_CPP(
-		yes,
+	AC_COMPILE_IFELSE([AC_LANG_SOURCE(
 		[
 			#define _XOPEN_SOURCE 1
 			#define _XOPEN_SOURCE_EXTENDED 1
 			#include <sys/socket.h>
-			#ifdef CMSG_DATA
-			yes
+			#ifndef CMSG_DATA
+			#error CMSG_DATA is not defined
 			#endif
-		],
+		])],
 		found_cmsg_data=yes,
 		found_cmsg_data=no
 	)
@@ -735,15 +793,14 @@ if test "x$found_cmsg_data" = xno; then
 fi
 if test "x$found_cmsg_data" = xno; then
 	AC_MSG_CHECKING(if CMSG_DATA needs _XOPEN_SOURCE 600)
-	AC_EGREP_CPP(
-		yes,
+	AC_COMPILE_IFELSE([AC_LANG_SOURCE(
 		[
 			#define _XOPEN_SOURCE 600
 			#include <sys/socket.h>
-			#ifdef CMSG_DATA
-			yes
+			#ifndef CMSG_DATA
+			#error CMSG_DATA is not defined
 			#endif
-		],
+		])],
 		found_cmsg_data=yes,
 		found_cmsg_data=no
 	)
@@ -1148,10 +1205,10 @@ if test "x$enable_asan" = xyes; then
 else
 	AC_MSG_NOTICE([ASAN: off])
 fi
-if test "x$enable_sixel" = xyes; then
-	AC_MSG_NOTICE([SIXEL: on])
+if test "x$enable_images" = xyes; then
+	AC_MSG_NOTICE([images: on])
 else
-	AC_MSG_NOTICE([SIXEL: off])
+	AC_MSG_NOTICE([images: off])
 fi
 if test "x$enable_debug" = xyes; then
 	AC_MSG_NOTICE([debug: on])
@@ -1160,6 +1217,8 @@ else
 fi
 AC_MSG_NOTICE([jemalloc: $jemalloc_version])
 AC_MSG_NOTICE([libevent: $libevent_version])
+AC_MSG_NOTICE([libpng: $libpng_version])
+AC_MSG_NOTICE([libz: $libz_version])
 AC_MSG_NOTICE([ncurses: $ncurses_version])
 AC_MSG_NOTICE([systemd: $systemd_version])
 AC_MSG_NOTICE([utempter: $utempter_version])

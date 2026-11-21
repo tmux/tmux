@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-wait-for.c,v 1.24 2026/09/22 06:46:50 nicm Exp $ */
+/* $OpenBSD: cmd-wait-for.c,v 1.25 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -32,6 +32,7 @@ static enum cmd_retval cmd_wait_for_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_wait_for_entry = {
 	.name = "wait-for",
+	.description = "Wait for or signal named channels and events.",
 	.alias = "wait",
 
 	.args = { "EF:LSUlvw:", 1, 1, NULL },

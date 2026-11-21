@@ -1,16 +1,17 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # new session environment
 
 PATH=/bin:/usr/bin
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 
-# The query starts a server with no sessions which exits asynchronously. Use
-# another socket so the session below cannot connect to that exiting server.
-TERM=$($TEST_TMUX -LtestB$$ -f/dev/null start \; show -gv default-terminal)
+TERM=$($TMUX start \; set -s exit-empty off \; show -gv default-terminal)
+stop_server $TMUX || exit 1
 TMP=$(mktemp)
 OUT=$(mktemp)
 SCRIPT=$(mktemp)
@@ -63,6 +64,6 @@ SHELL=/bin/sh
 TEST=test2
 EOF
 
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 
 exit 0

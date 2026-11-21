@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-message.c,v 1.67 2026/10/02 15:13:07 nicm Exp $ */
+/* $OpenBSD: cmd-display-message.c,v 1.68 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -37,6 +37,7 @@ static enum cmd_retval	cmd_display_message_exec(struct cmd *,
 
 const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
+	.description = "Display a message or expand formats.",
 	.alias = "display",
 
 	.args = { "aCc:d:jlINpt:F:v", 0, 1, NULL },

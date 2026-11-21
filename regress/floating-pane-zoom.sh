@@ -102,11 +102,16 @@ done
 # Put an ordinary (hidden while zoomed) float between two over-zoom floats
 # in the stacking order. Reordering must skip it when counting visible
 # positions, but keep all floats ahead of the tiled panes after unzoom.
+check "$base" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:0'
 back=$(run new-pane -AdPF '#{pane_id}' -t "$base" '') || exit 1
 hidden=$(run new-pane -dPF '#{pane_id}' -t "$base" '') || exit 1
 float=$(run new-pane -AdPF '#{pane_id}' -t "$base" '') || exit 1
+check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:1'
 active=0
 run resize-pane -Z -t "$base"
+check "$base" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:0'
+check "$other" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:0'
+check "$hidden" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:1'
 run set -gu @unzoomed
 
 for position in backward back forward-loop; do
@@ -137,10 +142,10 @@ run kill-pane -t "$hidden"
 run kill-pane -t "$back"
 
 # Explicit zoom toggling and operations on tiled panes retain their
-# existing behaviour. The over-zoom flag alone does not make a pane a float:
-# zooming the float itself gives it a tiled cell until unzoom.
+# existing behaviour. Zooming a floating pane must preserve its floating
+# format flag even though its visible layout cell becomes tiled.
 run resize-pane -Z -t "$float"
-check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:0'
+check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:1'
 run resize-pane -t "$float" -x 25
 check "$float" '#{window_zoomed_flag}:#{pane_floating_flag}:#{pane_width}' \
     '0:1:23'

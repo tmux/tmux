@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise window-style and window-active-style, which set the default cell
 # (background) style for a window's panes. screen-redraw.c uses these for the
 # default grid cell of each pane (the active pane uses window-active-style, the
@@ -27,14 +29,14 @@ fail() {
 }
 
 compare() {
-	sleep 1
-	$TMUX capturep -pe >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -pe >"$TMP" || exit 1
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until capture_matches_file "$RESULTS/$1.result" "$TMP" $TMUX capturep -pe ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
 }
 

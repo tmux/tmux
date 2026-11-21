@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests of update-environment handling (environ_update() in environ.c), which
 # runs when a client attaches to a session: for each pattern in the session's
 # update-environment option, a matching variable in the attaching client's
@@ -23,8 +25,8 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 }
 fail()
 {
@@ -53,18 +55,11 @@ check_value()
 # Wait (up to ~10s) until the test server has exactly $n clients attached.
 wait_clients()
 {
-	i=0
-	while [ "$i" -lt 10 ]; do
-		c=$($TMUX list-clients -F x 2>/dev/null | grep -c x)
-		[ "$c" -eq "$1" ] && return 0
-		sleep 1
-		i=$((i + 1))
-	done
-	return 1
+	wait_for_clients "$1" $TMUX || fail "expected $1 clients"
 }
 
-$TMUX kill-server 2>/dev/null
-$TMUX2 kill-server 2>/dev/null
+stop_server $TMUX || exit 1
+stop_server $TMUX2 || exit 1
 
 $TMUX new-session -d -s main -x 80 -y 24 || exit 1
 
@@ -103,7 +98,7 @@ out=$($TMUX show-environment -t main OTHER 2>&1)
 #
 # Detach the client (kill its host server), reset the session variables, then
 # reattach with -E: the session values must be left untouched.
-$TMUX2 kill-server 2>/dev/null
+stop_server $TMUX2 || exit 1
 wait_clients 0 || fail "client did not detach"
 
 $TMUX set-environment -t main MYVAR oldvalue2 || exit 1

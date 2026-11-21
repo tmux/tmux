@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-set.c,v 1.40 2026/07/13 09:42:12 nicm Exp $ */
+/* $OpenBSD: layout-set.c,v 1.42 2026/11/16 14:00:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -150,6 +150,15 @@ layout_set_link_floating(struct window *w, struct layout_cell *lcroot)
 	}
 }
 
+/* Update pane offsets and sizes after creating a preset layout. */
+static void
+layout_set_update(struct window *w)
+{
+	layout_fit(w, NULL);
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+}
+
 static void
 layout_set_even(struct window *w, enum layout_type type)
 {
@@ -192,8 +201,7 @@ layout_set_even(struct window *w, enum layout_type type)
 
 	layout_spread_cell(w, lcroot);
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -215,11 +223,22 @@ layout_set_even_v(struct window *w)
 }
 
 static void
+layout_set_main_borders(struct window *w, int mirrored, u_int *mainb,
+    u_int *otherb)
+{
+	*mainb = *otherb = 0;
+	if (window_border_type_is_separate(w)) {
+		*mainb = mirrored ? 2 : 1;
+		*otherb = mirrored ? 1 : 2;
+	}
+}
+
+static void
 layout_set_main_h(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainh, otherh, sx, sy;
+	u_int			 n, mainh, otherh, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -232,6 +251,11 @@ layout_set_main_h(struct window *w)
 
 	/* Find available height - take off one line for the border. */
 	sy = w->sy - 1;
+	layout_set_main_borders(w, 0, &mainb, &otherb);
+	if (sy > mainb + otherb)
+		sy -= mainb + otherb;
+	else
+		sy = 0;
 
 	/* Get the main pane height. */
 	s = options_get_string(w->options, "main-pane-height");
@@ -259,6 +283,9 @@ layout_set_main_h(struct window *w)
 		else
 			mainh = sy - otherh;
 	}
+
+	mainh += mainb;
+	otherh += otherb;
 
 	/* Work out what width is needed. */
 	sx = (n * (PANE_MINIMUM + 1)) - 1;
@@ -303,8 +330,7 @@ layout_set_main_h(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -318,7 +344,7 @@ layout_set_main_h_mirrored(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainh, otherh, sx, sy;
+	u_int			 n, mainh, otherh, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -331,6 +357,11 @@ layout_set_main_h_mirrored(struct window *w)
 
 	/* Find available height - take off one line for the border. */
 	sy = w->sy - 1;
+	layout_set_main_borders(w, 1, &mainb, &otherb);
+	if (sy > mainb + otherb)
+		sy -= mainb + otherb;
+	else
+		sy = 0;
 
 	/* Get the main pane height. */
 	s = options_get_string(w->options, "main-pane-height");
@@ -358,6 +389,9 @@ layout_set_main_h_mirrored(struct window *w)
 		else
 			mainh = sy - otherh;
 	}
+
+	mainh += mainb;
+	otherh += otherb;
 
 	/* Work out what width is needed. */
 	sx = (n * (PANE_MINIMUM + 1)) - 1;
@@ -402,8 +436,7 @@ layout_set_main_h_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -417,7 +450,7 @@ layout_set_main_v(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainw, otherw, sx, sy;
+	u_int			 n, mainw, otherw, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -430,6 +463,11 @@ layout_set_main_v(struct window *w)
 
 	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
+	layout_set_main_borders(w, 0, &mainb, &otherb);
+	if (sx > mainb + otherb)
+		sx -= mainb + otherb;
+	else
+		sx = 0;
 
 	/* Get the main pane width. */
 	s = options_get_string(w->options, "main-pane-width");
@@ -457,6 +495,9 @@ layout_set_main_v(struct window *w)
 		else
 			mainw = sx - otherw;
 	}
+
+	mainw += mainb;
+	otherw += otherb;
 
 	/* Work out what height is needed. */
 	sy = (n * (PANE_MINIMUM + 1)) - 1;
@@ -501,8 +542,7 @@ layout_set_main_v(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -516,7 +556,7 @@ layout_set_main_v_mirrored(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainw, otherw, sx, sy;
+	u_int			 n, mainw, otherw, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -530,6 +570,11 @@ layout_set_main_v_mirrored(struct window *w)
 
 	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
+	layout_set_main_borders(w, 1, &mainb, &otherb);
+	if (sx > mainb + otherb)
+		sx -= mainb + otherb;
+	else
+		sx = 0;
 
 	/* Get the main pane width. */
 	s = options_get_string(w->options, "main-pane-width");
@@ -557,6 +602,9 @@ layout_set_main_v_mirrored(struct window *w)
 		else
 			mainw = sx - otherw;
 	}
+
+	mainw += mainb;
+	otherw += otherb;
 
 	/* Work out what height is needed. */
 	sy = (n * (PANE_MINIMUM + 1)) - 1;
@@ -601,8 +649,7 @@ layout_set_main_v_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -724,8 +771,7 @@ layout_set_tiled(struct window *w)
 	}
 
 	layout_set_link_floating(w, lcroot);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_update(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 

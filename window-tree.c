@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.96 2026/08/25 07:23:30 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.101 2026/11/13 19:25:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,10 +42,12 @@ static void		 window_tree_key(struct window_mode_entry *,
 		"#{?pane_marked,#[fg=thememagenta],}#{?pane_floating_flag,#[underscore],}" \
 		"#{pane_current_command}#[fg=themelightgrey]#{pane_flags}" \
 		"#{?#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}},: \"#{pane_title}\",}" \
+		"#{?pane_program_state, [#{pane_program_name} #{pane_program_state}],}" \
 	",window_format," \
 		"#{?window_marked_flag,#[fg=thememagenta],}" \
 		"#{window_name}#[fg=themelightgrey]#{window_flags}" \
 		"#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}}},: \"#{pane_title}\",}" \
+		"#{?pane_program_state, [#{pane_program_name} #{pane_program_state}],}" \
 	"," \
 		"#[fg=themelightgrey]#{session_windows} windows" \
 		"#{?session_grouped, " \
@@ -153,6 +155,12 @@ static const char *window_tree_pane_info_lines[] = {
 	"#{pane_title}",
 	"#[fg=themelightgrey]Command       #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{pane_current_command} #[fg=themelightgrey](PID #{pane_pid})#[default]",
+	"#[fg=themelightgrey]Program       #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?pane_program_state,"
+	"#{?pane_program_name,#{pane_program_name} ,}"
+	"[#{pane_program_state}]"
+	"#{?pane_program_message,: #{pane_program_message},}"
+	",not set}",
 	"#[fg=themelightgrey]Path          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{pane_current_path}",
 	"#[fg=themelightgrey]TTY           #[#{E:tree-mode-border-style},acs]x#[default] "
@@ -161,13 +169,22 @@ static const char *window_tree_pane_info_lines[] = {
 	"#{pane_x},#{pane_y} #{pane_width}x#{pane_height}",
 	"#[fg=themelightgrey]Mode          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?pane_in_mode,#{pane_mode},none}",
+	"#[fg=themelightgrey]Command Line  #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{!=:#{pane_command_line},},#{pane_command_line},not set}",
+	"#[fg=themelightgrey]Command Start #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{t:pane_command_start_time},#{t:pane_command_start_time},never}",
+	"#[fg=themelightgrey]Command End   #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{t:pane_command_end_time},#{t:pane_command_end_time},never}"
+	"#{?#{!=:#{pane_command_status},}, "
+	"#[fg=themelightgrey](status #{pane_command_status})#[default],}",
 	"#[fg=themelightgrey]Flags         #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_TREE_FLAG("active", "pane_active") " "
 	WINDOW_TREE_FLAG("zoomed", "window_zoomed_flag") " "
 	WINDOW_TREE_FLAG("marked", "pane_marked") " "
 	WINDOW_TREE_FLAG("sync", "pane_synchronized") " "
 	WINDOW_TREE_FLAG("dead", "pane_dead") " "
-	WINDOW_TREE_FLAG("piped", "pane_pipe"),
+	WINDOW_TREE_FLAG("piped", "pane_pipe") " "
+	WINDOW_TREE_FLAG("running", "pane_command_running"),
 };
 
 static const char *window_tree_window_info_lines[] = {
@@ -1138,6 +1155,7 @@ window_tree_init(struct window_mode_entry *wme,
 		data->command = xstrdup(args_string(args, 0));
 	data->squash_groups = !args_has(args, 'G');
 	data->hide_preview_this_pane = args_has(args, 'h');
+	data->preview_is_info = args_has(args, 'i');
 	if (args_has(args, 'y'))
 		data->prompt_flags = PROMPT_ACCEPT;
 
@@ -1146,7 +1164,11 @@ window_tree_init(struct window_mode_entry *wme,
 	    window_tree_get_key, window_tree_swap, window_tree_sort,
 	    window_tree_help, data, window_tree_menu_items, &s);
 	mode_tree_zoom(data->data, args);
-	mode_tree_view_name(data->data, "preview");
+
+	if (data->preview_is_info)
+		mode_tree_view_name(data->data, "info");
+	else
+		mode_tree_view_name(data->data, "preview");
 
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);
@@ -1224,17 +1246,17 @@ window_tree_get_target(struct window_tree_itemdata *item,
 	case WINDOW_TREE_SESSION:
 		if (s == NULL)
 			break;
-		xasprintf(&target, "=%s:", s->name);
+		xasprintf(&target, "$%u:", s->id);
 		break;
 	case WINDOW_TREE_WINDOW:
 		if (s == NULL || wl == NULL)
 			break;
-		xasprintf(&target, "=%s:%u.", s->name, wl->idx);
+		xasprintf(&target, "$%u:%u.", s->id, wl->idx);
 		break;
 	case WINDOW_TREE_PANE:
 		if (s == NULL || wl == NULL || wp == NULL)
 			break;
-		xasprintf(&target, "=%s:%u.%%%u", s->name, wl->idx, wp->id);
+		xasprintf(&target, "$%u:%u.%%%u", s->id, wl->idx, wp->id);
 		break;
 	}
 	if (target == NULL)
@@ -1344,12 +1366,10 @@ window_tree_kill_current_callback(struct client *c, void *modedata,
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		return (PROMPT_CLOSE);
 
+	data->references++;
 	window_tree_kill_each(data, mode_tree_get_current(mtd), c, KEYC_NONE);
 	server_renumber_all();
-
-	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
-
 	return (PROMPT_CLOSE);
 }
 
@@ -1365,12 +1385,10 @@ window_tree_kill_tagged_callback(struct client *c, void *modedata,
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		return (PROMPT_CLOSE);
 
+	data->references++;
 	mode_tree_each_tagged(mtd, window_tree_kill_each, c, KEYC_NONE, 1);
 	server_renumber_all();
-
-	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
-
 	return (PROMPT_CLOSE);
 }
 
@@ -1453,6 +1471,8 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 
 	item = mode_tree_get_current(data->data);
 	finished = mode_tree_key(data->data, c, &key, m, &x, &y);
+	if (data->dead)
+		return;
 
 again:
 	if (item != (new_item = mode_tree_get_current(data->data))) {

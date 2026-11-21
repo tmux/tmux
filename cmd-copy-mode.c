@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-copy-mode.c,v 1.55 2026/10/02 12:12:51 nicm Exp $ */
+/* $OpenBSD: cmd-copy-mode.c,v 1.56 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -28,6 +28,7 @@ static enum cmd_retval	cmd_copy_mode_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_copy_mode_entry = {
 	.name = "copy-mode",
+	.description = "Enter copy mode.",
 	.alias = NULL,
 
 	.args = { "dekHMqSs:t:u", 0, 0, NULL },
@@ -42,6 +43,7 @@ const struct cmd_entry cmd_copy_mode_entry = {
 
 const struct cmd_entry cmd_clock_mode_entry = {
 	.name = "clock-mode",
+	.description = "Show a large clock in a pane.",
 	.alias = NULL,
 
 	.args = { "t:", 0, 0, NULL },

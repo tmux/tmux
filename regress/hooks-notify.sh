@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -7,7 +9,7 @@ LANG=C.UTF-8
 export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT=$(mktemp -d)
+OUT=$(test_tmpdir)
 TMUX_TMPDIR="$OUT"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -16,16 +18,16 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 fail()
 {
 	echo "$*" >&2
-	$TMUX kill-server 2>/dev/null || true
-	$TMUX2 kill-server 2>/dev/null || true
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$OUT"
 	exit 1
 }
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null || true
-	$TMUX2 kill-server 2>/dev/null || true
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$OUT"
 }
 trap cleanup EXIT

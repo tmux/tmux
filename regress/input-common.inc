@@ -1,3 +1,5 @@
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -9,7 +11,7 @@ INPUT_HOLD='while :; do sleep 3600; done'
 
 TMP=$(mktemp)
 EXP=$(mktemp)
-trap 'rm -f "$TMP" "$EXP"; $TMUX kill-server 2>/dev/null' 0 1 15
+trap 'rm -f "$TMP" "$EXP"; stop_server $TMUX || exit 1' 0 1 15
 
 exit_status=0
 
@@ -38,14 +40,20 @@ start_pane_hlimit()
 	seq=$4
 	hlimit=$5
 
-	$TMUX kill-server 2>/dev/null
-	sleep 0.1
-	$TMUX new-session -d -x 1 -y 1 -s test-setup "$INPUT_HOLD" || exit 1
+	# Keep one session while replacing the test session. A new server
+	# for every input case is particularly expensive under ASan on macOS.
+	if ! $TMUX has-session -t =test-setup 2>/dev/null; then
+		$TMUX new-session -d -s test-setup "$INPUT_HOLD" || exit 1
+	fi
+	if [ -n "$input_session" ]; then
+		$TMUX kill-session -t "=$input_session" 2>/dev/null
+	fi
 	$TMUX set-option -g history-limit "$hlimit" || exit 1
 	$TMUX new-session -d -x "$sx" -y "$sy" -s "$name" \
-	    "printf '$seq'; $INPUT_HOLD" || exit 1
-	$TMUX kill-session -t test-setup
-	sleep 0.3
+	    "printf '$seq'; printf '\\033]2;input-ready\\007'; $INPUT_HOLD" || exit 1
+	input_session=$name
+	wait_for_output input-ready $TMUX display-message -p -t "$name:" \
+	    '#{pane_title}' || exit 1
 }
 
 start_cmd()
@@ -55,10 +63,9 @@ start_cmd()
 	sy=$3
 	cmd=$4
 
-	$TMUX kill-server 2>/dev/null
-	sleep 0.1
+	stop_server $TMUX || exit 1
 	$TMUX new-session -d -x "$sx" -y "$sy" -s "$name" "$cmd" || exit 1
-	sleep 0.3
+	input_session=$name
 }
 
 normalize_capture()
@@ -73,14 +80,19 @@ capture_grid()
 	$TMUX capture-pane -pN -t "$1:" -S 0 -E - | normalize_capture
 }
 
+capture_matches()
+{
+	capture_grid "$1" >"$TMP" || return 1
+	cmp -s "$TMP" "$EXP"
+}
+
 check_capture()
 {
 	name=$1
 	expected=$2
 
-	capture_grid "$name" >"$TMP"
 	printf "%s\n" "$expected" >"$EXP"
-	cmp "$TMP" "$EXP" || fail "$name"
+	wait_until capture_matches "$name" || fail "$name"
 }
 
 check_cursor()

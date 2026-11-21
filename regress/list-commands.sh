@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise list-commands for the full table, a single command, aliases, custom
 # and empty formats, and lookup errors.
 
@@ -8,14 +10,14 @@ TERM=screen
 export PATH TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -Ltest$$ -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15
@@ -43,4 +45,16 @@ esac
 
 $TMUX list-commands tmux-no-command-$$ >/dev/null 2>&1 && exit 1
 $TMUX list-commands list >/dev/null 2>&1 && exit 1
+
+# Options in usage strings are separated by spaces.
+printf '%s\n' "$all" | grep -F '][' && exit 1
+
+# Usage strings show the flags each command accepts.
+for i in list-buffers:r list-clients:r load-buffer:w choose-buffer:y \
+    choose-client:y choose-tree:y customize-mode:y; do
+	usage=$($TMUX list-commands -F '#{command_list_usage}' "${i%:*}") ||
+		exit 1
+	printf '%s\n' "$usage" | grep -o '\[-[[:alnum:]]*\]' |
+		grep -q "${i#*:}" || exit 1
+done
 exit 0

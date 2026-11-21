@@ -4,6 +4,8 @@
 # inside an outer tmux pane; the outer pane is captured to inspect what the
 # inner client actually drew.
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -60,10 +62,9 @@ $TMUX2 set -g mode-keys vi || exit 1
 $TMUX2 set -g copy-mode-line-numbers off || exit 1
 $TMUX2 set -g copy-mode-position-format "#[align=right][23/100-LONGTAIL]" || exit 1
 
-$TMUX -f/dev/null new -d -x48 -y8 || exit 1
+$TMUX -f/dev/null new -d -x48 -y8 "$TMUX2 attach" || exit 1
 $TMUX set -g status off || exit 1
-$TMUX send -l "$TMUX2 attach" || exit 1
-$TMUX send Enter || exit 1
+wait_for_clients 1 $TMUX2 || fail "inner client did not attach"
 sleep 1
 
 CLIENT=$($TMUX2 list-clients -F '#{client_name}' | head -1)
@@ -154,7 +155,7 @@ $TMUX resizew -x80 -y24 || exit 1
 $TMUX2 refresh -t"$CLIENT" -c || exit 1
 $TMUX2 new-window "cat ../tmux.c; exec sleep 100" || exit 1
 sleep 1
-$TMUX2 splitw -hd || exit 1
+$TMUX2 splitw -hd 'exec sleep 100' || exit 1
 sleep 1
 $TMUX capturep -pS0 -E- >$BEFORE || exit 1
 $TMUX2 copy-mode -H -t:.0 || exit 1

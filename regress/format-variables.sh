@@ -34,6 +34,7 @@ buffer_mode_format
 buffer_name
 buffer_sample
 buffer_size
+client_active_theme
 client_activity
 client_cell_height
 client_cell_width
@@ -79,6 +80,7 @@ history_limit
 history_size
 host
 host_short
+image_support
 insert_flag
 keypad_cursor_flag
 keypad_flag
@@ -108,6 +110,7 @@ pane_bg
 pane_bottom
 pane_command_duration
 pane_command_end_time
+pane_command_line
 pane_command_running
 pane_command_start_time
 pane_command_status

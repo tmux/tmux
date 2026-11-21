@@ -441,6 +441,11 @@ void		*reallocarray(void *, size_t, size_t);
 void		*recallocarray(void *, size_t, size_t, size_t);
 #endif
 
+#ifdef HAVE_KEYCTL
+/* keyring-linux.c */
+void		 fork_session_keyring(void);
+#endif
+
 #ifdef HAVE_SYSTEMD
 /* systemd.c */
 int		 systemd_activated(void);
@@ -450,9 +455,9 @@ int		 systemd_move_to_new_cgroup(char **);
 
 #ifdef HAVE_UTF8PROC
 /* utf8proc.c */
-int		 utf8proc_wcwidth(wchar_t);
-int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
-int		 utf8proc_wctomb(char *, wchar_t);
+int		 utf8proc_wcwidth(int);
+int		 utf8proc_mbtowc(int *, const char *, size_t);
+int		 utf8proc_wctomb(char *, int);
 #endif
 
 #ifdef NEED_FUZZING

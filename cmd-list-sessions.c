@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-sessions.c,v 1.37 2026/09/08 10:20:08 nicm Exp $ */
+/* $OpenBSD: cmd-list-sessions.c,v 1.38 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -40,6 +40,7 @@ static enum cmd_retval	cmd_list_sessions_exec(struct cmd *,
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	.name = "list-sessions",
+	.description = "List sessions and their state.",
 	.alias = "ls",
 
 	.args = { "F:f:O:r", 0, 0, NULL },

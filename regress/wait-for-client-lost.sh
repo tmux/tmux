@@ -1,12 +1,14 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # A disconnected waiter must release both its wait and its command queue.
 PATH=/bin:/usr/bin
 TERM=screen
 export TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT=$(mktemp -d)
+OUT=$(test_tmpdir)
 TMUX="$TEST_TMUX -S$OUT/socket -f/dev/null"
 pids=
 

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests of the -k flag on the mode-entering commands (cmd-copy-mode.c and
 # cmd-choose-tree.c). With -k the pane is killed when the mode is exited: this
 # is stored on the mode entry in window_pane_set_mode() and acted on in
@@ -26,7 +28,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMP=$(mktemp -d) || exit 1
+TMP=$(test_tmpdir) || exit 1
 TMUX_TMPDIR="$TMP"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -34,8 +36,8 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -55,14 +57,7 @@ capture()
 # wait_clients $n: wait until the test server has exactly $n clients.
 wait_clients()
 {
-	i=0
-	while [ "$i" -lt 50 ]; do
-		c=$($TMUX list-clients -F x 2>/dev/null | grep -c x)
-		[ "$c" -eq "$1" ] && return 0
-		sleep 0.2
-		i=$((i + 1))
-	done
-	fail "expected $1 clients, have $c"
+	wait_for_clients "$1" $TMUX || fail "expected $1 clients"
 }
 
 # wait_mode $target $state: wait until a pane enters (1) or leaves (0) mode.

@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.384 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.392 2026/11/16 20:28:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -445,6 +445,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
+	redraw_invalidate_scene(w);
 
 	if (gettimeofday(&w->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -864,10 +865,11 @@ struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
-	int			 pane_status, xoff, yoff;
+	int			 pane_status, xoff, yoff, separate;
 	u_int			 sx, sy;
 
 	pane_status = window_get_pane_status(w);
+	separate = window_border_type_is_separate(w);
 
 	if (w->modal != NULL) {
 		if (window_pane_contains(w->modal, x, y))
@@ -911,16 +913,25 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (!window_pane_is_floating(wp)) {
 			/*
 			 * Tiled - to and including the right border, excluding
-			 * the bottom border.
+			 * the bottom border. pane-border-type separate draws a
+			 * full border around each pane, so include the left and
+			 * top borders as well.
 			 */
-			if ((int)x < xoff || x > xoff + sx)
-				continue;
-			if (pane_status == PANE_STATUS_TOP) {
+			if (separate) {
+				if ((int)x < xoff - 1 || x > xoff + sx)
+					continue;
 				if ((int)y < yoff - 1 || y > yoff + sy)
 					continue;
 			} else {
-				if ((int)y < yoff || y > yoff + sy)
+				if ((int)x < xoff || x > xoff + sx)
 					continue;
+				if (pane_status == PANE_STATUS_TOP) {
+					if ((int)y < yoff - 1 || y > yoff + sy)
+						continue;
+				} else {
+					if ((int)y < yoff || y > yoff + sy)
+						continue;
+				}
 			}
 		} else {
 			if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE) {
@@ -978,6 +989,17 @@ window_find_string(struct window *w, const char *s)
 		y = bottom;
 	} else
 		return (NULL);
+
+	if (window_border_type_is_separate(w)) {
+		if (x == 0)
+			x = 1;
+		else if (x == w->sx - 1 && w->sx > 1)
+			x = w->sx - 2;
+		if (y == top)
+			y = top + 1;
+		else if (y == bottom && bottom > top)
+			y = bottom - 1;
+	}
 
 	return (window_get_active_at(w, x, y));
 }
@@ -1196,6 +1218,19 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	return (wp);
 }
 
+static void
+window_forget_pane(struct window *w, struct window_pane *wp)
+{
+	if (wp == marked_pane.wp)
+		server_clear_marked();
+	if (wp == w->modal_last)
+		w->modal_last = NULL;
+	if (wp == w->was_zoomed)
+		w->was_zoomed = NULL;
+	window_pane_stack_remove(&w->last_panes, wp);
+	redraw_invalidate_scene(w);
+}
+
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
@@ -1203,14 +1238,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
-	if (wp == marked_pane.wp)
-		server_clear_marked();
-	if (wp == w->modal_last)
-		w->modal_last = NULL;
-	if (wp == w->was_zoomed)
-		w->was_zoomed = NULL;
+	window_forget_pane(w, wp);
 
-	window_pane_stack_remove(&w->last_panes, wp);
 	if (wp == w->active) {
 		lastwp = NULL;
 		if (wp == w->modal) {
@@ -1233,10 +1262,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			window_fire_pane_changed(w, w->active, wp);
 			window_update_focus(w);
 		}
-	} else if (wp == w->modal) {
+	} else if (wp == w->modal)
 		w->modal = w->modal_last = NULL;
-	}
-	redraw_invalidate_scene(w);
 }
 
 void
@@ -1364,6 +1391,11 @@ window_destroy_panes(struct window *w)
 
 	while (!TAILQ_EMPTY(&w->panes)) {
 		wp = TAILQ_FIRST(&w->panes);
+		window_forget_pane(w, wp);
+		if (wp == w->active)
+			w->active = NULL;
+		if (wp == w->modal)
+			w->modal = NULL;
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		window_pane_destroy(wp);
@@ -1579,6 +1611,46 @@ window_pane_scrollbar_redraw_visibility(struct window_pane *wp)
 	server_redraw_window(wp->window);
 }
 
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_add(struct window_pane *wp)
+{
+	char	*cp;
+
+	if (wp->fd == -1 ||
+	    (wp->flags & (PANE_EMPTY|PANE_EXITED|PANE_UTMP)) ||
+	    !options_get_number(global_options, "utmp"))
+		return;
+	xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), wp->id);
+	utempter_add_record(wp->fd, cp);
+	kill(getpid(), SIGCHLD);
+	wp->flags |= PANE_UTMP;
+	free(cp);
+}
+#else
+void
+window_pane_utmp_add(__unused struct window_pane *wp)
+{
+}
+#endif
+
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_remove(struct window_pane *wp)
+{
+	if (~wp->flags & PANE_UTMP)
+		return;
+	utempter_remove_record(wp->fd);
+	kill(getpid(), SIGCHLD);
+	wp->flags &= ~PANE_UTMP;
+}
+#else
+void
+window_pane_utmp_remove(__unused struct window_pane *wp)
+{
+}
+#endif
+
 static void
 window_pane_destroy(struct window_pane *wp)
 {
@@ -1587,18 +1659,18 @@ window_pane_destroy(struct window_pane *wp)
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 	wp->flags |= PANE_DESTROYED;
+	window_pane_clear_program_status(wp, 1);
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
 	screen_write_sync_clear_dirty(wp);
 
-	if (wp->fd != -1) {
-#ifdef HAVE_UTEMPTER
-		utempter_remove_record(wp->fd);
-		kill(getpid(), SIGCHLD);
-#endif
+	if (wp->event != NULL) {
 		bufferevent_free(wp->event);
 		wp->event = NULL;
+	}
+	if (wp->fd != -1) {
+		window_pane_utmp_remove(wp);
 		close(wp->fd);
 		wp->fd = -1;
 	}
@@ -1631,6 +1703,7 @@ window_pane_free(struct window_pane *wp)
 	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
 
 	free(wp->searchstr);
+	free(wp->cmd_line);
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
 	free(wp->r.ranges);
@@ -1694,7 +1767,7 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
-	wp->ictx = input_init(wp, wp->event, &wp->palette);
+	wp->ictx = input_init(wp, &wp->palette);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }
@@ -1738,6 +1811,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+#ifdef ENABLE_IMAGES
+	if (sx > r->osx)
+		image_grid_resize_width(wp->base.grid, sx);
+#endif
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
@@ -1929,6 +2006,23 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 
 	prompt_incremental_start(wp->prompt);
 	window_fire_pane_prompt("pane-prompt-opened", wp, type);
+}
+
+/* Clear program status. */
+void
+window_pane_clear_program_status(struct window_pane *wp, int all)
+{
+	if (!all && wp->program_state != NULL) {
+		if (strcmp(wp->program_state, "done") == 0 ||
+		    strcmp(wp->program_state, "error") == 0)
+			return;
+	}
+	free(wp->program_state);
+	free(wp->program_name);
+	free(wp->program_message);
+	wp->program_state = NULL;
+	wp->program_name = NULL;
+	wp->program_message = NULL;
 }
 
 /* Close a pane prompt. */
@@ -2236,7 +2330,7 @@ window_pane_find_up(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, left, right, end, status, found;
+	int			 edge, left, right, end, status, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
@@ -2244,6 +2338,9 @@ window_pane_find_up(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	status = window_get_pane_status(w);
+	gap = 1;
+	if (window_border_type_is_separate(w))
+	        gap = 2;
 
 	list = NULL;
 	size = 0;
@@ -2255,10 +2352,10 @@ window_pane_find_up(struct window_pane *wp)
 		if (edge == 1)
 			edge = (int)w->sy + 1;
 	} else if (status == PANE_STATUS_BOTTOM) {
-		if (edge == 0)
-			edge = (int)w->sy;
+		if (edge == gap - 1)
+			edge = (int)w->sy + gap - 1;
 	} else {
-		if (edge == 0)
+		if (edge == gap - 1)
 			edge = (int)w->sy + 1;
 	}
 
@@ -2269,7 +2366,7 @@ window_pane_find_up(struct window_pane *wp)
 		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (yoff + (int)sy + 1 != edge)
+		if (yoff + (int)sy + gap != edge)
 			continue;
 		end = xoff + (int)sx - 1;
 
@@ -2297,7 +2394,7 @@ window_pane_find_down(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, left, right, end, status, found;
+	int			 edge, left, right, end, status, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
@@ -2305,22 +2402,25 @@ window_pane_find_down(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	status = window_get_pane_status(w);
+	gap = 1;
+	if (window_border_type_is_separate(w))
+		gap = 2;
 
 	list = NULL;
 	size = 0;
 
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
-	edge = yoff + (int)sy + 1;
+	edge = yoff + (int)sy + gap;
 	if (status == PANE_STATUS_TOP) {
 		if (edge >= (int)w->sy)
 			edge = 1;
 	} else if (status == PANE_STATUS_BOTTOM) {
-		if (edge >= (int)w->sy - 1)
-			edge = 0;
+		if (edge >= (int)w->sy + gap - 2)
+			edge = gap - 1;
 	} else {
 		if (edge >= (int)w->sy)
-			edge = 0;
+			edge = gap - 1;
 	}
 
 	left = wp->xoff;
@@ -2358,13 +2458,16 @@ window_pane_find_left(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, top, bottom, end, found;
+	int			 edge, top, bottom, end, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
+	gap = 1;
+	if (window_border_type_is_separate(w))
+		gap = 2;
 
 	list = NULL;
 	size = 0;
@@ -2372,7 +2475,7 @@ window_pane_find_left(struct window_pane *wp)
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
 	edge = xoff;
-	if (edge == 0)
+	if (edge == gap - 1)
 		edge = (int)w->sx + 1;
 
 	top = yoff;
@@ -2382,7 +2485,7 @@ window_pane_find_left(struct window_pane *wp)
 		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (xoff + (int)sx + 1 != edge)
+		if (xoff + (int)sx + gap != edge)
 			continue;
 		end = yoff + (int)sy - 1;
 
@@ -2410,22 +2513,25 @@ window_pane_find_right(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, top, bottom, end, found;
+	int			 edge, top, bottom, end, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
+	gap = 1;
+	if (window_border_type_is_separate(w))
+		gap = 2;
 
 	list = NULL;
 	size = 0;
 
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
-	edge = xoff + (int)sx + 1;
+	edge = xoff + (int)sx + gap;
 	if (edge >= (int)w->sx)
-		edge = 0;
+		edge = gap - 1;
 
 	top = wp->yoff;
 	bottom = wp->yoff + (int)wp->sy;
@@ -2675,7 +2781,6 @@ window_pane_scrollbar_start_timer(struct window_pane *wp)
 	    "pane-scrollbars-timeout");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-	evtimer_del(&wp->sb_auto_timer);
 	evtimer_add(&wp->sb_auto_timer, &tv);
 }
 
@@ -2939,6 +3044,14 @@ window_get_pane_status(struct window *w)
 	    status == PANE_STATUS_BOTTOM_FLOATING)
 		return (PANE_STATUS_OFF);
 	return (status);
+}
+
+int
+window_border_type_is_separate(struct window *w)
+{
+	int	type = options_get_number(w->options, "pane-border-type");
+
+	return (type != PANE_BORDER_TYPE_JOINED);
 }
 
 int

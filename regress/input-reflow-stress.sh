@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LANG=C.UTF-8
@@ -28,8 +30,8 @@ LIVE_BOUND=50000
 cleanup()
 {
 	rm -f "$TMP" "$EXP"
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 }
 trap cleanup 0 1 15
 
@@ -394,7 +396,7 @@ assert_live_client_redraw()
 	$TMUX set-option -t stress: status on >/dev/null || exit 1
 	$TMUX set-option -t stress: status-interval 1 >/dev/null || exit 1
 
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX2 || exit 1
 	$TMUX2 new-session -d -s out -x 100 -y 12 "$TMUX attach -t stress" ||
 		exit 1
 
@@ -438,13 +440,12 @@ assert_live_client_redraw()
 	grep -F 'REDRAW-24' "$TMP" >/dev/null 2>&1 &&
 		record_fail "outer capture contains stale width marker"
 
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX2 || exit 1
 	$TMUX set-option -t stress: status off >/dev/null || exit 1
 }
 
-$TMUX kill-server 2>/dev/null
-$TMUX2 kill-server 2>/dev/null
-sleep 0.1
+stop_server $TMUX || exit 1
+stop_server $TMUX2 || exit 1
 
 $TMUX new-session -d -x 1 -y 1 -s test-setup "sleep 2" || exit 1
 $TMUX set-option -g history-limit "$HISTORY_LIMIT" || exit 1
