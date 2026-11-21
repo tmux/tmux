@@ -359,6 +359,9 @@ test_expand "#{t/f/%Y-%m-%d:@ts}" "2001-09-09"
 test_expand "#{t/f/%H#:%M#:%S:@ts}" "01:46:40"
 # An escaped comma in the custom format is unescaped before strftime.
 test_expand "#{t/f/%Y#,end:@ts}" "2001,end"
+# A result too long for the buffer is empty.
+long=$(printf '%0600d' 0)
+test_expand "[#{t/f/%Y$long:@ts}]" "[]"
 
 # T: expands its argument and then runs the result through strftime with the
 # current time.  A value with no strftime specifier is returned unchanged.

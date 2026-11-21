@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -8,7 +10,8 @@ TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 $TMUX kill-server 2>/dev/null
 
 $TMUX new -d -x40 -y10 \
-      "cat copy-mode-test.txt; printf '\e[9;15H'; cat" || exit 1
+      "cat copy-mode-test.txt; printf '\e[9;15H\033]2;ready\007'; cat" || exit 1
+wait_for_output ready $TMUX display -p '#{pane_title}' || exit 1
 $TMUX set -g window-size manual || exit 1
 
 # Enter copy mode and go to the first column of the first row.

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -11,7 +13,8 @@ TMP=$(mktemp)
 trap "rm -f $TMP" 0 1 15
 
 $TMUX -f/dev/null new -d -x10 -y10 \
-      "cat cursor-test.txt; printf '\e[8;10H'; cat" || exit 1
+      "cat cursor-test.txt; printf '\e[8;10H\033]2;ready\007'; cat" || exit 1
+wait_for_output ready $TMUX display -p '#{pane_title}' || exit 1
 $TMUX set -g window-size manual || exit 1
 
 $TMUX display -pF '#{cursor_x} #{cursor_y} #{cursor_character}' >>$TMP

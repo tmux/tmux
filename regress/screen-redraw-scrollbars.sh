@@ -137,6 +137,7 @@ $TMUX2 selectw -t:\$ || exit 1
 $TMUX2 resizew -x40 -y12 || exit 1
 $TMUX2 setw pane-scrollbars-position right || exit 1
 $TMUX2 setw pane-scrollbars-style "bg=black,fg=white,width=1,pad=0" || exit 1
+wait_for_text 40 $TMUX2 capturep -p || exit 1
 $TMUX2 copy-mode -H || exit 1
 $TMUX2 send -X history-top || exit 1
 compare scrollbar-copy-mode -e
