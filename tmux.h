@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1485 2026/11/21 19:38:53 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1486 2026/11/21 21:48:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3524,7 +3524,7 @@ void	 recalculate_sizes_now(int);
 struct input_ctx *input_init(struct window_pane *, struct colour_palette *);
 void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
-struct evbuffer *input_pending(struct input_ctx *);
+const char *input_pending(struct input_ctx *, size_t *);
 void	 input_parse_pane(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, const u_char *, size_t);
 void	 input_parse_screen(struct input_ctx *, struct screen *,
