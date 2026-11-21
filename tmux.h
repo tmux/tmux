@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1484 2026/11/21 16:25:53 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1485 2026/11/21 19:38:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1136,6 +1136,8 @@ struct screen {
 	struct screen_sel		*sel;
 
 	struct screen_write_cline	*write_list;
+	u_int				 write_start;
+	u_int				 write_end;
 
 	struct hyperlinks		*hyperlinks;
 	struct progress_bar		 progress_bar;
