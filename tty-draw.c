@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.21 2026/11/21 16:09:54 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.22 2026/11/21 16:25:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -114,7 +114,51 @@ tty_draw_line_get_empty(const struct grid_cell *gc,
 	return (empty);
 }
 
-/* Collect more compact ASCII cells with the same style. */
+/* Collect more ASCII extended cells with the same style. */
+static u_int
+tty_draw_line_collect_extended(const struct grid_line *gl,
+    const struct grid_cell_entry *gce, u_int nx, char *buf)
+{
+	const struct grid_extd_entry	*gee, *next;
+	u_int				 n;
+	int				 ch;
+
+	if (gce->offset >= gl->extdsize)
+		return (0);
+
+	gee = &gl->extddata[gce->offset];
+	if (gee->flags & ~GRID_FLAG_NOPALETTE)
+		return (0);
+	if (gee->attr & GRID_ATTR_CHARSET)
+		return (0);
+
+	ch = utf8_get_one(gee->data);
+	if (ch < 0x20 || ch > 0x7e)
+		return (0);
+
+	for (n = 0, gce++; n < nx; n++, gce++) {
+		if (~gce->flags & GRID_FLAG_EXTENDED ||
+		    gce->offset >= gl->extdsize)
+			break;
+		next = &gl->extddata[gce->offset];
+		if (next->flags != gee->flags ||
+		    next->attr != gee->attr ||
+		    next->fg != gee->fg ||
+		    next->bg != gee->bg ||
+		    next->us != gee->us ||
+		    next->link != gee->link)
+			break;
+		ch = utf8_get_one(next->data);
+		if (ch < 0x20 ||
+		    ch > 0x7e ||
+		    (ch == ' ' && gee->attr == 0 && gee->link == 0))
+			break;
+		buf[n] = ch;
+	}
+	return (n);
+}
+
+/* Collect more ASCII cells with the same style. */
 static u_int
 tty_draw_line_collect(const struct grid_line *gl, u_int px, u_int end,
     char *buf, size_t len)
@@ -125,7 +169,15 @@ tty_draw_line_collect(const struct grid_line *gl, u_int px, u_int end,
 
 	if (px >= end || end - px <= 1 || len == 0)
 		return (0);
+
+	nx = end - px - 1;
+	if (nx > len)
+		nx = len;
+
 	gce = &gl->celldata[px];
+	if (gce->flags & GRID_FLAG_EXTENDED)
+		return (tty_draw_line_collect_extended(gl, gce, nx, buf));
+
 	if (gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256|GRID_FLAG_NOPALETTE))
 		return (0);
 	if (gce->data.attr & GRID_ATTR_CHARSET)
@@ -133,9 +185,6 @@ tty_draw_line_collect(const struct grid_line *gl, u_int px, u_int end,
 	if (gce->data.data < 0x20 || gce->data.data > 0x7e)
 		return (0);
 
-	nx = end - px - 1;
-	if (nx > len)
-		nx = len;
 	for (n = 0, next = gce + 1; n < nx; n++, next++) {
 		if (next->flags != gce->flags ||
 		    next->data.attr != gce->data.attr ||

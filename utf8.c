@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.79 2026/11/21 12:33:23 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.80 2026/11/21 16:25:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -517,6 +517,15 @@ u_int
 utf8_build_one(u_char ch)
 {
 	return (UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|ch);
+}
+
+/* Get a single-byte, single-width character, or -1. */
+int
+utf8_get_one(utf8_char uc)
+{
+	if (UTF8_GET_SIZE(uc) != 1 || UTF8_GET_WIDTH(uc) != 1)
+		return (-1);
+	return (uc & 0xff);
 }
 
 /* Set a single character. */
