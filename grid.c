@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.164 2026/11/21 16:18:55 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.165 2026/11/21 16:49:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -112,14 +112,13 @@ grid_get_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gce->flags = (flags | GRID_FLAG_EXTENDED);
 }
 
-/* Set cell as extended. */
+/* Set cell as extended with encoded data. */
 static struct grid_extd_entry *
-grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
-    const struct grid_cell *gc)
+grid_store_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
+    const struct grid_cell *gc, utf8_char uc)
 {
 	struct grid_extd_entry	*gee;
 	int			 flags = (gc->flags & ~GRID_FLAG_CLEARED);
-	utf8_char		 uc;
 
 	if (~gce->flags & GRID_FLAG_EXTENDED)
 		grid_get_extended_cell(gl, gce, flags);
@@ -128,11 +127,6 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gl->flags |= GRID_LINE_EXTENDED;
 	if (gc->link != 0)
 		gl->flags |= GRID_LINE_HYPERLINK;
-
-	if (gc->flags & GRID_FLAG_TAB)
-		uc = gc->data.width;
-	else
-		utf8_from_data(&gc->data, &uc);
 
 	gee = &gl->extddata[gce->offset];
 	gee->data = uc;
@@ -143,6 +137,20 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gee->us = gc->us;
 	gee->link = gc->link;
 	return (gee);
+}
+
+/* Set cell as extended. */
+static struct grid_extd_entry *
+grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
+    const struct grid_cell *gc)
+{
+	utf8_char	uc;
+
+	if (gc->flags & GRID_FLAG_TAB)
+		uc = gc->data.width;
+	else
+		utf8_from_data(&gc->data, &uc);
+	return (grid_store_extended_cell(gl, gce, gc, uc));
 }
 
 /* Free up unused extended cells. */
@@ -659,7 +667,6 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 {
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
-	struct grid_extd_entry	*gee;
 	u_int			 i;
 
 	if (grid_check_y(gd, __func__, py) != 0)
@@ -673,10 +680,9 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 
 	for (i = 0; i < slen; i++) {
 		gce = &gl->celldata[px + i];
-		if (grid_need_extended_cell(gce, gc)) {
-			gee = grid_extended_cell(gl, gce, gc);
-			gee->data = utf8_build_one(s[i]);
-		} else
+		if (grid_need_extended_cell(gce, gc))
+			grid_store_extended_cell(gl, gce, gc, utf8_build_one(s[i]));
+		else
 			grid_store_cell(gce, gc, s[i]);
 	}
 }
