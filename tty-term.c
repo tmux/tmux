@@ -289,6 +289,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_SMUL] = { TTYCODE_STRING, "smul" },
 	[TTYC_SMXX] =  { TTYCODE_STRING, "smxx" },
 	[TTYC_SPB] = { TTYCODE_STRING, "Spb" },
+	[TTYC_SPT] = { TTYCODE_STRING, "Spt" },
 	[TTYC_SS] = { TTYCODE_STRING, "Ss" },
 	[TTYC_SWD] = { TTYCODE_STRING, "Swd" },
 	[TTYC_SYNC] = { TTYCODE_STRING, "Sync" },

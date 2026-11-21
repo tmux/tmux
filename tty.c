@@ -445,6 +445,7 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
 	tty->mouse_drag_release = NULL;
+	tty->pointer = NULL;
 }
 
 void
@@ -832,6 +833,17 @@ tty_set_path(struct tty *tty, const char *title)
 	tty_putcode(tty, TTYC_FSL);
 }
 
+void
+tty_set_pointer(struct tty *tty, const char *shape)
+{
+	if (!tty_term_has(tty->term, TTYC_SPT))
+		return;
+	if (tty->pointer != NULL && strcmp(tty->pointer, shape) == 0)
+		return;
+	tty->pointer = shape;
+	tty_putcode_s(tty, TTYC_SPT, shape);
+}
+
 static void
 tty_force_cursor_colour(struct tty *tty, int c)
 {
@@ -985,6 +997,11 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 			tty_puts(tty, "\033[?1000h\033[?1002h");
 		else if (mode & MODE_MOUSE_STANDARD)
 			tty_puts(tty, "\033[?1000h");
+
+		/* Some terminals reset the pointer when mouse modes change. */
+		if ((mode & ALL_MOUSE_MODES) && tty->pointer != NULL &&
+		    tty_term_has(term, TTYC_SPT))
+			tty_putcode_s(tty, TTYC_SPT, tty->pointer);
 	}
 	tty->mode = mode;
 }

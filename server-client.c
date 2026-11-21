@@ -646,6 +646,29 @@ server_client_update_scrollbar_hover(struct client *c, int type, int px, int py)
 	}
 }
 
+/* Set the mouse pointer shape for what is under the mouse. */
+static void
+server_client_update_pointer(struct client *c,
+    enum key_code_mouse_location loc, struct window_pane *wp, u_int px,
+    u_int py)
+{
+	const char		*shape = "left_ptr";
+	struct layout_cell	*lc;
+
+	if (loc == KEYC_MOUSE_LOCATION_PANE && wp != NULL) {
+		if ((wp->screen->mode & ALL_MOUSE_MODES) == 0)
+			shape = "xterm";
+	} else if (loc == KEYC_MOUSE_LOCATION_BORDER && wp != NULL &&
+	    !window_pane_is_floating(wp)) {
+		lc = layout_search_by_border(wp->window->layout_root, px, py);
+		if (lc != NULL && lc->parent->type == LAYOUT_LEFTRIGHT)
+			shape = "sb_h_double_arrow";
+		else if (lc != NULL)
+			shape = "sb_v_double_arrow";
+	}
+	tty_set_pointer(&c->tty, shape);
+}
+
 /* Is the mouse inside a pane? */
 static enum key_code_mouse_location
 server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
@@ -934,8 +957,9 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct mouse_event		*m = &event->m;
 	struct session			*s = c->session;
 	struct window			*w = s->curw->window;
-	struct window_pane		*wp, *lwp = NULL;
-	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
+	struct window_pane		*wp = NULL, *lwp = NULL;
+	u_int				 x, y, sx, sy, px = 0, py = 0, n;
+	u_int				 sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
 	int				 modal_drag = 0;
@@ -1139,6 +1163,9 @@ have_event:
 		}
 	} else
 		server_client_update_scrollbar_hover(c, type, -1, -1);
+
+	if (type == KEYC_TYPE_MOUSEMOVE)
+		server_client_update_pointer(c, loc, wp, px, py);
 
 	/* Reset click type or add a click timer if needed. */
 	if (type == KEYC_TYPE_MOUSEDOWN ||
@@ -2382,6 +2409,7 @@ server_client_reset_state(struct client *c)
 			}
 		}
 		if (options_get_number(oo, "focus-follows-mouse") ||
+		    tty_term_has(tty->term, TTYC_SPT) ||
 		    w->sb == PANE_SCROLLBARS_MODAL ||
 		    w->sb == PANE_SCROLLBARS_AUTOHIDE)
 			mode |= MODE_MOUSE_ALL;
