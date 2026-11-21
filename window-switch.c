@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.9 2026/11/16 12:56:19 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.10 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -254,11 +254,13 @@ window_switch_build(struct window_switch_modedata *data)
 		sl = sort_get_sessions(&ns, &sort_crit);
 		for (i = 0; i < ns; i++)
 			window_switch_add_session(data, sl[i], &order);
+		free(sl);
 		break;
 	case WINDOW_SWITCH_TYPE_WINDOW:
 		wl = sort_get_winlinks(&nw, &sort_crit);
 		for (i = 0; i < nw; i++)
 			window_switch_add_window(data, wl[i], &order);
+		free(wl);
 		break;
 	case WINDOW_SWITCH_TYPE_INPUT:
 		cmd_find_from_pane(&fs, data->wp, 0);

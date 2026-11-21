@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.536 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.537 2026/11/21 12:44:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -541,7 +541,7 @@ server_client_suspend(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	if (s == NULL || (c->flags & (CLIENT_UNATTACHEDFLAGS|CLIENT_CONTROL)))
 		return;
 
 	tty_stop_tty(&c->tty);

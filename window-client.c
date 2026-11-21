@@ -1,4 +1,4 @@
-/* $OpenBSD: window-client.c,v 1.51 2026/10/14 12:33:46 nicm Exp $ */
+/* $OpenBSD: window-client.c,v 1.52 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -243,6 +243,7 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 
 		l[i]->references++;
 	}
+	free(l);
 
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];

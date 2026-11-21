@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-sessions.c,v 1.38 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-list-sessions.c,v 1.39 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -94,6 +94,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 
 		format_free(ft);
 	}
+	free(l);
 
 	return (CMD_RETURN_NORMAL);
 }

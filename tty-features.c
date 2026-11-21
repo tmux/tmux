@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.53 2026/11/10 10:47:11 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.54 2026/11/21 12:36:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -154,7 +154,7 @@ static const struct tty_feature tty_feature_overline = {
 /* Terminal supports underscore styles. */
 static const char *const tty_feature_usstyle_capabilities[] = {
 	"Smulx=\\E[4::%p1%dm",
-	"Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m",
+	"Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%dm",
 	"Setulc1=\\E[58::5::%p1%dm",
 	"ol=\\E[59m",
 	NULL
