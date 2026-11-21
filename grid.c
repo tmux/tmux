@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.162 2026/11/21 12:43:32 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.163 2026/11/21 15:47:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -513,6 +513,7 @@ static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 {
 	struct grid_line	*gl;
+	struct grid_cell_entry	*gce;
 	u_int			 xx;
 
 	gl = &gd->linedata[py];
@@ -528,12 +529,20 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 
 	gl->celldata = xreallocarray(gl->celldata, sx,
 	    sizeof *gl->celldata);
-	if (gl->cellsize < sx) {
+	if (bg & (COLOUR_FLAG_RGB|COLOUR_FLAG_THEME)) {
 		memset(gl->celldata + gl->cellsize, 0,
 		    (sx - gl->cellsize) * sizeof *gl->celldata);
+		for (xx = gl->cellsize; xx < sx; xx++)
+			grid_clear_cell(gd, xx, py, bg, 0);
+	} else {
+		gce = &gl->celldata[gl->cellsize];
+		memcpy(gce, &grid_cleared_entry, sizeof *gce);
+		gce->data.bg = bg;
+		if (bg & COLOUR_FLAG_256)
+			gce->flags |= GRID_FLAG_BG256;
+		for (xx = gl->cellsize + 1; xx < sx; xx++)
+			memcpy(&gl->celldata[xx], gce, sizeof *gce);
 	}
-	for (xx = gl->cellsize; xx < sx; xx++)
-		grid_clear_cell(gd, xx, py, bg, 0);
 	gl->cellsize = sx;
 }
 
