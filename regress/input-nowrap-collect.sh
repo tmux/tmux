@@ -44,4 +44,34 @@ check_cursor toggle '1,1'
 check_flags toggle 'W ABCDE
 - F'
 
+# A collected run must leave REP using its last character.
+start_pane bulk-repeat 12 3 'ABCDE\033[3b'
+check_capture bulk-repeat 'ABCDEEEE'
+check_cursor bulk-repeat '8,0'
+
+# A run spanning rows must preserve both pending wraps.
+start_pane bulk-wrap 5 3 'ABCDEFGHIJK'
+check_capture bulk-wrap 'ABCDE
+FGHIJ
+K'
+check_cursor bulk-wrap '1,2'
+check_flags bulk-wrap 'W ABCDE
+W FGHIJ
+- K'
+
+# A following combining character must attach to the end of the run.
+start_pane bulk-combine 12 3 'abcde\314\201F'
+check_capture bulk-combine 'abcdéF'
+check_cursor bulk-combine '6,0'
+
+# ASCII after an incomplete UTF-8 character must first emit a replacement.
+start_pane bulk-incomplete 16 3 '\342ABCDEFG'
+check_capture bulk-incomplete '�ABCDEFG'
+check_cursor bulk-incomplete '8,0'
+
+# A run starting in wide-character padding must clear the leading cell.
+start_pane bulk-padding 10 3 'A\343\201\202B\r\033[2CXYZ'
+check_capture bulk-padding 'A XYZ'
+check_cursor bulk-padding '5,0'
+
 exit $exit_status

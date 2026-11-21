@@ -169,6 +169,10 @@ tty_draw_line_collect(const struct grid_line *gl, u_int px, u_int end,
 
 	if (px >= end || end - px <= 1 || len == 0)
 		return (0);
+#ifdef ENABLE_IMAGES
+	if (gl->images != NULL)
+		return (0);
+#endif
 
 	nx = end - px - 1;
 	if (nx > len)

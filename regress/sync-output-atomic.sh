@@ -92,12 +92,14 @@ while (!-e $control) {
 	select undef, undef, undef, 0.01;
 }
 for my $frame (0 .. 1) {
+	# Change the style too, so unchanged parts of each marker are redrawn.
+	my $style = $frame ? "\e[32m" : "\e[31m";
 	my @rows;
 	for my $row (0 .. 23) {
 		my $marker = sprintf "FRAME_%06d_ROW_%02d_", $frame, $row;
 		push @rows, substr($marker . ('X' x 79), 0, 79);
 	}
-	my $frame = "\e[?2026h\e[H" . join("\r\n", @rows) .
+	my $frame = "\e[?2026h\e[H$style" . join("\r\n", @rows) .
 	    "\e[?2026l";
 	my $written = syswrite STDOUT, $frame;
 	die "short synchronized frame write\n"

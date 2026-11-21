@@ -44,4 +44,22 @@ check_raw_matches tabs \
 	'C 0,8 data=\(1,1,B\) flags=NONE\[0\]' \
 	'C 0,0 data=\(1,1,C\) flags=NONE\[0\]'
 
+# Fresh storage must clear both the gap and the unused allocation tail.
+start_pane expandgap 16 3 '\033[6GX'
+check_capture expandgap '     X'
+check_raw_matches expandgap \
+	'C 0,0 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\].* bg=default\[8\]' \
+	'C 0,4 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\].* bg=default\[8\]' \
+	'C 0,5 data=\(1,1,X\) flags=NONE\[0\]' \
+	'C 0,7 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\].* bg=default\[8\]'
+
+# Growing a line must preserve its existing extended cells.
+start_pane expandextended 16 3 '\033[38;2;1;2;3mA\033[0m\033[13GX'
+check_capture expandextended 'A           X'
+check_raw_matches expandextended \
+	'C 0,0 data=\(1,1,A\).* fg=#010203\[' \
+	'C 0,11 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\].* bg=default\[8\]' \
+	'C 0,12 data=\(1,1,X\) flags=NONE\[0\]' \
+	'C 0,15 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\].* bg=default\[8\]'
+
 exit $exit_status
