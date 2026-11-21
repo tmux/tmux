@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.311 2026/11/21 15:36:05 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.312 2026/11/21 19:37:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2498,8 +2498,10 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 		xoff = 0;
 		yoff = 0;
 	}
-	if (y + yoff >= wsy)
+	if (y + yoff >= wsy) {
+		screen_write_collect_clear(ctx, y, 1);
 		return (0);
+	}
 
 	r = window_visible_ranges(wp, 0, y + yoff, wsx, NULL);
 	TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
@@ -2559,11 +2561,10 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 			items++;
 			written = 1;
 		}
-		if (written) {
+		if (written)
 			last = ci->x;
-			TAILQ_REMOVE(&cl->items, ci, entry);
-			screen_write_free_citem(ci);
-		}
+		TAILQ_REMOVE(&cl->items, ci, entry);
+		screen_write_free_citem(ci);
 	}
 	return (items);
 }
