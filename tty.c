@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.499 2026/11/22 11:08:42 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.500 2026/11/22 14:39:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -37,6 +37,7 @@ static int	tty_log_fd = -1;
 
 static void	tty_start_timer_callback(int, short, void *);
 static void	tty_start_start_timer(struct tty *);
+static int	tty_block_maybe(struct tty *, int);
 static void	tty_clipboard_query_callback(int, short, void *);
 static void	tty_send_size_query(struct tty *, int);
 static void	tty_set_italics(struct tty *);
@@ -76,6 +77,7 @@ static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 	((ctx)->xoff == 0 && (ctx)->sx >= (tty)->sx)
 
 #define TTY_BLOCK_INTERVAL (100000 /* 100 milliseconds */)
+#define TTY_BLOCK_GRACE (10000 /* 10 milliseconds */)
 #define TTY_BLOCK_START(tty) (1 + ((tty)->sx * (tty)->sy) * 8)
 #define TTY_BLOCK_STOP(tty) (1 + ((tty)->sx * (tty)->sy) / 8)
 
@@ -212,6 +214,12 @@ tty_timer_callback(__unused int fd, __unused short events, void *data)
 	struct client	*c = tty->client;
 	struct timeval	 tv = { .tv_usec = TTY_BLOCK_INTERVAL };
 
+	if (tty->flags & TTY_GRACE) {
+		tty->flags &= ~TTY_GRACE;
+		tty_block_maybe(tty, 1);
+		return;
+	}
+
 	log_debug("%s: %zu discarded", c->name, tty->discarded);
 
 	c->flags |= CLIENT_ALLREDRAWFLAGS;
@@ -227,22 +235,34 @@ tty_timer_callback(__unused int fd, __unused short events, void *data)
 }
 
 static int
-tty_block_maybe(struct tty *tty)
+tty_block_maybe(struct tty *tty, int expired)
 {
 	struct client	*c = tty->client;
 	size_t		 size = EVBUFFER_LENGTH(tty->out);
 	struct timeval	 tv = { .tv_usec = TTY_BLOCK_INTERVAL };
+	struct timeval	 grace = { .tv_usec = TTY_BLOCK_GRACE };
 
 	if (size == 0)
 		tty->flags &= ~TTY_NOBLOCK;
-	else if (tty->flags & TTY_NOBLOCK)
+	if ((tty->flags & TTY_NOBLOCK) ||
+	    size < TTY_BLOCK_START(tty) ||
+	    c->redraw > 0) {
+		if (tty->flags & TTY_GRACE) {
+			tty->flags &= ~TTY_GRACE;
+			evtimer_del(&tty->timer);
+		}
 		return (0);
-
-	if (size < TTY_BLOCK_START(tty))
-		return (0);
+	}
 
 	if (tty->flags & TTY_BLOCK)
 		return (1);
+	if (!expired) {
+		if (~tty->flags & TTY_GRACE) {
+			tty->flags |= TTY_GRACE;
+			evtimer_add(&tty->timer, &grace);
+		}
+		return (0);
+	}
 	tty->flags |= TTY_BLOCK;
 
 	log_debug("%s: can't keep up, %zu discarded", c->name, size);
@@ -275,7 +295,7 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 			c->redraw -= nwrite;
 		log_debug("%s: waiting for redraw, %zu bytes left", c->name,
 		    c->redraw);
-	} else if (tty_block_maybe(tty))
+	} else if (tty_block_maybe(tty, 0))
 		return;
 
 	if (EVBUFFER_LENGTH(tty->out) != 0)
@@ -295,7 +315,7 @@ tty_open(struct tty *tty, char **cause)
 	}
 	tty->flags |= TTY_OPENED;
 
-	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER);
+	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER|TTY_GRACE);
 
 	event_set(&tty->event_in, c->fd, EV_PERSIST|EV_READ,
 	    tty_read_callback, tty);
@@ -485,7 +505,7 @@ tty_stop_tty(struct tty *tty)
 	tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZPIXELS|TTY_WINSZAPPLY);
 
 	event_del(&tty->timer);
-	tty->flags &= ~TTY_BLOCK;
+	tty->flags &= ~(TTY_BLOCK|TTY_GRACE);
 
 	event_del(&tty->event_in);
 	event_del(&tty->event_out);
