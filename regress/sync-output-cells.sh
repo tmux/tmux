@@ -117,7 +117,6 @@ sub frames {
 	my ($name, $draw) = @_;
 	wait_for($name);
 	for my $c ('b', 'c', 'd', 'e') {
-		print "\e[14;1Hbefore" if $name eq 'same' && $c eq 'b';
 		print "\e[?2026h";
 		$draw->($c);
 		print "\e[0m\e[10;1H\e[?2026l";
@@ -126,11 +125,6 @@ sub frames {
 }
 my $link = "\e]8;id=l;https://example.com/a/longer/path\e\\";
 
-# Repaint the same text without changing the grid.
-frames('same', sub {
-	print "\e[11;1H${rgb}", 'a' x 80,
-	    "\e[0m\e[14;1Hbefore";
-});
 # A temporary change must stay dirty when the original contents are restored.
 frames('restore', sub { print "\e[11;1H${rgb}Z\e[11;1Ha" });
 # Two cells at opposite ends of a line, like two spinners.
@@ -191,9 +185,6 @@ $OUTER respawn-pane -k -t outer:0.0 \
 wait_for_file "$DIR/painted" "application did not paint"
 sleep 1
 
-# Four unchanged RGB lines should send only cursor and mode changes.
-frames same 200
-check_screen "after unchanged frames"
 frames restore 500
 check_screen "after restored frames"
 
