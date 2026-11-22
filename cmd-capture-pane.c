@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-capture-pane.c,v 1.71 2026/11/21 21:48:49 nicm Exp $ */
+/* $OpenBSD: cmd-capture-pane.c,v 1.72 2026/11/22 09:36:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -441,7 +441,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p')) {
 		if (len > 0 && buf[len - 1] == '\n')
 			len--;
-		if (c->flags & CLIENT_CONTROL)
+		if (c != NULL && (c->flags & CLIENT_CONTROL))
 			control_write(c, "%.*s", (int)len, buf);
 		else {
 			if (!file_can_print(c)) {
