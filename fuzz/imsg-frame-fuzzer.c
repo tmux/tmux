@@ -34,7 +34,7 @@
  *                0x01      imsg_create + imsg_add + imsg_close
  *                0x02      raw ibuf frame with hand-built header bytes
  *                0x03      imsgbuf_write
- *                0x04      imsgbuf_flush
+ *                0x04      write/read pump until the queue is drained
  *                0x05      read pump: imsgbuf_read + imsgbuf_get loop
  *                0x06..    ignored
  *   Payloads for compose/create ops are taken inline as
@@ -61,6 +61,27 @@ imsg_frame_fuzzer_nonblock(int fd)
 	flags = fcntl(fd, F_GETFL, 0);
 	if (flags != -1)
 		fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+/*
+ * imsgbuf_flush() expects the peer to consume data while it runs. Since this
+ * harness owns both ends of a non-blocking socketpair in one thread, alternate
+ * writes and reads instead. The bound also keeps a broken stream from turning
+ * into a fuzzer timeout.
+ */
+static void
+imsg_frame_fuzzer_flush(struct imsgbuf *writer, struct imsgbuf *reader)
+{
+	size_t	i;
+
+	for (i = 0; i < FUZZER_MAXLEN; i++) {
+		if (imsgbuf_queuelen(writer) == 0)
+			break;
+		if (imsgbuf_write(writer) == -1)
+			break;
+		if (imsgbuf_read(reader) == -1)
+			break;
+	}
 }
 
 int
@@ -144,8 +165,8 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 		case 3: /* write what is queued */
 			imsgbuf_write(&writer);
 			break;
-		case 4: /* flush the queue */
-			imsgbuf_flush(&writer);
+		case 4: /* flush the queue while pumping the peer */
+			imsg_frame_fuzzer_flush(&writer, &reader);
 			break;
 		case 5: /* read pump over whatever arrived */
 			imsgbuf_read(&reader);
@@ -168,7 +189,7 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 	}
 
 	/* Final drain: push everything through and read it all back. */
-	imsgbuf_flush(&writer);
+	imsg_frame_fuzzer_flush(&writer, &reader);
 	imsgbuf_read(&reader);
 	while (imsgbuf_get(&reader, &imsg) == 1) {
 		plen = imsg_get_len(&imsg);
