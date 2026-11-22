@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.289 2026/11/22 16:58:49 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.290 2026/11/22 17:13:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1048,7 +1048,7 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 		 * sequences that don't make a terminal change, but they should
 		 * be the minority.
 		 */
-		if (itr->handler != input_print)
+		if (itr->handler != input_print && state == &input_state_ground)
 			screen_write_collect_end(sctx);
 
 		/*
