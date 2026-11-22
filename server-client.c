@@ -2216,7 +2216,7 @@ server_client_prompt_cursor(struct client *c, struct window_pane *wp, int *mode,
 	*mode &= ~MODE_CURSOR;
 
 	tty_window_offset(tty, &ox, &oy, &sx, &sy);
-	if (status_at_line(c) == 0)
+	if (options_get_number(c->session->options, "status-position") == 0)
 		py = wp->yoff;
 	else
 		py = wp->yoff + wp->sy - 1;
