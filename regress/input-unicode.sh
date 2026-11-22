@@ -83,6 +83,28 @@ check_raw_matches astronaut \
 	'C 0,4 .*flags=PADDING\[[0-9a-f]+\]' \
 	'C 0,5 data=\(1,1,1\) flags=NONE\[0\]'
 
+# All five modifiers must still combine with an eligible base.
+start_pane tonerange 20 3 '\360\237\221\215\360\237\217\273\360\237\221\215\360\237\217\274\360\237\221\215\360\237\217\275\360\237\221\215\360\237\217\276\360\237\221\215\360\237\217\277X'
+check_capture tonerange '👍🏻👍🏼👍🏽👍🏾👍🏿X'
+check_cursor tonerange '11,0'
+
+# Supplementary characters outside the combining ranges remain separate.
+start_pane flagemoji 10 3 '\360\237\207\254\360\237\230\200X'
+check_capture flagemoji '🇬😀X'
+check_cursor flagemoji '4,0'
+
+# Hangul composition uses its own path before the emoji combining check.
+start_pane hanguljamo 10 3 '\341\204\200\341\205\241\341\206\250X'
+check_capture hanguljamo '각X'
+check_cursor hanguljamo '3,0'
+check_raw_matches hanguljamo \
+	'C 0,0 data=\(2,9,각\) flags=NONE\[0\]' \
+	'C 0,1 .*flags=PADDING\[[0-9a-f]+\]'
+
+start_pane hanguljamo-run 10 3 '\341\204\200\341\205\241\341\206\250\341\204\202\341\205\241X'
+check_capture hanguljamo-run '각나X'
+check_cursor hanguljamo-run '5,0'
+
 start_pane combining-left 10 3 '\314\201A\n'
 check_capture combining-left 'A'
 check_cursor combining-left '0,1'
