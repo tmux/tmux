@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.500 2026/11/22 14:39:08 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.501 2026/11/22 14:53:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -244,7 +244,7 @@ tty_block_maybe(struct tty *tty, int expired)
 
 	if (size == 0)
 		tty->flags &= ~TTY_NOBLOCK;
-	if ((tty->flags & TTY_NOBLOCK) ||
+	if ((tty->flags & (TTY_NOBLOCK|TTY_NOBACKOFF)) ||
 	    size < TTY_BLOCK_START(tty) ||
 	    c->redraw > 0) {
 		if (tty->flags & TTY_GRACE) {
@@ -316,6 +316,10 @@ tty_open(struct tty *tty, char **cause)
 	tty->flags |= TTY_OPENED;
 
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER|TTY_GRACE);
+	if (options_get_number(global_options, "disable-backoff"))
+		tty->flags |= TTY_NOBACKOFF;
+	else
+		tty->flags &= ~TTY_NOBACKOFF;
 
 	event_set(&tty->event_in, c->fd, EV_PERSIST|EV_READ,
 	    tty_read_callback, tty);

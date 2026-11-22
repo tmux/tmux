@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.440 2026/11/22 09:53:04 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.441 2026/11/22 14:53:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1666,6 +1666,15 @@ format_cb_client_name(struct format_tree *ft)
 {
 	if (ft->c != NULL && ft->c->name != NULL)
 		return (xstrdup(ft->c->name));
+	return (NULL);
+}
+
+/* Callback for client_pending. */
+static void *
+format_cb_client_pending(struct format_tree *ft)
+{
+	if (ft->c != NULL && (ft->c->tty.flags & TTY_OPENED))
+		return (format_printf("%zu", EVBUFFER_LENGTH(ft->c->tty.out)));
 	return (NULL);
 }
 
@@ -3772,6 +3781,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "client_name", FORMAT_TABLE_STRING,
 	  format_cb_client_name
+	},
+	{ "client_pending", FORMAT_TABLE_STRING,
+	  format_cb_client_pending
 	},
 	{ "client_pid", FORMAT_TABLE_STRING,
 	  format_cb_client_pid

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1490 2026/11/22 14:39:08 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1491 2026/11/22 14:53:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1896,6 +1896,7 @@ struct tty {
 #define TTY_WINSZPIXELS 0x40000
 #define TTY_WINSZAPPLY 0x80000
 #define TTY_GRACE 0x100000
+#define TTY_NOBACKOFF 0x200000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC|TTY_HAVEKITTYGRAPHICS)
 	int		 flags;

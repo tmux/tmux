@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.256 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.257 2026/11/22 14:53:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -432,6 +432,13 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .default_str = TMUX_TERM,
 	  .text = "Default for the 'TERM' environment variable."
+	},
+
+	{ .name = "disable-backoff",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 0,
+	  .text = "Whether to disable output backoff for slow clients."
 	},
 
 	{ .name = "editor",
