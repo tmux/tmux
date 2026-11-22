@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.318 2026/11/22 15:03:42 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.319 2026/11/22 15:27:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,7 +31,7 @@ static void	screen_write_collect_insert(struct screen_write_ctx *,
 static void	screen_write_collect_redraw(struct screen_write_ctx *, u_int,
 		    u_int, u_int, u_int);
 static void	screen_write_collect_insert_clear(struct screen_write_ctx *,
-		    u_int, u_int, u_int);
+		    u_int, u_int, u_int, u_int);
 static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 		    u_int);
 static void	screen_write_collect_scroll(struct screen_write_ctx *, u_int);
@@ -2021,9 +2021,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, ocx, ocy;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
+	u_int			 y;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2053,43 +2051,11 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-	/* Can't just clear screen, must avoid floating windows. */
-	ocx = s->cx;
-	ocy = s->cy;
-	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
-	} else {
-		xoff = 0;
-		yoff = 0;
-	}
-
-	/* First line (containing the cursor). */
-	if (s->cx <= sx - 1) {
-		r = window_visible_ranges(ctx->wp, xoff + s->cx, yoff + s->cy,
-		    sx - s->cx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-
-	/* Below cursor to bottom. */
-	for (y = s->cy + 1; y < sy; y++) {
-		screen_write_set_cursor(ctx, 0, y);
-		r = window_visible_ranges(ctx->wp, xoff, yoff + y, sx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-	screen_write_set_cursor(ctx, ocx, ocy);
+	/* Insert the clears. Clipping happens when flushed. */
+	if (s->cx < sx)
+		screen_write_collect_insert_clear(ctx, s->cx, s->cy, sx - s->cx, bg);
+	for (y = s->cy + 1; y < sy; y++)
+		screen_write_collect_insert_clear(ctx, 0, y, sx, bg);
 }
 
 /* Clear to start of screen. */
@@ -2099,9 +2065,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s);
-	u_int			 y, i, xoff, yoff, ocx, ocy;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
+	u_int			 y, nx;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2125,41 +2089,13 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-	/* Can't just clear screen, must avoid floating windows. */
-	ocx = s->cx;
-	ocy = s->cy;
-	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
-	} else {
-		xoff = 0;
-		yoff = 0;
-	}
-
-	/* Top to above the cursor. */
-	for (y = 0; y < s->cy; y++) {
-		screen_write_set_cursor(ctx, 0, y);
-		r = window_visible_ranges(ctx->wp, xoff, yoff + y, sx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-
-	/* Last line (containing the cursor). */
-	screen_write_set_cursor(ctx, 0, s->cy);
-	r = window_visible_ranges(ctx->wp, xoff, yoff + ocy, s->cx + 1, NULL);
-	for (i = 0; i < r->used; i++) {
-		ri = &r->ranges[i];
-		if (ri->nx == 0)
-			continue;
-		screen_write_collect_insert_clear(ctx, ri->px - xoff, ri->nx,
-		    bg);
-	}
-	screen_write_set_cursor(ctx, ocx, ocy);
+	/* Insert the clears. Clipping happens when flushed. */
+	for (y = 0; y < s->cy; y++)
+		screen_write_collect_insert_clear(ctx, 0, y, sx, bg);
+	nx = s->cx + 1;
+	if (nx > sx)
+		nx = sx;
+	screen_write_collect_insert_clear(ctx, 0, s->cy, nx, bg);
 }
 
 /* Clear entire screen. */
@@ -2169,9 +2105,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, ocx, ocy;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
+	u_int			 y;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2193,30 +2127,9 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-	/* Can't just clear screen, must avoid floating windows. */
-	ocx = s->cx;
-	ocy = s->cy;
-	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
-	} else {
-		xoff = 0;
-		yoff = 0;
-	}
-
-	/* Clear every line. */
-	for (y = 0; y < sy; y++) {
-		screen_write_set_cursor(ctx, 0, y);
-		r = window_visible_ranges(ctx->wp, xoff, yoff + y, sx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-	screen_write_set_cursor(ctx, ocx, ocy);
+	/* Insert the clears. Clipping happens when flushed. */
+	for (y = 0; y < sy; y++)
+		screen_write_collect_insert_clear(ctx, 0, y, sx, bg);
 }
 
 /* Clear entire history. */
@@ -2628,7 +2541,7 @@ screen_write_collect_insert(struct screen_write_ctx *ctx,
 /* Insert a clear for part of a line. */
 static void
 screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
-    u_int nx, u_int bg)
+    u_int py, u_int nx, u_int bg)
 {
 	struct screen_write_citem	*ci = ctx->item;
 
@@ -2637,7 +2550,7 @@ screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
 		ci->used = nx;
 		ci->type = CLEAR;
 		ci->bg = bg;
-		screen_write_collect_insert(ctx, ci, ctx->s->cy);
+		screen_write_collect_insert(ctx, ci, py);
 	}
 }
 
@@ -2705,13 +2618,13 @@ screen_write_insert_clears(struct screen_write_ctx *ctx, u_int px, u_int nx)
 		else if (gc.bg != bg) {
 			n = xx - start;
 			log_debug("%s: from %u, size %u", __func__, start, n);
-			screen_write_collect_insert_clear(ctx, start, n, bg);
+			screen_write_collect_insert_clear(ctx, start, s->cy, n, bg);
 			start = xx;
 			bg = gc.bg;
 		}
 	}
 	log_debug("%s: from %u, size %u", __func__, start, xx - start);
-	screen_write_collect_insert_clear(ctx, start, xx - start, bg);
+	screen_write_collect_insert_clear(ctx, start, s->cy, xx - start, bg);
 }
 
 /* Finish and store collected cells. */
