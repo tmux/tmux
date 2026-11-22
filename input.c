@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.285 2026/11/21 15:36:05 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.286 2026/11/21 21:48:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -138,12 +138,13 @@ struct input_ctx {
 	u_int				 request_count;
 	struct event			 request_timer;
 
-	/*
-	 * All input received since we were last in the ground state. Sent to
-	 * control clients on connection.
-	 */
-	struct evbuffer			*since_ground;
-	struct event			 ground_timer;
+	/* Input since the last ground state, for capture-pane -P. */
+#define INPUT_GROUND_START 64
+	u_char			       *since_ground_buf;
+	size_t				since_ground_len;
+	size_t				since_ground_space;
+	struct event			ground_timer;
+
 #ifdef ENABLE_IMAGES
 	void				*kitty_state;
 #endif
@@ -888,9 +889,8 @@ input_init(struct window_pane *wp, struct colour_palette *palette)
 	ictx->input_space = INPUT_BUF_START;
 	ictx->input_buf = xmalloc(INPUT_BUF_START);
 
-	ictx->since_ground = evbuffer_new();
-	if (ictx->since_ground == NULL)
-		fatalx("out of memory");
+	ictx->since_ground_space = INPUT_GROUND_START;
+	ictx->since_ground_buf = xmalloc(INPUT_GROUND_START);
 	evtimer_set(&ictx->ground_timer, input_ground_timer_callback, ictx);
 
 	TAILQ_INIT(&ictx->requests);
@@ -920,7 +920,7 @@ input_free(struct input_ctx *ictx)
 #ifdef ENABLE_IMAGES
 	kitty_free_state(ictx->kitty_state);
 #endif
-	evbuffer_free(ictx->since_ground);
+	free(ictx->since_ground_buf);
 	event_del(&ictx->ground_timer);
 
 	screen_write_stop_sync(ictx->wp);
@@ -954,10 +954,11 @@ input_reset(struct input_ctx *ictx, int clear)
 }
 
 /* Return pending data. */
-struct evbuffer *
-input_pending(struct input_ctx *ictx)
+const char *
+input_pending(struct input_ctx *ictx, size_t *len)
 {
-	return (ictx->since_ground);
+	*len = ictx->since_ground_len;
+	return ((const char *)ictx->since_ground_buf);
 }
 
 /* Change input state. */
@@ -994,6 +995,18 @@ input_try_multiple(struct input_ctx *ictx, const struct input_transition *itr,
 	memcpy(&ictx->last, &gc->data, sizeof ictx->last);
 	ictx->flags |= INPUT_LAST;
 	return (n);
+}
+
+/* Save a byte of pending input. */
+static void
+input_add_pending(struct input_ctx *ictx)
+{
+	if (ictx->since_ground_len == ictx->since_ground_space) {
+		ictx->since_ground_buf = xreallocarray(ictx->since_ground_buf,
+		    2, ictx->since_ground_space);
+		ictx->since_ground_space *= 2;
+	}
+	ictx->since_ground_buf[ictx->since_ground_len++] = ictx->ch;
 }
 
 /* Parse data. */
@@ -1057,7 +1070,7 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 
 		/* If not in ground state, save input. */
 		if (ictx->state != &input_state_ground)
-			evbuffer_add(ictx->since_ground, &ictx->ch, 1);
+			input_add_pending(ictx);
 	}
 }
 
@@ -1266,7 +1279,12 @@ static void
 input_ground(struct input_ctx *ictx)
 {
 	event_del(&ictx->ground_timer);
-	evbuffer_drain(ictx->since_ground, EVBUFFER_LENGTH(ictx->since_ground));
+	ictx->since_ground_len = 0;
+	if (ictx->since_ground_space > INPUT_GROUND_START) {
+		ictx->since_ground_space = INPUT_GROUND_START;
+		ictx->since_ground_buf = xrealloc(ictx->since_ground_buf,
+		    INPUT_GROUND_START);
+	}
 
 	if (ictx->input_space > INPUT_BUF_START) {
 		ictx->input_space = INPUT_BUF_START;
