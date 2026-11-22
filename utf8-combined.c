@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8-combined.c,v 1.14 2026/11/22 09:06:48 nicm Exp $ */
+/* $OpenBSD: utf8-combined.c,v 1.15 2026/11/22 11:39:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2023 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -105,6 +105,14 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 {
 	int	w, a;
 
+	/* Only regional indicators or skin tone modifiers matter. */
+	if (with->size < 4 ||
+	    with->data[0] != 0xf0 ||
+	    with->data[1] != 0x9f ||
+	    (with->data[2] != 0x87 && with->data[2] != 0x8f))
+		return (0);
+
+	/* Convert to Unicode. */
 	if (utf8_towc(with, &w) != UTF8_DONE)
 		return (0);
 	if (utf8_towc(add, &a) != UTF8_DONE)
