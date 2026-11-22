@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8-combined.c,v 1.13 2026/11/21 12:33:23 nicm Exp $ */
+/* $OpenBSD: utf8-combined.c,v 1.14 2026/11/22 09:06:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2023 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -119,7 +119,7 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 		return (1);
 	}
 
-	/* Emoji skin tone modifiers. */
+	/* Emoji modifier bases. */
 	switch (a) {
 	case 0x0261D:
 	case 0x026F9:
@@ -127,8 +127,21 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 	case 0x0270B:
 	case 0x0270C:
 	case 0x0270D:
+	case 0x1F385:
+	case 0x1F3C2:
+	case 0x1F3C3:
+	case 0x1F3C4:
+	case 0x1F3C7:
+	case 0x1F3CA:
 	case 0x1F3CB:
 	case 0x1F3CC:
+	case 0x1F442:
+	case 0x1F443:
+	case 0x1F446:
+	case 0x1F447:
+	case 0x1F448:
+	case 0x1F449:
+	case 0x1F44A:
 	case 0x1F44B:
 	case 0x1F44C:
 	case 0x1F44D:
@@ -139,7 +152,12 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 	case 0x1F467:
 	case 0x1F468:
 	case 0x1F469:
+	case 0x1F46A:
+	case 0x1F46B:
+	case 0x1F46C:
+	case 0x1F46D:
 	case 0x1F46E:
+	case 0x1F46F:
 	case 0x1F470:
 	case 0x1F471:
 	case 0x1F472:
@@ -156,6 +174,8 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 	case 0x1F485:
 	case 0x1F486:
 	case 0x1F487:
+	case 0x1F48F:
+	case 0x1F491:
 	case 0x1F4AA:
 	case 0x1F574:
 	case 0x1F575:
@@ -171,19 +191,42 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 	case 0x1F64D:
 	case 0x1F64E:
 	case 0x1F64F:
+	case 0x1F6A3:
 	case 0x1F6B4:
 	case 0x1F6B5:
 	case 0x1F6B6:
+	case 0x1F6C0:
+	case 0x1F6CC:
+	case 0x1F90C:
+	case 0x1F90F:
+	case 0x1F918:
+	case 0x1F919:
+	case 0x1F91A:
+	case 0x1F91B:
+	case 0x1F91C:
+	case 0x1F91D:
+	case 0x1F91E:
+	case 0x1F91F:
 	case 0x1F926:
+	case 0x1F930:
+	case 0x1F931:
+	case 0x1F932:
+	case 0x1F933:
+	case 0x1F934:
+	case 0x1F935:
+	case 0x1F936:
 	case 0x1F937:
 	case 0x1F938:
 	case 0x1F939:
+	case 0x1F93C:
 	case 0x1F93D:
 	case 0x1F93E:
+	case 0x1F977:
 	case 0x1F9B5:
 	case 0x1F9B6:
 	case 0x1F9B8:
 	case 0x1F9B9:
+	case 0x1F9BB:
 	case 0x1F9CD:
 	case 0x1F9CE:
 	case 0x1F9CF:
@@ -200,8 +243,21 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 	case 0x1F9DB:
 	case 0x1F9DC:
 	case 0x1F9DD:
-	case 0x1F9DE:
-	case 0x1F9DF:
+	case 0x1FAC3:
+	case 0x1FAC4:
+	case 0x1FAC5:
+	case 0x1FAF0:
+	case 0x1FAF1:
+	case 0x1FAF2:
+	case 0x1FAF3:
+	case 0x1FAF4:
+	case 0x1FAF5:
+	case 0x1FAF6:
+	case 0x1FAF7:
+	case 0x1FAF8:
+	case 0x1FAF9:
+	case 0x1FAFA:
+		/* Emoji skin tone modifiers. */
 		if (w >= 0x1F3FB && w <= 0x1F3FF)
 			return (1);
 		break;
