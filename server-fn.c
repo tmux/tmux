@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.156 2026/11/21 12:45:13 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.157 2026/11/22 15:03:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -362,6 +362,8 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	u_int			 sx = screen_size_x(&wp->base);
 	u_int			 sy = screen_size_y(&wp->base);
 
+	screen_write_flush_batch(wp);
+
 	if (wp->fd != -1) {
 		window_pane_utmp_remove(wp);
 		bufferevent_free(wp->event);
@@ -369,6 +371,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		close(wp->fd);
 		wp->fd = -1;
 	}
+
 	if (wp->pipe_fd != -1) {
 		bufferevent_free(wp->pipe_event);
 		wp->pipe_event = NULL;

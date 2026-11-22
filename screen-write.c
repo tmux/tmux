@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.317 2026/11/22 13:39:07 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.319 2026/11/22 15:27:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,7 +31,7 @@ static void	screen_write_collect_insert(struct screen_write_ctx *,
 static void	screen_write_collect_redraw(struct screen_write_ctx *, u_int,
 		    u_int, u_int, u_int);
 static void	screen_write_collect_insert_clear(struct screen_write_ctx *,
-		    u_int, u_int, u_int);
+		    u_int, u_int, u_int, u_int);
 static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 		    u_int);
 static void	screen_write_collect_scroll(struct screen_write_ctx *, u_int);
@@ -42,6 +42,7 @@ static void	screen_write_clear_cell(struct screen_write_ctx *, u_int,
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct grid_cell *);
 static void	screen_write_flush_pending(struct window_pane *);
+static void	screen_write_start_batch(struct window_pane *);
 
 struct screen_write_citem {
 	u_int				x;
@@ -236,12 +237,26 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	return (0);
 }
 
+/* Can batching be used? */
+static int
+screen_write_can_batch(struct window_pane *wp)
+{
+	if (SCREEN_IS_ALTERNATE(&wp->base) && (wp->flags & PANE_SYNCSEEN))
+		return (0);
+	return (1);
+}
 
-/* Keep pending output until end of synchronized update. */
+/* Keep pending output until end of synchronized update or batch. */
 static int
 screen_write_keep_pending(struct screen_write_ctx *ctx)
 {
-	return (ctx->s->mode & MODE_SYNC);
+	if (ctx->s->mode & MODE_SYNC)
+		return (1);
+	if (ctx->wp != NULL &&
+	    (ctx->flags & SCREEN_WRITE_INPUT) &&
+	    screen_write_can_batch(ctx->wp))
+		return (1);
+	return (0);
 }
 
 /* Should we draw these cells? */
@@ -443,9 +458,74 @@ screen_write_start(struct screen_write_ctx *ctx, struct screen *s)
 void
 screen_write_stop(struct screen_write_ctx *ctx)
 {
+	struct window_pane	*wp = ctx->wp;
+
 	screen_write_collect_end(ctx);
 	screen_write_collect_flush(ctx, 0, __func__);
 	screen_write_free_citem(ctx->item);
+
+	if (wp == NULL ||
+	    (~ctx->flags & SCREEN_WRITE_INPUT) ||
+	    (ctx->s->mode & MODE_SYNC))
+		return;
+	if (!screen_write_can_batch(wp))
+		screen_write_flush_batch(wp);
+	else {
+		if (!event_initialized(&wp->write_timer) ||
+		    !evtimer_pending(&wp->write_timer, NULL))
+			screen_write_flush_pending(wp);
+		screen_write_start_batch(wp);
+	}
+}
+
+/* Flush a batch. */
+void
+screen_write_flush_batch(struct window_pane *wp)
+{
+	if (event_initialized(&wp->write_timer))
+		evtimer_del(&wp->write_timer);
+
+	if (wp->screen != &wp->base)
+		screen_write_clear_pending(wp);
+	else if (~wp->base.mode & MODE_SYNC)
+		screen_write_flush_pending(wp);
+}
+
+/* Flush batch on timer. */
+static void
+screen_write_batch_callback(__unused int fd, __unused short events, void *arg)
+{
+	struct window_pane	*wp = arg;
+	struct screen		*s = &wp->base;
+	int			 pending = 0;
+
+	if (s->write_start != s->write_end || s->write_scrolled != 0)
+		pending = 1;
+	screen_write_flush_batch(wp);
+	if (pending && (~s->mode & MODE_SYNC) && screen_write_can_batch(wp))
+		screen_write_start_batch(wp);
+}
+
+/* Start batch timer. */
+static void
+screen_write_start_batch(struct window_pane *wp)
+{
+	struct timeval	 tv = { .tv_usec = 5000 };
+
+	if (!event_initialized(&wp->write_timer))
+		evtimer_set(&wp->write_timer, screen_write_batch_callback, wp);
+	if (!evtimer_pending(&wp->write_timer, NULL))
+		evtimer_add(&wp->write_timer, &tv);
+}
+
+/* Flush before operations which cannot be collected. */
+static void
+screen_write_flush(struct screen_write_ctx *ctx)
+{
+	screen_write_collect_end(ctx);
+	screen_write_collect_flush(ctx, 0, __func__);
+	if (ctx->wp != NULL)
+		screen_write_flush_batch(ctx->wp);
 }
 
 /* Reset screen state. */
@@ -454,6 +534,7 @@ screen_write_reset(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
 
+	screen_write_flush(ctx);
 	screen_reset_tabs(s);
 	screen_write_scrollregion(ctx, 0, screen_size_y(s) - 1);
 
@@ -1105,7 +1186,12 @@ screen_write_start_sync(struct window_pane *wp)
 	if (wp == NULL)
 		return;
 
+	screen_write_flush_batch(wp);
+
+	if (SCREEN_IS_ALTERNATE(&wp->base))
+		wp->flags |= PANE_SYNCSEEN;
 	wp->base.mode |= MODE_SYNC;
+
 	if (!event_initialized(&wp->sync_timer))
 		evtimer_set(&wp->sync_timer, screen_write_sync_callback, wp);
 	evtimer_add(&wp->sync_timer, &tv);
@@ -1347,11 +1433,11 @@ screen_write_flush_pending(struct window_pane *wp)
 	struct screen_write_ctx	 ctx;
 	struct screen		*s = &wp->base;
 
-	if (s->write_start == s->write_end && s->write_scrolled == 0)
-		return;
-	screen_write_start_pane(&ctx, wp, s);
-	ctx.flags |= SCREEN_WRITE_PENDING;
-	screen_write_stop(&ctx);
+	if (s->write_start != s->write_end || s->write_scrolled != 0) {
+		screen_write_start_pane(&ctx, wp, s);
+		ctx.flags |= SCREEN_WRITE_PENDING;
+		screen_write_stop(&ctx);
+	}
 }
 
 /* Clear pending synchronized output. */
@@ -2007,9 +2093,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, ocx, ocy;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
+	u_int			 y;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2045,43 +2129,11 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-	/* Can't just clear screen, must avoid floating windows. */
-	ocx = s->cx;
-	ocy = s->cy;
-	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
-	} else {
-		xoff = 0;
-		yoff = 0;
-	}
-
-	/* First line (containing the cursor). */
-	if (s->cx <= sx - 1) {
-		r = window_visible_ranges(ctx->wp, xoff + s->cx, yoff + s->cy,
-		    sx - s->cx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-
-	/* Below cursor to bottom. */
-	for (y = s->cy + 1; y < sy; y++) {
-		screen_write_set_cursor(ctx, 0, y);
-		r = window_visible_ranges(ctx->wp, xoff, yoff + y, sx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-	screen_write_set_cursor(ctx, ocx, ocy);
+	/* Insert the clears. Clipping happens when flushed. */
+	if (s->cx < sx)
+		screen_write_collect_insert_clear(ctx, s->cx, s->cy, sx - s->cx, bg);
+	for (y = s->cy + 1; y < sy; y++)
+		screen_write_collect_insert_clear(ctx, 0, y, sx, bg);
 }
 
 /* Clear to start of screen. */
@@ -2091,9 +2143,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s);
-	u_int			 y, i, xoff, yoff, ocx, ocy;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
+	u_int			 y, nx;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2122,41 +2172,13 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-	/* Can't just clear screen, must avoid floating windows. */
-	ocx = s->cx;
-	ocy = s->cy;
-	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
-	} else {
-		xoff = 0;
-		yoff = 0;
-	}
-
-	/* Top to above the cursor. */
-	for (y = 0; y < s->cy; y++) {
-		screen_write_set_cursor(ctx, 0, y);
-		r = window_visible_ranges(ctx->wp, xoff, yoff + y, sx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-
-	/* Last line (containing the cursor). */
-	screen_write_set_cursor(ctx, 0, s->cy);
-	r = window_visible_ranges(ctx->wp, xoff, yoff + ocy, s->cx + 1, NULL);
-	for (i = 0; i < r->used; i++) {
-		ri = &r->ranges[i];
-		if (ri->nx == 0)
-			continue;
-		screen_write_collect_insert_clear(ctx, ri->px - xoff, ri->nx,
-		    bg);
-	}
-	screen_write_set_cursor(ctx, ocx, ocy);
+	/* Insert the clears. Clipping happens when flushed. */
+	for (y = 0; y < s->cy; y++)
+		screen_write_collect_insert_clear(ctx, 0, y, sx, bg);
+	nx = s->cx + 1;
+	if (nx > sx)
+		nx = sx;
+	screen_write_collect_insert_clear(ctx, 0, s->cy, nx, bg);
 }
 
 /* Clear entire screen. */
@@ -2166,9 +2188,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, ocx, ocy;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
+	u_int			 y;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2201,30 +2221,9 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-	/* Can't just clear screen, must avoid floating windows. */
-	ocx = s->cx;
-	ocy = s->cy;
-	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
-	} else {
-		xoff = 0;
-		yoff = 0;
-	}
-
-	/* Clear every line. */
-	for (y = 0; y < sy; y++) {
-		screen_write_set_cursor(ctx, 0, y);
-		r = window_visible_ranges(ctx->wp, xoff, yoff + y, sx, NULL);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			screen_write_collect_insert_clear(ctx, ri->px - xoff,
-			    ri->nx, bg);
-		}
-	}
-	screen_write_set_cursor(ctx, ocx, ocy);
+	/* Insert the clears. Clipping happens when flushed. */
+	for (y = 0; y < sy; y++)
+		screen_write_collect_insert_clear(ctx, 0, y, sx, bg);
 }
 
 /* Clear entire history. */
@@ -2544,7 +2543,10 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 			} else if (ci->type == REDRAW) {
 				screen_write_initctx(ctx, &ttyctx, 1, 1);
 				ttyctx.n = w_length;
-				tty_write(tty_cmd_redrawline, &ttyctx);
+				if (wp != NULL && wp->prompt != NULL)
+					screen_write_redraw_cb(&ttyctx, y, 1);
+				else
+					tty_write(tty_cmd_redrawline, &ttyctx);
 			} else {
 				screen_write_initctx(ctx, &ttyctx, 0, 1);
 				if (ttyctx.flags & TTY_CTX_PANE_OBSCURED) {
@@ -2633,7 +2635,7 @@ screen_write_collect_insert(struct screen_write_ctx *ctx,
 /* Insert a clear for part of a line. */
 static void
 screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
-    u_int nx, u_int bg)
+    u_int py, u_int nx, u_int bg)
 {
 	struct screen_write_citem	*ci = ctx->item;
 
@@ -2642,7 +2644,7 @@ screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
 		ci->used = nx;
 		ci->type = CLEAR;
 		ci->bg = bg;
-		screen_write_collect_insert(ctx, ci, ctx->s->cy);
+		screen_write_collect_insert(ctx, ci, py);
 	}
 }
 
@@ -2714,13 +2716,13 @@ screen_write_insert_clears(struct screen_write_ctx *ctx, u_int px, u_int nx)
 		else if (gc.bg != bg) {
 			n = xx - start;
 			log_debug("%s: from %u, size %u", __func__, start, n);
-			screen_write_collect_insert_clear(ctx, start, n, bg);
+			screen_write_collect_insert_clear(ctx, start, s->cy, n, bg);
 			start = xx;
 			bg = gc.bg;
 		}
 	}
 	log_debug("%s: from %u, size %u", __func__, start, xx - start);
-	screen_write_collect_insert_clear(ctx, start, xx - start, bg);
+	screen_write_collect_insert_clear(ctx, start, s->cy, xx - start, bg);
 }
 
 /* Finish and store collected cells. */
@@ -3271,6 +3273,7 @@ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len,
 {
 	struct tty_ctx	ttyctx;
 
+	screen_write_flush(ctx);
 	screen_write_initctx(ctx, &ttyctx, 0, 0);
 	if (allow_invisible_panes)
 		ttyctx.flags |= TTY_CTX_INVISIBLE_PANES;
@@ -3292,11 +3295,15 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 	if (wp != NULL && !options_get_number(wp->options, "alternate-screen"))
 		return;
 
-	screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_flush(ctx);
 	if (!screen_alternate_on(ctx->s, gc, cursor))
 		return;
 
 	if (wp != NULL) {
+		if (ctx->s->mode & MODE_SYNC)
+			wp->flags |= PANE_SYNCSEEN;
+		else
+			wp->flags &= ~PANE_SYNCSEEN;
 		pending = !TAILQ_EMPTY(&wp->resize_queue);
 		window_pane_clear_resizes(wp, NULL);
 		if (event_initialized(&wp->resize_timer))
@@ -3325,11 +3332,12 @@ screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
 	if (wp != NULL && !options_get_number(wp->options, "alternate-screen"))
 		return;
 
-	screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_flush(ctx);
 	if (!screen_alternate_off(ctx->s, gc, cursor))
 		return;
 
 	if (wp != NULL) {
+		wp->flags &= ~PANE_SYNCSEEN;
 		layout_fix_panes(wp->window, NULL);
 		server_redraw_window_borders(wp->window);
 	}

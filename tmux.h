@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1491 2026/11/22 14:53:31 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1493 2026/11/22 15:19:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1398,6 +1398,7 @@ struct window_pane {
 #define PANE_FLOATOVERZOOM 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
 #define PANE_UTMP 0x800000
+#define PANE_SYNCSEEN 0x1000000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1434,6 +1435,7 @@ struct window_pane {
 	struct window_pane_resizes resize_queue;
 	struct event	 resize_timer;
 	struct event	 sync_timer;
+	struct event	 write_timer;
 
 	struct input_ctx *ictx;
 
@@ -3045,6 +3047,8 @@ void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
+void	tty_clear_line(struct tty *, const struct grid_cell *, u_int, u_int,
+	    u_int, u_int, int);
 void	tty_repeat_space(struct tty *, u_int);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
@@ -3726,6 +3730,7 @@ void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
 void	 screen_write_end_sync(struct screen_write_ctx *);
 void	 screen_write_clear_pending(struct window_pane *);
+void	 screen_write_flush_batch(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
