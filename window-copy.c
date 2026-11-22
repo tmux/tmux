@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.447 2026/11/18 09:27:33 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.448 2026/11/22 14:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -762,7 +762,7 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 		data->backing_written = 1;
 	old_cy = backing->cy;
 	if (parse) {
-		vasprintf(&text, fmt, ap);
+		xvasprintf(&text, fmt, ap);
 		input_parse_screen(data->ictx, backing, window_copy_init_ctx_cb,
 		    data, text, strlen(text));
 		free(text);
