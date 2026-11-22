@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.54 2026/11/21 12:36:13 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.55 2026/11/22 10:51:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -569,6 +569,8 @@ tty_apply_features(struct tty_term *term)
 			}
 		}
 		term->flags |= (tf->flags & ~TERM_NOREPLACE);
+		if (tf == &tty_feature_rgb)
+			term->flags |= TERM_DIRECTRGB;
 		if (tf == &tty_feature_utf8)
 			c->flags |= CLIENT_UTF8;
 	}

@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.115 2026/11/12 11:19:23 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.116 2026/11/22 10:51:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -368,7 +368,7 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 {
 	const struct tty_term_code_entry	*ent;
 	struct tty_code				*code;
-	size_t                                   offset = 0;
+	size_t					 offset = 0;
 	char					*cp, *value, *s;
 	const char				*errstr, *name = term->name;
 	u_int					 i;
@@ -410,6 +410,10 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 			if ((flags & TERM_NOREPLACE) &&
 			    code->type != TTYCODE_NONE)
 				continue;
+			if (i == TTYC_CUP)
+				term->flags &= ~TERM_DIRECTCUP;
+			if (i == TTYC_SETRGBF || i == TTYC_SETRGBB)
+				term->flags &= ~TERM_DIRECTRGB;
 
 			if (remove) {
 				if (code->type == TTYCODE_STRING)
@@ -504,7 +508,14 @@ tty_term_apply_overrides(struct tty_term *term)
 		a = options_array_next(a);
 	}
 
-	/* Log the SIXEL flag. */
+	/* Update the VT100 flag. */
+	s = tty_term_string(term, TTYC_CLEAR);
+	if (tty_term_flag(term, TTYC_XT) || strncmp(s, "\033[", 2) == 0)
+		term->flags |= TERM_VT100LIKE;
+	else
+		term->flags &= ~(TERM_VT100LIKE|TERM_DIRECTCUP);
+	log_debug("VT100LIKE flag is %d", !!(term->flags & TERM_VT100LIKE));
+	log_debug("DIRECTCUP flag is %d", !!(term->flags & TERM_DIRECTCUP));
 	log_debug("SIXEL flag is %d", !!(term->flags & TERM_SIXEL));
 
 	/* Update the RGB flag if the terminal has RGB colours. */
@@ -512,8 +523,9 @@ tty_term_apply_overrides(struct tty_term *term)
 	    tty_term_has(term, TTYC_SETRGBB))
 		term->flags |= TERM_RGBCOLOURS;
 	else
-		term->flags &= ~TERM_RGBCOLOURS;
+		term->flags &= ~(TERM_RGBCOLOURS|TERM_DIRECTRGB);
 	log_debug("RGBCOLOURS flag is %d", !!(term->flags & TERM_RGBCOLOURS));
+	log_debug("DIRECTRGB flag is %d", !!(term->flags & TERM_DIRECTRGB));
 
 	/*
 	 * Set or clear the DECSLRM flag if the terminal has the margin
@@ -610,6 +622,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	term = xcalloc(1, sizeof *term);
 	term->tty = tty;
 	term->name = xstrdup(name);
+	term->flags = TERM_DIRECTCUP;
 	term->codes = xcalloc(tty_term_ncodes(), sizeof *term->codes);
 	LIST_INSERT_HEAD(&tty_terms, term, entry);
 
@@ -674,7 +687,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 		if (strcasecmp(envent->value, "truecolor") == 0 ||
 		    strcasecmp(envent->value, "24bit") == 0)
 			tty_parse_client_features(c, "RGB", ",");
- 		else if (strstr(envent->value, "256") != NULL)
+		else if (strstr(envent->value, "256") != NULL)
 			tty_parse_client_features(c, "256", ",");
 	}
 
@@ -703,11 +716,8 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	 * Also add few features that VT100-like terminals should either
 	 * support or safely ignore.
 	 */
-	s = tty_term_string(term, TTYC_CLEAR);
-	if (tty_term_flag(term, TTYC_XT) || strncmp(s, "\033[", 2) == 0) {
-		term->flags |= TERM_VT100LIKE;
+	if (term->flags & TERM_VT100LIKE)
 		tty_parse_client_features(c, "bpaste,focus,title", ",");
-	}
 
 	/* Add RGB feature if terminal has RGB colours. */
 	if ((tty_term_flag(term, TTYC_TC) || tty_term_has(term, TTYC_RGB)) &&
@@ -883,6 +893,15 @@ const char *
 tty_term_string_ii(struct tty_term *term, enum tty_code_code code, int a, int b)
 {
 	const char	*x = tty_term_string(term, code), *s;
+	static char	 e[64];
+
+	if (code == TTYC_CUP &&
+	    (term->flags & TERM_DIRECTCUP) &&
+	    a >= 0 &&
+	    b >= 0) {
+		snprintf(e, sizeof e, "\033[%d;%dH", a + 1, b + 1);
+		return (e);
+	}
 
 	s = tiparm_s(2, 0, x, a, b);
 	if (s == NULL) {
@@ -897,6 +916,19 @@ tty_term_string_iii(struct tty_term *term, enum tty_code_code code, int a,
     int b, int c)
 {
 	const char	*x = tty_term_string(term, code), *s;
+	static char	 e[64];
+
+	if ((code == TTYC_SETRGBF || code == TTYC_SETRGBB) &&
+	    (term->flags & TERM_DIRECTRGB) &&
+	    a >= 0 &&
+	    b >= 0 &&
+	    c >= 0) {
+		if (code == TTYC_SETRGBF)
+			snprintf(e, sizeof e, "\033[38;2;%d;%d;%dm", a, b, c);
+		else
+			snprintf(e, sizeof e, "\033[48;2;%d;%d;%dm", a, b, c);
+		return (e);
+	}
 
 	s = tiparm_s(3, 0, x, a, b, c);
 	if (s == NULL) {
