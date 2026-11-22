@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.116 2026/11/22 10:51:37 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.117 2026/11/22 16:39:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -911,24 +911,60 @@ tty_term_string_ii(struct tty_term *term, enum tty_code_code code, int a, int b)
 	return (s);
 }
 
+static const char *
+tty_check_rgb_cache(struct tty_term *term, enum tty_code_code code, int a,
+    int b, int c)
+{
+	struct tty_term_rgb	*rgb;
+	u_int			 colour, hash, i;
+
+	if (code != TTYC_SETRGBF && code != TTYC_SETRGBB)
+		return (NULL);
+	if ((~term->flags & TERM_DIRECTRGB) ||
+	    a < 0 || a > 255 ||
+	    b < 0 || b > 255 ||
+	    c < 0 || c > 255)
+		return (NULL);
+
+	colour = ((u_int)a << 16)|((u_int)b << 8)|(u_int)c;
+	hash = colour * 2654435761U;
+	hash ^= hash >> 16;
+	hash %= nitems(term->setrgbf);
+	if (code == TTYC_SETRGBF)
+		rgb = &term->setrgbf[hash];
+	else
+		rgb = &term->setrgbb[hash];
+	for (i = 0; i < nitems(rgb->colour); i++) {
+		if (rgb->string[i][0] != '\0' && rgb->colour[i] == colour) {
+			rgb->next = i ^ 1;
+			return (rgb->string[i]);
+		}
+	}
+
+	i = rgb->next;
+	rgb->next = i ^ 1;
+	rgb->colour[i] = colour;
+
+	if (code == TTYC_SETRGBF) {
+		snprintf(rgb->string[i], sizeof rgb->string[i],
+		    "\033[38;2;%d;%d;%dm", a, b, c);
+	} else {
+		snprintf(rgb->string[i], sizeof rgb->string[i],
+		    "\033[48;2;%d;%d;%dm", a, b, c);
+	}
+	return (rgb->string[i]);
+}
+
 const char *
 tty_term_string_iii(struct tty_term *term, enum tty_code_code code, int a,
     int b, int c)
 {
-	const char	*x = tty_term_string(term, code), *s;
-	static char	 e[64];
+	const char	*x, *s;
 
-	if ((code == TTYC_SETRGBF || code == TTYC_SETRGBB) &&
-	    (term->flags & TERM_DIRECTRGB) &&
-	    a >= 0 &&
-	    b >= 0 &&
-	    c >= 0) {
-		if (code == TTYC_SETRGBF)
-			snprintf(e, sizeof e, "\033[38;2;%d;%d;%dm", a, b, c);
-		else
-			snprintf(e, sizeof e, "\033[48;2;%d;%d;%dm", a, b, c);
-		return (e);
-	}
+	s = tty_check_rgb_cache(term, code, a, b, c);
+	if (s != NULL)
+		return (s);
+	x = tty_term_string(term, code);
 
 	s = tiparm_s(3, 0, x, a, b, c);
 	if (s == NULL) {

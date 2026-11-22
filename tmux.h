@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1493 2026/11/22 15:19:13 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1494 2026/11/22 16:39:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1790,17 +1790,25 @@ struct key_event {
 	size_t			 len;
 };
 
+/* Two cached RGB expansions per hash bucket. */
+struct tty_term_rgb {
+	u_int		 colour[2];
+	char		 string[2][64];
+	u_int		 next;
+};
+
 /* Terminal definition. */
 struct tty_term {
-	char		*name;
-	struct tty	*tty;
-	int		 applied_features;
+	char			*name;
+	struct tty		*tty;
+	int			 applied_features;
 
-	char		 acs[UCHAR_MAX + 1][2];
-
-	struct tty_code	*codes;
-	char		*setaf[256];
-	char		*setab[256];
+	char			 acs[UCHAR_MAX + 1][2];
+	struct tty_code		*codes;
+	char			*setaf[256];
+	char			*setab[256];
+	struct tty_term_rgb	 setrgbf[32];
+	struct tty_term_rgb	 setrgbb[32];
 
 #define TERM_256COLOURS 0x1
 #define TERM_NOAM 0x2
@@ -1814,9 +1822,9 @@ struct tty_term {
 #define TERM_KITTYGRAPHICS 0x200
 #define TERM_DIRECTCUP 0x400
 #define TERM_DIRECTRGB 0x800
-	int		 flags;
+	int			 flags;
 
-	LIST_ENTRY(tty_term) entry;
+	LIST_ENTRY(tty_term)	 entry;
 };
 LIST_HEAD(tty_terms, tty_term);
 
