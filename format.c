@@ -4674,7 +4674,7 @@ format_pretty_time(time_t t, int seconds)
 {
 	struct tm	now_tm, tm;
 	time_t		now, age;
-	char		s[9];
+	char		s[64];
 
 	time(&now);
 	if (now < t)
