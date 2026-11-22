@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.537 2026/11/21 12:44:15 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.538 2026/11/22 10:04:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2221,13 +2221,13 @@ server_client_prompt_cursor(struct client *c, struct window_pane *wp, int *mode,
 	*mode &= ~MODE_CURSOR;
 
 	tty_window_offset(tty, &ox, &oy, &sx, &sy);
-	if (status_at_line(c) == 0)
+	if (options_get_number(c->session->options, "status-position") == 0)
 		py = wp->yoff;
 	else
 		py = wp->yoff + wp->sy - 1;
 	px = wp->xoff + wp->prompt_cx;
 	if (px < (int)ox || px > (int)(ox + sx) ||
-	    py < (int)oy || py > (int)(oy + sy))
+	    py < (int)oy || py >= (int)(oy + sy))
 		return (1);
 
 	*cx = px - ox;
