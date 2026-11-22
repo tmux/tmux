@@ -1,4 +1,4 @@
-/* $OpenBSD: environ.c,v 1.31 2026/06/13 20:07:30 nicm Exp $ */
+/* $OpenBSD: environ.c,v 1.32 2026/11/22 14:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -235,7 +235,7 @@ environ_log(struct environ *env, const char *fmt, ...)
 	char			*prefix;
 
 	va_start(ap, fmt);
-	vasprintf(&prefix, fmt, ap);
+	xvasprintf(&prefix, fmt, ap);
 	va_end(ap);
 
 	RB_FOREACH(envent, environ, env) {
