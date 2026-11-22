@@ -135,6 +135,7 @@ session_cmds_fuzzer_pane(struct window *w)
 
 	wp = window_add_pane(w, NULL, 0, 0);
 	wp->ictx = input_init(wp, NULL);
+	wp->shell = xstrdup("/bin/false");
 	wp->fd = open("/dev/null", O_WRONLY);
 	if (wp->fd == -1)
 		errx(1, "open(\"/dev/null\") failed");
@@ -273,6 +274,7 @@ LLVMFuzzerInitialize(__unused int *argc, __unused char ***argv)
 	global_options = options_create(NULL);
 	global_s_options = options_create(NULL);
 	global_w_options = options_create(NULL);
+	TAILQ_INIT(&message_log);
 	for (oe = options_table; oe->name != NULL; oe++) {
 		if (oe->scope & OPTIONS_TABLE_SERVER)
 			options_default(global_options, oe);
