@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.166 2026/11/22 14:25:51 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.167 2026/11/22 15:58:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -709,6 +709,8 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
+		if (px + nx >= gd->sx)
+			gl->flags &= ~GRID_LINE_WRAPPED;
 
 		sx = gd->sx;
 		if (sx > gl->cellsize)
