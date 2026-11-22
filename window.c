@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.393 2026/11/22 09:35:32 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.394 2026/11/22 10:04:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2072,6 +2072,7 @@ enum prompt_key_result
 window_pane_prompt_key(struct window_pane *wp, struct client *c, key_code key,
     struct mouse_event *m)
 {
+	struct options			*oo = c->session->options;
 	struct prompt			*prompt = wp->prompt;
 	struct window_pane_prompt	*wpp = wp->prompt_data;
 	enum prompt_key_result		 result;
@@ -2091,7 +2092,7 @@ window_pane_prompt_key(struct window_pane *wp, struct client *c, key_code key,
 		    cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 			result = PROMPT_KEY_NOT_HANDLED;
 		else {
-			if (c != NULL && status_at_line(c) == 0)
+			if (options_get_number(oo, "status-position") == 0)
 				py = 0;
 			else
 				py = wp->sy - 1;

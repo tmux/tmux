@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.313 2026/11/21 19:38:53 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.315 2026/11/22 10:29:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -744,6 +744,40 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	free(msg);
 }
 
+/* Draw a copied cell, clipping wide characters and tabs to visible columns. */
+static void
+screen_write_fast_copy_cell(struct tty_ctx *ttyctx, struct visible_ranges *r,
+    u_int px, struct grid_cell *gc)
+{
+	u_int	i, width = gc->data.width, visible = 0, ocx = ttyctx->ocx;
+
+	if (gc->flags & GRID_FLAG_PADDING)
+		return;
+	if (width == 0)
+		width = 1;
+	for (i = 0; i < width; i++)
+		visible += window_position_is_visible(r, px + i);
+	if (visible == 0)
+		return;
+
+	ttyctx->cell = gc;
+	if (visible == width) {
+		ttyctx->flags &= TTY_CTX_SYNC;
+		tty_write(tty_cmd_cell, ttyctx);
+	} else {
+		utf8_set(&gc->data, ' ');
+		gc->flags &= ~GRID_FLAG_TAB;
+		for (i = 0; i < width; i++) {
+			if (window_position_is_visible(r, px + i)) {
+				ttyctx->ocx = ocx + i;
+				ttyctx->flags &= TTY_CTX_SYNC;
+				tty_write(tty_cmd_cell, ttyctx);
+			}
+		}
+		ttyctx->ocx = ocx;
+	}
+}
+
 /*
  * Copy from another screen but without the selection stuff. Assumes the target
  * region is already big enough.
@@ -791,11 +825,8 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 #endif
 			grid_view_set_cell(s->grid, s->cx, s->cy, &gc);
 
-			if (!window_position_is_visible(r, xoff + s->cx))
-				break;
-			ttyctx.cell = &gc;
-			ttyctx.flags &= TTY_CTX_SYNC;
-			tty_write(tty_cmd_cell, &ttyctx);
+			screen_write_fast_copy_cell(&ttyctx, r, xoff + s->cx,
+			    &gc);
 			ttyctx.ocx++;
 
 			s->cx++;
@@ -2689,6 +2720,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen			*s = ctx->s;
 	struct window_pane		*wp = ctx->wp;
 	u_int				 y, cx, cy, end, items = 0;
+	u_int				 sy = screen_size_y(s);
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
 
@@ -2697,7 +2729,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	if (s->mode & MODE_SYNC) {
 		if (ctx->scrolled != 0)
 			screen_write_sync_scroll_dirty(ctx);
-		for (y = 0; y < screen_size_y(s); y++) {
+		for (y = s->write_start; y < s->write_end && y < sy; y++) {
 			cl = &s->write_list[y];
 			TAILQ_FOREACH(ci, &cl->items, entry) {
 				screen_write_should_draw_cells(ctx, ci->x, y,
@@ -2719,8 +2751,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 
 	cx = s->cx; cy = s->cy;
 	end = s->write_end;
-	if (end > screen_size_y(s))
-		end = screen_size_y(s);
+	if (end > sy)
+		end = sy;
 	for (y = s->write_start; y < end; y++)
 		items += screen_write_collect_flush_line(ctx, y);
 	s->write_start = s->write_end = 0;
@@ -2730,7 +2762,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	return;
 
 discard:
-	for (y = 0; y < screen_size_y(s); y++) {
+	for (y = s->write_start; y < s->write_end && y < sy; y++) {
 		cl = &s->write_list[y];
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
 			TAILQ_REMOVE(&cl->items, ci, entry);
