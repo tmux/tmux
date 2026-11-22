@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.165 2026/11/21 16:49:01 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.166 2026/11/22 14:25:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1464,7 +1464,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 		grid_move_cells(gd, 0, want, yy + lines, left, 8);
 		from->cellsize = from->cellused = left;
 		lines--;
-	} else if (!wrapped)
+	} else if (~from->flags & GRID_LINE_WRAPPED)
 		gl->flags &= ~GRID_LINE_WRAPPED;
 
 	/* Remove the lines that were completely consumed. */
