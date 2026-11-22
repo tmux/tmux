@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.288 2026/11/22 16:49:40 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.289 2026/11/22 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -155,7 +155,7 @@ static struct input_request *input_make_request(struct input_ctx *,
 static void	input_free_request(struct input_request *);
 static int	input_add_request(struct input_ctx *, enum input_request_type,
 		    int);
-static int	input_number(const char *);
+static int	input_number(char **);
 static int	input_split(struct input_ctx *);
 static int	input_get(struct input_ctx *, u_int, int, int);
 static void	input_set_state(struct input_ctx *,
@@ -1136,18 +1136,19 @@ input_parse_screen(struct input_ctx *ictx, struct screen *s,
 
 /* Parse a nonnegative numeric parameter. */
 static int
-input_number(const char *s)
+input_number(char **ptr)
 {
-	u_int	n = 0, digit;
+	char	*s;
+	u_int	 n = 0;
 
-	if (*s == '\0')
-		return (-1);
-	do {
-		digit = (u_char)*s++ - '0';
-		if (digit > 9 || n >= INT_MAX / 10)
+	for (s = *ptr; *s >= '0' && *s <= '9'; s++) {
+		if (n >= INT_MAX / 10)
 			return (-1);
-		n = n * 10 + digit;
-	} while (*s != '\0');
+		n = n * 10 + (*s - '0');
+	}
+	if (s == *ptr)
+		return (-1);
+	*ptr = s;
 	return (n);
 }
 
@@ -1171,19 +1172,27 @@ input_split(struct input_ctx *ictx)
 	ip = &ictx->param_list[0];
 
 	ptr = ictx->param_buf;
-	while ((out = strsep(&ptr, ";")) != NULL) {
-		if (*out == '\0')
-			ip->type = INPUT_MISSING;
-		else {
-			n = input_number(out);
-			if (n != -1) {
+	while (ptr != NULL) {
+		out = ptr;
+		n = input_number(&ptr);
+		if (*ptr == '\0' || *ptr == ';') {
+			if (n == -1)
+				ip->type = INPUT_MISSING;
+			else {
 				ip->type = INPUT_NUMBER;
 				ip->num = n;
-			} else if (strchr(out, ':') != NULL) {
-				ip->type = INPUT_STRING;
-				ip->str = xstrdup(out);
-			} else
+			}
+			if (*ptr == ';')
+				*ptr++ = '\0';
+			else
+				ptr = NULL;
+		} else {
+			ptr = out;
+			out = strsep(&ptr, ";");
+			if (strchr(out, ':') == NULL)
 				return (-1);
+			ip->type = INPUT_STRING;
+			ip->str = xstrdup(out);
 		}
 		ip = &ictx->param_list[++ictx->param_list_len];
 		if (ictx->param_list_len == nitems(ictx->param_list))
@@ -2370,8 +2379,8 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 	ptr = copy = xstrdup(s);
 	while ((out = strsep(&ptr, ":")) != NULL) {
 		if (*out != '\0') {
-			p[n++] = input_number(out);
-			if (p[n - 1] == -1 || n == nitems(p)) {
+			p[n++] = input_number(&out);
+			if (p[n - 1] == -1 || *out != '\0' || n == nitems(p)) {
 				free(copy);
 				return;
 			}
