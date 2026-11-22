@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.315 2026/11/22 10:29:25 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.316 2026/11/22 11:08:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -457,11 +457,9 @@ screen_write_start_pane(struct screen_write_ctx *ctx, struct window_pane *wp,
 	screen_write_init(ctx, s);
 	ctx->wp = wp;
 
-	if (log_get_level() != 0) {
-		log_debug("%s: size %ux%u, pane %%%u (at %u,%u)",
-		    __func__, screen_size_x(ctx->s), screen_size_y(ctx->s),
-		    wp->id, wp->xoff, wp->yoff);
-	}
+	log_debug("%s: size %ux%u, pane %%%u (at %u,%u)", __func__,
+	    screen_size_x(ctx->s), screen_size_y(ctx->s), wp->id, wp->xoff,
+	    wp->yoff);
 }
 
 /* Initialize writing with a callback. */
@@ -474,10 +472,8 @@ screen_write_start_callback(struct screen_write_ctx *ctx, struct screen *s,
 	ctx->init_ctx_cb = cb;
 	ctx->arg = arg;
 
-	if (log_get_level() != 0) {
-		log_debug("%s: size %ux%u, with callback", __func__,
-		    screen_size_x(ctx->s), screen_size_y(ctx->s));
-	}
+	log_debug("%s: size %ux%u, with callback", __func__,
+	    screen_size_x(ctx->s), screen_size_y(ctx->s));
 }
 
 /* Initialize writing. */
@@ -486,10 +482,8 @@ screen_write_start(struct screen_write_ctx *ctx, struct screen *s)
 {
 	screen_write_init(ctx, s);
 
-	if (log_get_level() != 0) {
-		log_debug("%s: size %ux%u, no pane", __func__,
-		    screen_size_x(ctx->s), screen_size_y(ctx->s));
-	}
+	log_debug("%s: size %ux%u, no pane", __func__, screen_size_x(ctx->s),
+	    screen_size_y(ctx->s));
 }
 
 /* Finish writing. */
@@ -1117,8 +1111,7 @@ screen_write_mode_set(struct screen_write_ctx *ctx, int mode)
 
 	s->mode |= mode;
 
-	if (log_get_level() != 0)
-		log_debug("%s: %s", __func__, screen_mode_to_string(mode));
+	log_debug("%s: %s", __func__, screen_mode_to_string(mode));
 }
 
 /* Clear a mode. */
@@ -1129,8 +1122,7 @@ screen_write_mode_clear(struct screen_write_ctx *ctx, int mode)
 
 	s->mode &= ~mode;
 
-	if (log_get_level() != 0)
-		log_debug("%s: %s", __func__, screen_mode_to_string(mode));
+	log_debug("%s: %s", __func__, screen_mode_to_string(mode));
 }
 
 /* Sync timeout callback. */

@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.222 2026/10/26 10:14:59 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.223 2026/11/22 11:08:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1132,10 +1132,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	    (nkey & KEYC_MASK_MODIFIERS) == KEYC_SHIFT)
 		nkey &= ~KEYC_SHIFT;
 
-	if (log_get_level() != 0) {
-		log_debug("%s: extended key %.*s is %llx (%s)", c->name,
-		    (int)*size, buf, nkey, key_string_lookup_key(nkey, 1));
-	}
+	log_debug("%s: extended key %.*s is %llx (%s)", c->name, (int)*size,
+	    buf, nkey, key_string_lookup_key(nkey, 1));
 
 	*key = nkey;
 	return (0);

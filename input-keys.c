@@ -1,4 +1,4 @@
-/* $OpenBSD: input-keys.c,v 1.117 2026/11/21 12:46:41 nicm Exp $ */
+/* $OpenBSD: input-keys.c,v 1.118 2026/11/22 11:08:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -398,10 +398,8 @@ input_key_build(void)
 int
 input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 {
-	if (log_get_level() != 0) {
-		log_debug("writing key 0x%llx (%s) to %%%u", key,
-		    key_string_lookup_key(key, 1), wp->id);
-	}
+	log_debug("writing key 0x%llx (%s) to %%%u", key,
+	    key_string_lookup_key(key, 1), wp->id);
 
 	if (KEYC_IS_MOUSE(key)) {
 		if (m != NULL && m->wp != -1 && (u_int)m->wp == wp->id)

@@ -1,4 +1,4 @@
-/* $OpenBSD: log.c,v 1.33 2026/05/17 16:02:33 nicm Exp $ */
+/* $OpenBSD: log.c,v 1.34 2026/11/22 11:08:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -124,7 +124,7 @@ log_vwrite(const char *msg, va_list ap, const char *prefix)
 
 /* Log a debug message. */
 void
-log_debug(const char *msg, ...)
+log_dodebug(const char *msg, ...)
 {
 	va_list	ap;
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.538 2026/11/22 10:04:26 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.539 2026/11/22 11:08:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1286,8 +1286,7 @@ have_event:
 	if (b & MOUSE_MASK_SHIFT)
 		key |= KEYC_SHIFT;
 
-	if (log_get_level() != 0)
-		log_debug("mouse key is %s", key_string_lookup_key (key, 1));
+	log_debug("mouse key is %s", key_string_lookup_key (key, 1));
 	return (key);
 }
 
@@ -2283,10 +2282,8 @@ server_client_reset_state(struct client *c)
 		s = c->status.active;
 	if (s != NULL)
 		mode = s->mode;
-	if (log_get_level() != 0) {
-		log_debug("%s: client %s mode %s", __func__, c->name,
-		    screen_mode_to_string(mode));
-	}
+	log_debug("%s: client %s mode %s", __func__, c->name,
+	    screen_mode_to_string(mode));
 
 	/* Reset region and margin. */
 	tty_region_off(tty);
