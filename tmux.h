@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1488 2026/11/22 11:08:42 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1489 2026/11/22 13:39:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1138,6 +1138,10 @@ struct screen {
 	struct screen_write_cline	*write_list;
 	u_int				 write_start;
 	u_int				 write_end;
+	u_int				 write_scrolled;
+	u_int				 write_rupper;
+	u_int				 write_rlower;
+	u_int				 write_bg;
 
 	struct hyperlinks		*hyperlinks;
 	struct progress_bar		 progress_bar;
@@ -1155,13 +1159,12 @@ struct screen_write_ctx {
 #define SCREEN_WRITE_OBSCURED 0x2
 #define SCREEN_WRITE_CHECKED_IF_OBSCURED 0x4
 #define SCREEN_WRITE_INPUT 0x8
+#define SCREEN_WRITE_PENDING 0x10
 
 	screen_write_init_ctx_cb	 init_ctx_cb;
 	void				*arg;
 
 	struct screen_write_citem	*item;
-	u_int				 scrolled;
-	u_int				 bg;
 };
 
 /* Box border lines option. */
@@ -1380,14 +1383,6 @@ struct window_pane {
 #define PANE_CAPTUREALLKEYS 0x100000
 #define PANE_FLOATOVERZOOM 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
-
-	bitstr_t       **sync_dirty;
-	u_int		 sync_dirty_sx;
-	u_int		 sync_dirty_sy;
-	u_int		 sync_scrolled;
-	u_int		 sync_rupper;
-	u_int		 sync_rlower;
-	u_int		 sync_bg;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -3701,7 +3696,7 @@ void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
 void	 screen_write_end_sync(struct screen_write_ctx *);
-void	 screen_write_sync_clear_dirty(struct window_pane *);
+void	 screen_write_clear_pending(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);

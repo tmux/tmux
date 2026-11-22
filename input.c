@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.286 2026/11/21 21:48:49 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.287 2026/11/22 13:39:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -134,9 +134,9 @@ struct input_ctx {
 #define INPUT_DISCARD 0x1
 #define INPUT_LAST 0x2
 
-	struct input_requests		 requests;
-	u_int				 request_count;
-	struct event			 request_timer;
+	struct input_requests		requests;
+	u_int				request_count;
+	struct event			request_timer;
 
 	/* Input since the last ground state, for capture-pane -P. */
 #define INPUT_GROUND_START 64
