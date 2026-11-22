@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.23 2026/11/22 11:08:42 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.24 2026/11/22 11:30:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -112,6 +112,55 @@ tty_draw_line_get_empty(const struct grid_cell *gc,
 			empty = 1;
 	}
 	return (empty);
+}
+
+/* Collect empty cells with the same background without expanding each cell. */
+static u_int
+tty_draw_line_collect_empty(const struct grid_line *gl, u_int px, u_int end,
+    const struct grid_cell *gc)
+{
+	const struct grid_cell_entry	*gce;
+	const struct grid_extd_entry	*gee;
+	u_int				 i;
+	int				 bg;
+
+	if (px >= end ||
+	    gc->attr != 0 ||
+	    gc->link != 0 ||
+	    gc->flags & ~(GRID_FLAG_NOPALETTE|GRID_FLAG_CLEARED))
+		return (0);
+
+	for (i = px; i < end; i++) {
+		gce = &gl->celldata[i];
+		if (gce->flags & GRID_FLAG_EXTENDED) {
+			if (gce->offset >= gl->extdsize)
+				break;
+			gee = &gl->extddata[gce->offset];
+			if (gee->flags & ~GRID_FLAG_NOPALETTE ||
+			    gee->attr != 0 ||
+			    gee->link != 0 ||
+			    gee->bg != gc->bg ||
+			    (gee->flags & GRID_FLAG_NOPALETTE) !=
+			    (gc->flags & GRID_FLAG_NOPALETTE) ||
+			    utf8_get_one(gee->data) != ' ')
+				break;
+		} else {
+			if (gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256|
+			    GRID_FLAG_NOPALETTE|GRID_FLAG_CLEARED) ||
+			    gce->data.attr != 0 ||
+			    (gce->flags & GRID_FLAG_NOPALETTE) !=
+			    (gc->flags & GRID_FLAG_NOPALETTE))
+				break;
+			bg = gce->data.bg;
+			if (gce->flags & GRID_FLAG_BG256)
+				bg |= COLOUR_FLAG_256;
+			if (bg != gc->bg ||
+			    (!(gce->flags & GRID_FLAG_CLEARED) &&
+			    gce->data.data != ' '))
+				break;
+		}
+	}
+	return (i - px);
 }
 
 /* Collect more ASCII extended cells with the same style. */
@@ -427,9 +476,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		/* Otherwise move to the next. */
 		current_state = next_state;
 		memcpy(&last, gcp, sizeof last);
-		if (empty != 0)
+		if (empty != 0) {
 			i += empty;
-		else {
+			n = tty_draw_line_collect_empty(gl, px + i, end, gcp);
+			if (n != 0) {
+				i += n;
+				grid_view_get_cell(gd, px + i - 1, py, &last);
+			}
+		} else {
 			i += gcp->data.width;
 			if (gcp->data.size == 1 && gcp->data.width == 1) {
 				n = tty_draw_line_collect(gl, px + i - 1, end,
