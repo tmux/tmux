@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.80 2026/11/21 16:25:53 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.81 2026/11/22 09:06:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -106,10 +106,12 @@ static struct utf8_width_item utf8_default_width_cache[] = {
 	{ .wc = 0x1F467, .width = 2 },
 	{ .wc = 0x1F468, .width = 2 },
 	{ .wc = 0x1F469, .width = 2 },
+	{ .wc = 0x1F46A, .width = 2 },
 	{ .wc = 0x1F46B, .width = 2 },
 	{ .wc = 0x1F46C, .width = 2 },
 	{ .wc = 0x1F46D, .width = 2 },
 	{ .wc = 0x1F46E, .width = 2 },
+	{ .wc = 0x1F46F, .width = 2 },
 	{ .wc = 0x1F470, .width = 2 },
 	{ .wc = 0x1F471, .width = 2 },
 	{ .wc = 0x1F472, .width = 2 },
@@ -167,6 +169,7 @@ static struct utf8_width_item utf8_default_width_cache[] = {
 	{ .wc = 0x1F937, .width = 2 },
 	{ .wc = 0x1F938, .width = 2 },
 	{ .wc = 0x1F939, .width = 2 },
+	{ .wc = 0x1F93C, .width = 2 },
 	{ .wc = 0x1F93D, .width = 2 },
 	{ .wc = 0x1F93E, .width = 2 },
 	{ .wc = 0x1F977, .width = 2 },
@@ -202,7 +205,9 @@ static struct utf8_width_item utf8_default_width_cache[] = {
 	{ .wc = 0x1FAF5, .width = 2 },
 	{ .wc = 0x1FAF6, .width = 2 },
 	{ .wc = 0x1FAF7, .width = 2 },
-	{ .wc = 0x1FAF8, .width = 2 }
+	{ .wc = 0x1FAF8, .width = 2 },
+	{ .wc = 0x1FAF9, .width = 2 },
+	{ .wc = 0x1FAFA, .width = 2 }
 };
 
 struct utf8_item {
