@@ -791,11 +791,11 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 #endif
 			grid_view_set_cell(s->grid, s->cx, s->cy, &gc);
 
-			if (!window_position_is_visible(r, xoff + s->cx))
-				break;
-			ttyctx.cell = &gc;
-			ttyctx.flags &= TTY_CTX_SYNC;
-			tty_write(tty_cmd_cell, &ttyctx);
+			if (window_position_is_visible(r, xoff + s->cx)) {
+				ttyctx.cell = &gc;
+				ttyctx.flags &= TTY_CTX_SYNC;
+				tty_write(tty_cmd_cell, &ttyctx);
+			}
 			ttyctx.ocx++;
 
 			s->cx++;
