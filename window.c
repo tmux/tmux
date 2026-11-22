@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.392 2026/11/16 20:28:53 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.393 2026/11/22 09:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2614,7 +2614,7 @@ window_pane_start_input(struct window_pane *wp, struct cmdq_item *item,
 		*cause = xstrdup("pane is not empty");
 		return (-1);
 	}
-	if (c->flags & (CLIENT_DEAD|CLIENT_EXITED))
+	if (c == NULL || (c->flags & (CLIENT_DEAD|CLIENT_EXITED)))
 		return (1);
 	if (c->session != NULL)
 		return (1);
