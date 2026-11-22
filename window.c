@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.395 2026/11/22 13:39:07 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.396 2026/11/22 15:03:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1642,6 +1642,8 @@ window_pane_destroy(struct window_pane *wp)
 		event_del(&wp->resize_timer);
 	if (event_initialized(&wp->sync_timer))
 		event_del(&wp->sync_timer);
+	if (event_initialized(&wp->write_timer))
+		event_del(&wp->write_timer);
 	if (event_initialized(&wp->sb_auto_timer))
 		event_del(&wp->sb_auto_timer);
 	window_pane_clear_resizes(wp, NULL);
@@ -1749,6 +1751,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (sx == wp->sx && sy == wp->sy)
 		return;
 
+	screen_write_flush_batch(wp);
 	screen_write_stop_sync(wp);
 
 	r = xmalloc(sizeof *r);

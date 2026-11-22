@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.539 2026/11/22 11:08:42 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.540 2026/11/22 15:03:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2260,7 +2260,7 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s = NULL, prompt_screen;
 	struct options		*oo = c->session->options;
-	int			 mode = 0, cursor, flags, pane_mode = 0;
+	int			 mode = 0, cursor, flags, pending = 0;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, prompt = 0;
 	u_int			 sb_w;
 	struct visible_ranges	*r;
@@ -2321,7 +2321,10 @@ server_client_reset_state(struct client *c)
 		}
 		if (!prompt) {
 			cursor = 0;
-			pane_mode = s->mode;
+			if ((s->mode & MODE_SYNC) ||
+			    s->write_start != s->write_end ||
+			    s->write_scrolled != 0)
+				pending = 1;
 
 			tty_window_offset(tty, &ox, &oy, &sx, &sy);
 			if (wp->xoff + (int)s->cx >= (int)ox &&
@@ -2361,7 +2364,7 @@ server_client_reset_state(struct client *c)
 		}
 	} else if (s == NULL)
 		mode &= ~MODE_CURSOR;
-	if (~pane_mode & MODE_SYNC) {
+	if (!pending) {
 		log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 		tty_cursor(tty, cx, cy);
 	} else {
