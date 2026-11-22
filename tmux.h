@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1486 2026/11/21 21:48:49 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1488 2026/11/22 11:08:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1829,6 +1829,8 @@ struct tty_term {
 #define TERM_INVALIDMS 0x80
 #define TERM_NOREPLACE 0x100
 #define TERM_KITTYGRAPHICS 0x200
+#define TERM_DIRECTCUP 0x400
+#define TERM_DIRECTRGB 0x800
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -4290,7 +4292,11 @@ int	log_get_level(void);
 void	log_open(const char *);
 void	log_toggle(const char *);
 void	log_close(void);
-void printflike(1, 2) log_debug(const char *, ...);
+void printflike(1, 2) log_dodebug(const char *, ...);
+#define log_debug(...) do { \
+	if (log_get_level() > 0) \
+		log_dodebug(__VA_ARGS__); \
+} while (0)
 __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
 
