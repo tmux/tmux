@@ -89,6 +89,21 @@ reset_screen()
 	check_screen reset
 }
 
+check_batch()
+{
+	before=$($INNER list-clients -F '#{client_written}') || exit 1
+	emit "$burst"
+	check_screen "$1"
+	sleep 0.05
+	after=$($INNER list-clients -F '#{client_written}') || exit 1
+	bytes=$((after - before))
+	if [ "$2" = on ]; then
+		[ "$bytes" -lt 500 ] || fail "$1: batch sent $bytes bytes"
+	else
+		[ "$bytes" -gt 800 ] || fail "$1: output batched ($bytes bytes)"
+	fi
+}
+
 $INNER new-session -d -s inner -x 40 -y 8 \
     "stty raw -echo; printf '\033]2;ready\007'; exec cat" || exit 1
 $INNER set-option -g status off || exit 1
@@ -111,6 +126,43 @@ if [ "$1" = bce ]; then
 else
 	grep -Fq 'bce: [missing]' "$DIR/capabilities" || fail 'BCE not disabled'
 fi
+
+# Explicit sync takes over until the current alternate-screen visit ends.
+# Non-ASCII characters flush ordinary collection on every write.
+burst=$(awk 'BEGIN {
+	for (i = 0; i < 200; i++)
+		printf "\033[2;1H\303\251\033[2;1H\303\261"
+}')
+for visit in 1 2; do
+	emit '\033[?1049h'
+	check_batch "alternate-batch-$visit" on
+	emit '\033[?2026h\033[3;1Hsync\033[?2026l'
+	emit '\033[?1049h'
+	check_batch "alternate-sync-$visit" off
+	emit '\033[?1049l'
+	check_batch "main-batch-$visit" on
+done
+emit '\033[?2026h\033[?1049h\033[?2026l'
+check_batch alternate-enter-sync off
+emit '\033[?1049l'
+
+# Adjacent and overlapping collected runs must retain their styles and text.
+for sync in off on; do
+	reset_screen
+	begin= end=
+	if [ "$sync" = on ]; then
+		begin='\033[?2026h'
+		end='\033[?2026l'
+	fi
+	emit "${begin}\033[1;1H\033[31mabcdef\033[31mghij\033[1;3HXX\033[1;9HYY\033[1;5H....${end}"
+	check_screen "collect-text-$sync"
+	emit "${begin}\033[2;1H\033[31mabcdef\033[32mghij\033[2;3H\033[4mXX\033[24mYY\033[0m${end}"
+	check_screen "collect-styles-$sync"
+	emit "${begin}\033[3;20H\033[41m\033[1K\033[3;21H\033[K\033[0m${end}"
+	check_screen "collect-clear-$sync"
+	emit "${begin}\033[4;20H\033[41m\033[1K\033[4;21H\033[44m\033[K\033[4;19HAB\033[0m${end}"
+	check_screen "collect-backgrounds-$sync"
+done
 
 # Wrap at the bottom of the screen and of a smaller scroll region. Check
 # logical line joining as well as text, including a wide character wrapping.
