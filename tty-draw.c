@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.24 2026/11/22 11:30:52 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.25 2026/11/22 15:19:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -41,52 +41,6 @@ static const char* tty_draw_line_states[] = {
 	"SAME",
 	"DONE"
 };
-
-/* Clear part of the line. */
-static void
-tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
-    const struct grid_cell *defaults, u_int bg, int wrapped)
-{
-	/* Nothing to clear. */
-	if (nx == 0)
-		return;
-
-	/* If genuine BCE is available, can try escape sequences. */
-	if (!wrapped &&
-	    nx >= 10 &&
-	    !tty_fake_bce(tty, defaults, bg)) {
-		/* Off the end of the line, use EL if available. */
-		if (px + nx >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
-			tty_cursor(tty, px, py);
-			tty_putcode(tty, TTYC_EL);
-			return;
-		}
-
-		/* At the start of the line. Use EL1. */
-		if (px == 0 && tty_term_has(tty->term, TTYC_EL1)) {
-			tty_cursor(tty, px + nx - 1, py);
-			tty_putcode(tty, TTYC_EL1);
-			return;
-		}
-
-		/* Section of line. Use ECH if possible. */
-		if (tty_term_has(tty->term, TTYC_ECH)) {
-			tty_cursor(tty, px, py);
-			tty_putcode_i(tty, TTYC_ECH, nx);
-			return;
-		}
-	}
-
-	/* Couldn't use an escape sequence, use spaces. */
-	if (px != 0 || !wrapped)
-		tty_cursor(tty, px, py);
-	if (nx == 1)
-		tty_putc(tty, ' ');
-	else if (nx == 2)
-		tty_putn(tty, "  ", 2, 2);
-	else
-		tty_repeat_space(tty, nx);
-}
 
 /* Is this cell empty? */
 static u_int
@@ -345,7 +299,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		}
 		tty_attributes(tty, &last, style_ctx);
 		log_debug("%s: clearing %u padding cells", __func__, cx);
-		tty_draw_line_clear(tty, atx, aty, cx, defaults, bg, 0);
+		tty_clear_line(tty, defaults, aty, atx, cx, bg, 0);
 		if (cx == ex)
 			goto out;
 		atx += cx;
@@ -441,8 +395,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		if (next_state != current_state) {
 			if (current_state == TTY_DRAW_LINE_EMPTY) {
 				tty_attributes(tty, &last, style_ctx);
-				tty_draw_line_clear(tty, atx + last_i, aty,
-				    i - last_i, defaults, last.bg, wrapped);
+				tty_clear_line(tty, defaults, aty, atx + last_i,
+				    i - last_i, last.bg, wrapped);
 				wrapped = 0;
 			} else if (next_state != TTY_DRAW_LINE_SAME &&
 			    len != 0) {

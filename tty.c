@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.501 2026/11/22 14:53:31 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.502 2026/11/22 15:19:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1242,9 +1242,9 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 }
 
 /* Clear a line. */
-static void
+void
 tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
-    u_int px, u_int nx, u_int bg)
+    u_int px, u_int nx, u_int bg, int wrapped)
 {
 	struct client		*c = tty->client;
 
@@ -1255,7 +1255,7 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 		return;
 
 	/* If genuine BCE is available, can try escape sequences. */
-	if (!tty_fake_bce(tty, defaults, bg)) {
+	if (!wrapped && nx >= 10 && !tty_fake_bce(tty, defaults, bg)) {
 		/* Off the end of the line, use EL if available. */
 		if (px + nx >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
 			tty_cursor(tty, px, py);
@@ -1279,8 +1279,14 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 	}
 
 	/* Couldn't use an escape sequence, use spaces. */
-	tty_cursor(tty, px, py);
-	tty_repeat_space(tty, nx);
+	if (px != 0 || !wrapped)
+		tty_cursor(tty, px, py);
+	if (nx == 1)
+		tty_putc(tty, ' ');
+	else if (nx == 2)
+		tty_putn(tty, "  ", 2, 2);
+	else
+		tty_repeat_space(tty, nx);
 }
 
 /* Clear a line, adjusting to visible part of pane. */
@@ -1294,7 +1300,7 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
 	if (tty_clamp_line(tty, ctx, px, py, nx, &l, &x, &rx, &ry))
-		tty_clear_line(tty, &ctx->defaults, ry, x, rx, bg);
+		tty_clear_line(tty, &ctx->defaults, ry, x, rx, bg, 0);
 }
 
 /* Clamp area position to visible part of pane. */
@@ -1433,7 +1439,7 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 
 	/* Couldn't use an escape sequence, loop over the lines. */
 	for (yy = py; yy < py + ny; yy++)
-		tty_clear_line(tty, defaults, yy, px, nx, bg);
+		tty_clear_line(tty, defaults, yy, px, nx, bg, 0);
 }
 
 /* Clear an area in a pane. */

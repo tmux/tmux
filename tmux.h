@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1492 2026/11/22 15:03:42 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1493 2026/11/22 15:19:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3024,6 +3024,8 @@ void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
+void	tty_clear_line(struct tty *, const struct grid_cell *, u_int, u_int,
+	    u_int, u_int, int);
 void	tty_repeat_space(struct tty *, u_int);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
