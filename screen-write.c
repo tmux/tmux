@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.313 2026/11/21 19:38:53 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.314 2026/11/22 10:12:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2595,6 +2595,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen			*s = ctx->s;
 	struct window_pane		*wp = ctx->wp;
 	u_int				 y, cx, cy, end, items = 0;
+	u_int				 sy = screen_size_y(s);
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
 
@@ -2603,7 +2604,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	if (s->mode & MODE_SYNC) {
 		if (ctx->scrolled != 0)
 			screen_write_sync_scroll_dirty(ctx);
-		for (y = 0; y < screen_size_y(s); y++) {
+		for (y = s->write_start; y < s->write_end && y < sy; y++) {
 			cl = &s->write_list[y];
 			TAILQ_FOREACH(ci, &cl->items, entry) {
 				screen_write_should_draw_cells(ctx, ci->x, y,
@@ -2625,8 +2626,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 
 	cx = s->cx; cy = s->cy;
 	end = s->write_end;
-	if (end > screen_size_y(s))
-		end = screen_size_y(s);
+	if (end > sy)
+		end = sy;
 	for (y = s->write_start; y < end; y++)
 		items += screen_write_collect_flush_line(ctx, y);
 	s->write_start = s->write_end = 0;
@@ -2636,7 +2637,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	return;
 
 discard:
-	for (y = 0; y < screen_size_y(s); y++) {
+	for (y = s->write_start; y < s->write_end && y < sy; y++) {
 		cl = &s->write_list[y];
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
 			TAILQ_REMOVE(&cl->items, ci, entry);
