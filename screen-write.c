@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.319 2026/11/22 15:27:07 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.320 2026/11/23 13:52:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2791,7 +2791,7 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 	struct grid_cell	 tmp_gc;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 width = ud->width, xx, not_wrap, i, n, vis;
+	u_int			 width = ud->width, cx, xx, not_wrap, i, n, vis;
 	u_int			 ins_width = width;
 	int			 selected, skip = 1, redraw = 0;
 	int			 yoff = 0, xoff = 0;
@@ -2838,9 +2838,7 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 		    s->cy, ins_width, 8);
 		skip = 0;
 	}
-	screen_write_initctx(ctx, &ttyctx, 0, 0);
-	if (old_width != 0)
-		ttyctx.flags |= TTY_CTX_CELL_INVALIDATE;
+	cx = s->cx;
 
 	/* Clear tabs and wide characters cut by either end of the write. */
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
@@ -2905,13 +2903,6 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 	if (selected)
 		skip = 0;
 
-	/* Get visible ranges for the character before moving the cursor. */
-	if (wp != NULL) {
-		xoff = wp->xoff;
-		yoff = wp->yoff;
-	}
-	r = window_visible_ranges(wp, xoff + s->cx, s->cy + yoff, width, NULL);
-
 	/*
 	 * Move the cursor. If not wrapping, stick at the last character and
 	 * replace it.
@@ -2922,31 +2913,34 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 	else
 		screen_write_set_cursor(ctx, sx - not_wrap, -1);
 
-	/* Create space for character in insert mode. */
+	/* If not writing, done now. */
+	if (skip)
+		return;
 	if ((s->mode & MODE_INSERT) && ins_width != 0) {
 		screen_write_collect_flush(ctx, 0, __func__);
+		if (!screen_write_should_draw_line(ctx, s->cy))
+			return;
+	} else if (redraw) {
+		if (!screen_write_should_draw_line(ctx, s->cy))
+			return;
+	} else if (!screen_write_should_draw_cells(ctx, cx, s->cy, width, 1))
+		return;
+
+	screen_write_initctx(ctx, &ttyctx, 0, 0);
+	ttyctx.ocx = cx;
+	if (old_width != 0)
+		ttyctx.flags |= TTY_CTX_CELL_INVALIDATE;
+
+	/* Create space for character in insert mode. */
+	if ((s->mode & MODE_INSERT) && ins_width != 0) {
 		if (wp != NULL && screen_write_pane_is_obscured(ctx)) {
-			if (screen_write_should_draw_line(ctx, s->cy))
-				screen_write_redraw_line(ctx, &ttyctx, s->cy);
+			screen_write_redraw_line(ctx, &ttyctx, s->cy);
 			return;
 		}
 		ttyctx.ocx += width - ins_width;
 		ttyctx.n = ins_width;
-		if (screen_write_should_draw_line(ctx, s->cy))
-			tty_write(tty_cmd_insertcharacter, &ttyctx);
+		tty_write(tty_cmd_insertcharacter, &ttyctx);
 		ttyctx.ocx -= width - ins_width;
-	}
-
-	/* If not writing, done now. */
-	if (skip)
-		return;
-	if (redraw) {
-		if (!screen_write_should_draw_line(ctx, s->cy))
-			return;
-	} else {
-		if (!screen_write_should_draw_cells(ctx, ttyctx.ocx, s->cy,
-		    width, 1))
-			return;
 	}
 
 	/* Do a full line redraw if needed. */
@@ -2954,6 +2948,13 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 		screen_write_redraw_line(ctx, &ttyctx, s->cy);
 		return;
 	}
+
+	/* Get visible ranges for the character. */
+	if (wp != NULL) {
+		xoff = wp->xoff;
+		yoff = wp->yoff;
+	}
+	r = window_visible_ranges(wp, xoff + cx, s->cy + yoff, width, NULL);
 
 	/* Work out the cell attributes. */
 	if (selected)
