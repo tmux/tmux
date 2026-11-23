@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.55 2026/11/22 10:51:37 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.56 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -388,6 +388,13 @@ static const struct tty_feature tty_feature_progressbar = {
 	0
 };
 
+/* Terminal supports OSC 7501 program status. */
+static const struct tty_feature tty_feature_programstatus = {
+	"programstatus",
+	NULL,
+	TERM_PROGRAMSTATUS
+};
+
 /* Terminal supports UTF-8. */
 static const struct tty_feature tty_feature_utf8 = {
 	"utf8",
@@ -421,7 +428,8 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_sync,
 	&tty_feature_title,
 	&tty_feature_usstyle,
-	&tty_feature_utf8
+	&tty_feature_utf8,
+	&tty_feature_programstatus
 };
 
 /* Parse features for client. */

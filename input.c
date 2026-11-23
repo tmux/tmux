@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.290 2026/11/22 17:13:17 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.291 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2940,14 +2940,8 @@ input_program_status(struct window_pane *wp, const char *p)
 	else if (message != NULL && strcmp(message, wp->program_message) != 0)
 		changed = 1;
 	if (changed) {
-		window_pane_clear_program_status(wp, 1);
-
-		wp->program_state = state;
-		state = NULL;
-		wp->program_name = name;
-		name = NULL;
-		wp->program_message = message;
-		message = NULL;
+		window_pane_set_program_status(wp, state, name, message);
+		state = name = message = NULL;
 
 		server_status_window(wp->window);
 		server_redraw_window_borders(wp->window);

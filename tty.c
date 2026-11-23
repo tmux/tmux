@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.502 2026/11/22 15:19:13 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.503 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -268,6 +268,8 @@ tty_block_maybe(struct tty *tty, int expired)
 	log_debug("%s: can't keep up, %zu discarded", c->name, size);
 
 	evbuffer_drain(tty->out, size);
+	free(tty->program_status_last);
+	tty->program_status_last = NULL;
 	c->discarded += size;
 
 	tty->discarded = 0;
@@ -460,6 +462,8 @@ tty_send_requests(struct tty *tty)
 		tty_puts(tty, "\033[>q");
 	if (~flags & TTY_HAVESYNC)
 		tty_puts(tty, "\033[?2026$p");
+	if (~flags & TTY_HAVEPROGRAMSTATUS)
+		tty_puts(tty, "\033]7501;?\033\\");
 	tty->flags |= TTY_HAVEKITTYGRAPHICS;
 
 	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
@@ -506,6 +510,8 @@ tty_stop_tty(struct tty *tty)
 
 	evtimer_del(&tty->start_timer);
 	evtimer_del(&tty->clipboard_timer);
+	free(tty->program_status_last);
+	tty->program_status_last = NULL;
 	tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZPIXELS|TTY_WINSZAPPLY);
 
 	event_del(&tty->timer);
@@ -524,6 +530,8 @@ tty_stop_tty(struct tty *tty)
 	if (tcsetattr(c->fd, TCSANOW, &tty->tio) == -1)
 		return;
 
+	if (tty->term->flags & TERM_PROGRAMSTATUS)
+		tty_raw(tty, "\033]7501;state=clear\033\\");
 	tty_raw(tty, tty_term_string_ii(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
 	if (tty_acs_needed(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
@@ -571,6 +579,7 @@ tty_close(struct tty *tty)
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
 	tty_stop_tty(tty);
+	tty->flags &= ~TTY_HAVEPROGRAMSTATUS;
 
 	if (tty->flags & TTY_OPENED) {
 		evbuffer_free(tty->in);
@@ -3059,4 +3068,47 @@ tty_set_progress_bar(struct tty *tty, struct progress_bar *pb)
 {
 	if (tty_term_has(tty->term, TTYC_SPB))
 		tty_putcode_ii(tty, TTYC_SPB, pb->state, pb->progress);
+}
+
+void
+tty_set_program_status(struct tty *tty, const struct window_pane *wp)
+{
+	struct client	*c = tty->client;
+	char		*frame, *encoded = NULL;
+	size_t		 len, size;
+
+	if (!(tty->flags & TTY_STARTED) ||
+	    c->session == NULL ||
+	    (c->flags & (CLIENT_CONTROL|CLIENT_UNATTACHEDFLAGS)))
+		return;
+	if (tty->flags & TTY_BLOCK)
+		return;
+	if (~tty->term->flags & TERM_PROGRAMSTATUS)
+		return;
+
+	if (wp == NULL || wp->program_state == NULL)
+		frame = xstrdup("\033]7501;state=clear\033\\");
+	else {
+		if (wp->program_message != NULL) {
+			len = strlen(wp->program_message);
+			size = 4 * ((len + 2) / 3) + 1; /* storage for base64 */
+			encoded = xmalloc(size);
+			b64_ntop(wp->program_message, len, encoded, size);
+		}
+		xasprintf(&frame, "\033]7501;state=%s%s%s%s%s\033\\",
+		    wp->program_state,
+		    wp->program_name == NULL ? "" : ":app=",
+		    wp->program_name == NULL ? "" : wp->program_name,
+		    wp->program_message == NULL ? "" : ":msg=",
+		    wp->program_message == NULL ? "" : encoded);
+		free(encoded);
+	}
+	if (tty->program_status_last == NULL ||
+	    strcmp(tty->program_status_last, frame) != 0) {
+		tty_puts(tty, frame);
+		free(tty->program_status_last);
+		tty->program_status_last = frame;
+		frame = NULL;
+	}
+	free(frame);
 }

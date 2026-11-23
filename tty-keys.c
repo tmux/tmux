@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.223 2026/11/22 11:08:42 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.224 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -51,6 +51,8 @@ struct tty_key_parse {
 #define TTY_KEY_PARSE_NO_META 0x1
 };
 
+#define TTY_PROGRAM_STATUS_REPLY_LIMIT 4096
+
 static void	tty_keys_add1(struct tty_key **, const char *, key_code);
 static void	tty_keys_add(struct tty *, const char *, key_code);
 static void	tty_keys_free1(struct tty_key *);
@@ -71,6 +73,8 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *, int);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *, int);
+static int	tty_keys_program_status(struct tty *, const char *, size_t,
+		    size_t *, int);
 static int	tty_keys_sync(struct tty *, const char *, size_t, size_t *,
 		    int);
 static int	tty_keys_colours1(struct tty *, const char *, size_t, size_t *,
@@ -88,6 +92,7 @@ static const struct {
 	int	      (*fn)(struct tty *, const char *, size_t, size_t *, int);
 } tty_keys_replies[] = {
 	{ KEYC_REPORT_CLIPBOARD, tty_keys_clipboard },
+	{ KEYC_REPORT_PROGRAM_STATUS, tty_keys_program_status },
 	{ KEYC_REPORT_SYNC, tty_keys_sync },
 	{ KEYC_REPORT_DA, tty_keys_device_attributes },
 	{ KEYC_REPORT_DA2, tty_keys_device_attributes2 },
@@ -1393,6 +1398,63 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size,
 	}
 
 	free(out);
+	return (0);
+}
+
+/* Handle an OSC 7501 program status reply. */
+static int
+tty_keys_program_status(struct tty *tty, const char *buf, size_t len,
+    size_t *size, int apply)
+{
+	struct client		*c = tty->client;
+	static const char	 prefix[] = "\033]7501;?";
+	size_t			 i, end, limit;
+	int			 features = c->term_features;
+
+	*size = 0;
+	for (i = 0; i < sizeof prefix - 1; i++) {
+		if (i == len)
+			return (1);
+		if (buf[i] != prefix[i])
+			return (-1);
+	}
+	if (i == len)
+		return (1);
+	if (buf[i] != ':' && buf[i] != '\007' && buf[i] != '\033')
+		return (-1);
+	if (buf[i] == '\033' && i + 1 < len && buf[i + 1] != '\\')
+		return (-1);
+
+	limit = len;
+	if (limit > TTY_PROGRAM_STATUS_REPLY_LIMIT)
+		limit = TTY_PROGRAM_STATUS_REPLY_LIMIT;
+	for (end = i; end < limit; end++) {
+		if (buf[end] == '\007') {
+			*size = end + 1;
+			break;
+		}
+		if (buf[end] == '\033') {
+			if (end + 1 < limit && buf[end + 1] == '\\') {
+				*size = end + 2;
+				break;
+			}
+		}
+	}
+	if (*size == 0) {
+		if (len >= TTY_PROGRAM_STATUS_REPLY_LIMIT)
+			return (-1);
+		return (1);
+	}
+	if (!apply)
+		return (0);
+
+	tty_parse_client_features(c, "programstatus", ",");
+	if (c->term_features != features) {
+		tty_update_features(tty);
+		server_client_set_program_status(c);
+	}
+	tty->flags |= TTY_HAVEPROGRAMSTATUS;
+
 	return (0);
 }
 

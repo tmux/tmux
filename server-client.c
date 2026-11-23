@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.540 2026/11/22 15:03:42 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.541 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2688,6 +2688,7 @@ server_client_check_redraw(struct client *c)
 			server_client_set_path(c);
 		}
 		server_client_set_progress_bar(c);
+		server_client_set_program_status(c);
 		redraw_screen(c);
 		redraw_client_damage(c);
 	}
@@ -2767,6 +2768,32 @@ server_client_set_progress_bar(struct client *c)
 		return;
 	memcpy(&c->progress_bar, pane_pb, sizeof c->progress_bar);
 	tty_set_progress_bar(&c->tty, &c->progress_bar);
+}
+
+/* Set the outer terminal's program status from the active pane. */
+void
+server_client_set_program_status(struct client *c)
+{
+	struct session		*s = c->session;
+	struct window_pane	*wp = NULL;
+
+	if (s != NULL && s->curw != NULL)
+		wp = s->curw->window->active;
+	tty_set_program_status(&c->tty, wp);
+}
+
+/* Forward a status change to clients showing the pane as active. */
+void
+server_client_program_status_changed(struct window_pane *wp)
+{
+	struct client	*c;
+	struct session	*s;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		s = c->session;
+		if (s != NULL && s->curw != NULL && s->curw->window->active == wp)
+			tty_set_program_status(&c->tty, wp);
+	}
 }
 
 /* Dispatch message from client. */

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1495 2026/11/23 08:11:24 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1496 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -460,6 +460,7 @@ enum {
 	KEYC_REPORT_COLOURS,
 	KEYC_REPORT_PALETTE,
 	KEYC_REPORT_WINSZ,
+	KEYC_REPORT_PROGRAM_STATUS,
 
 	/* Mouse state. */
 	KEYC_MOUSE, /* unclassified mouse event */
@@ -873,11 +874,11 @@ struct colour_palette {
 #define GRID_LINE_HYPERLINK 0x100
 
 /* All OSC 133 flags. */
-#define GRID_LINE_OSC133_FLAGS \
-	(GRID_LINE_START_PROMPT| \
+#define GRID_LINE_OSC133_FLAGS	  \
+	(GRID_LINE_START_PROMPT|  \
 	 GRID_LINE_SECOND_PROMPT| \
 	 GRID_LINE_START_COMMAND| \
-	 GRID_LINE_START_OUTPUT| \
+	 GRID_LINE_START_OUTPUT|  \
 	 GRID_LINE_END_OUTPUT)
 
 /* Grid string flags. */
@@ -1823,6 +1824,7 @@ struct tty_term {
 #define TERM_KITTYGRAPHICS 0x200
 #define TERM_DIRECTCUP 0x400
 #define TERM_DIRECTRGB 0x800
+#define TERM_PROGRAMSTATUS 0x1000
 	int			 flags;
 
 	LIST_ENTRY(tty_term)	 entry;
@@ -1845,6 +1847,7 @@ struct tty {
 	struct client	*client;
 	struct event	 start_timer;
 	struct event	 clipboard_timer;
+	char		*program_status_last;
 	time_t		 last_requests;
 
 	u_int		 sx;
@@ -1909,8 +1912,14 @@ struct tty {
 #define TTY_WINSZAPPLY 0x80000
 #define TTY_GRACE 0x100000
 #define TTY_NOBACKOFF 0x200000
-#define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC|TTY_HAVEKITTYGRAPHICS)
+#define TTY_HAVEPROGRAMSTATUS 0x400000
+#define TTY_ALL_REQUEST_FLAGS	\
+	(TTY_HAVEDA|		\
+	 TTY_HAVEDA2|		\
+	 TTY_HAVEXDA|		\
+	 TTY_HAVESYNC|		\
+	 TTY_HAVEKITTYGRAPHICS|	\
+	 TTY_HAVEPROGRAMSTATUS)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -3061,6 +3070,7 @@ void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
 void	tty_set_progress_bar(struct tty *, struct progress_bar *);
+void	tty_set_program_status(struct tty *, const struct window_pane *);
 void	tty_default_attributes(struct tty *, u_int,
 	    const struct tty_style_ctx *);
 void	tty_update_mode(struct tty *, int, struct screen *);
@@ -3428,6 +3438,8 @@ struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_set_session(struct client *, struct session *);
+void	 server_client_set_program_status(struct client *);
+void	 server_client_program_status_changed(struct window_pane *);
 void	 server_client_lost(struct client *);
 void	 server_client_suspend(struct client *);
 void	 server_client_detach(struct client *, enum msgtype);
@@ -3886,6 +3898,8 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
+void		 window_pane_set_program_status(struct window_pane *, char *,
+		     char *, char *);
 void		 window_pane_clear_program_status(struct window_pane *, int);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
