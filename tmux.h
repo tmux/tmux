@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1494 2026/11/22 16:39:20 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1495 2026/11/23 08:11:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -964,6 +964,7 @@ struct grid_line {
 	u_short			 cellused;
 	u_short			 cellsize;
 	u_int			 extdsize;
+	u_int			 extdalloc;
 
 	u_int			 time;
 	struct osc133_data	 osc133_data;
@@ -3599,6 +3600,7 @@ const char *grid_line_flags_string(int);
 const char *grid_cell_flags_string(int);
 const char *grid_cell_attr_string(int);
 time_t	 grid_line_time(const struct grid_line *);
+void	 grid_compact_lines(struct grid *, u_int, u_int);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
