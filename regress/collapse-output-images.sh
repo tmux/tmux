@@ -57,4 +57,32 @@ for text in (b'', b'A\xe4\xb8\xadD'):
             kitty('a=T,i=8,f=32,s=1,v=1,c=4,r=3,C=1', b'\xff\0\0\xff'))
         test.run('copy-mode', '-U')
         check(True, margin=3, row=8)
+
+# Text underneath an image must not wrap and split the image's rows apart.
+for enter_first in (False, True):
+    with image_test(sys.argv[1]) as test:
+        client = test.attach()
+        test.run('set-option', '-g', 'copy-mode-position-format', '')
+        test.run('set-option', '-g', 'copy-mode-exit-status-format', '')
+        test.emit(b'\033[2;1H' + b'A' * 20 + b'\r' +
+            kitty('a=T,i=7,f=32,s=1,v=1,c=4,r=3,C=1', b'\xff\0\0\xff') +
+            b'\033[6;1Htail')
+        if enter_first:
+            test.run('copy-mode', '-U')
+        test.resize(client, 10, 16)
+        if not enter_first:
+            test.run('copy-mode')
+            test.run('send-keys', '-X', 'fold-view-toggle')
+        test.redraw()
+        terminal = Terminal(sx=10)
+        terminal.feed(client.data)
+        expected = {(24 + x, 16 + y): (255, 0, 0)
+            for y in range(48) for x in range(32)}
+        terminal.check(expected)
+        test.run('send-keys', '-X', 'fold-view-toggle')
+        test.redraw()
+        terminal = Terminal(sx=10)
+        terminal.feed(client.data)
+        terminal.check({(x - 24, y): colour
+            for (x, y), colour in expected.items()})
 PY
