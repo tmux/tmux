@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-capture-pane.c,v 1.70 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-capture-pane.c,v 1.73 2026/11/23 07:39:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -183,22 +183,17 @@ static char *
 cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
     size_t *len)
 {
-	struct evbuffer	*pending;
-	char		*buf, *line, tmp[5];
+	const char	*line;
+	char		*buf, tmp[5];
 	size_t		 linelen;
 	u_int		 i;
 
-	pending = input_pending(wp->ictx);
-	if (pending == NULL)
-		return (xstrdup(""));
-
-	line = EVBUFFER_DATA(pending);
-	linelen = EVBUFFER_LENGTH(pending);
+	line = input_pending(wp->ictx, &linelen);
 
 	buf = xstrdup("");
 	if (args_has(args, 'C')) {
 		for (i = 0; i < linelen; i++) {
-			if (line[i] >= ' ' && line[i] != '\\') {
+			if (line[i] >= ' ' && line[i] <= '~' && line[i] != '\\') {
 				tmp[0] = line[i];
 				tmp[1] = '\0';
 			} else
@@ -445,7 +440,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p')) {
 		if (len > 0 && buf[len - 1] == '\n')
 			len--;
-		if (c->flags & CLIENT_CONTROL)
+		if (c != NULL && (c->flags & CLIENT_CONTROL))
 			control_write(c, "%.*s", (int)len, buf);
 		else {
 			if (!file_can_print(c)) {

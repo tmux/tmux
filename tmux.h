@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1481 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1496 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -468,6 +468,7 @@ enum {
 	KEYC_REPORT_COLOURS,
 	KEYC_REPORT_PALETTE,
 	KEYC_REPORT_WINSZ,
+	KEYC_REPORT_PROGRAM_STATUS,
 
 	/* Mouse state. */
 	KEYC_MOUSE, /* unclassified mouse event */
@@ -881,11 +882,11 @@ struct colour_palette {
 #define GRID_LINE_HYPERLINK 0x100
 
 /* All OSC 133 flags. */
-#define GRID_LINE_OSC133_FLAGS \
-	(GRID_LINE_START_PROMPT| \
+#define GRID_LINE_OSC133_FLAGS	  \
+	(GRID_LINE_START_PROMPT|  \
 	 GRID_LINE_SECOND_PROMPT| \
 	 GRID_LINE_START_COMMAND| \
-	 GRID_LINE_START_OUTPUT| \
+	 GRID_LINE_START_OUTPUT|  \
 	 GRID_LINE_END_OUTPUT)
 
 /* Grid string flags. */
@@ -972,6 +973,7 @@ struct grid_line {
 	u_short			 cellused;
 	u_short			 cellsize;
 	u_int			 extdsize;
+	u_int			 extdalloc;
 
 	u_int			 time;
 	struct osc133_data	 osc133_data;
@@ -1150,6 +1152,12 @@ struct screen {
 	struct screen_sel		*sel;
 
 	struct screen_write_cline	*write_list;
+	u_int				 write_start;
+	u_int				 write_end;
+	u_int				 write_scrolled;
+	u_int				 write_rupper;
+	u_int				 write_rlower;
+	u_int				 write_bg;
 
 	struct hyperlinks		*hyperlinks;
 	struct progress_bar		 progress_bar;
@@ -1167,13 +1175,12 @@ struct screen_write_ctx {
 #define SCREEN_WRITE_OBSCURED 0x2
 #define SCREEN_WRITE_CHECKED_IF_OBSCURED 0x4
 #define SCREEN_WRITE_INPUT 0x8
+#define SCREEN_WRITE_PENDING 0x10
 
 	screen_write_init_ctx_cb	 init_ctx_cb;
 	void				*arg;
 
 	struct screen_write_citem	*item;
-	u_int				 scrolled;
-	u_int				 bg;
 };
 
 /* Box border lines option. */
@@ -1393,14 +1400,7 @@ struct window_pane {
 #define PANE_FLOATOVERZOOM 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
 #define PANE_UTMP 0x800000
-
-	bitstr_t       **sync_dirty;
-	u_int		 sync_dirty_sx;
-	u_int		 sync_dirty_sy;
-	u_int		 sync_scrolled;
-	u_int		 sync_rupper;
-	u_int		 sync_rlower;
-	u_int		 sync_bg;
+#define PANE_SYNCSEEN 0x1000000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1437,6 +1437,7 @@ struct window_pane {
 	struct window_pane_resizes resize_queue;
 	struct event	 resize_timer;
 	struct event	 sync_timer;
+	struct event	 write_timer;
 
 	struct input_ctx *ictx;
 
@@ -1805,17 +1806,25 @@ struct key_event {
 	size_t			 len;
 };
 
+/* Two cached RGB expansions per hash bucket. */
+struct tty_term_rgb {
+	u_int		 colour[2];
+	char		 string[2][64];
+	u_int		 next;
+};
+
 /* Terminal definition. */
 struct tty_term {
-	char		*name;
-	struct tty	*tty;
-	int		 applied_features;
+	char			*name;
+	struct tty		*tty;
+	int			 applied_features;
 
-	char		 acs[UCHAR_MAX + 1][2];
-
-	struct tty_code	*codes;
-	char		*setaf[256];
-	char		*setab[256];
+	char			 acs[UCHAR_MAX + 1][2];
+	struct tty_code		*codes;
+	char			*setaf[256];
+	char			*setab[256];
+	struct tty_term_rgb	 setrgbf[32];
+	struct tty_term_rgb	 setrgbb[32];
 
 #define TERM_256COLOURS 0x1
 #define TERM_NOAM 0x2
@@ -1827,9 +1836,12 @@ struct tty_term {
 #define TERM_INVALIDMS 0x80
 #define TERM_NOREPLACE 0x100
 #define TERM_KITTYGRAPHICS 0x200
-	int		 flags;
+#define TERM_DIRECTCUP 0x400
+#define TERM_DIRECTRGB 0x800
+#define TERM_PROGRAMSTATUS 0x1000
+	int			 flags;
 
-	LIST_ENTRY(tty_term) entry;
+	LIST_ENTRY(tty_term)	 entry;
 };
 LIST_HEAD(tty_terms, tty_term);
 
@@ -1849,6 +1861,7 @@ struct tty {
 	struct client	*client;
 	struct event	 start_timer;
 	struct event	 clipboard_timer;
+	char		*program_status_last;
 	time_t		 last_requests;
 
 	u_int		 sx;
@@ -1914,8 +1927,16 @@ struct tty {
 #define TTY_HAVEKITTYGRAPHICS 0x20000
 #define TTY_WINSZPIXELS 0x40000
 #define TTY_WINSZAPPLY 0x80000
-#define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC|TTY_HAVEKITTYGRAPHICS)
+#define TTY_GRACE 0x100000
+#define TTY_NOBACKOFF 0x200000
+#define TTY_HAVEPROGRAMSTATUS 0x400000
+#define TTY_ALL_REQUEST_FLAGS	\
+	(TTY_HAVEDA|		\
+	 TTY_HAVEDA2|		\
+	 TTY_HAVEXDA|		\
+	 TTY_HAVESYNC|		\
+	 TTY_HAVEKITTYGRAPHICS|	\
+	 TTY_HAVEPROGRAMSTATUS)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -3070,6 +3091,8 @@ void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
+void	tty_clear_line(struct tty *, const struct grid_cell *, u_int, u_int,
+	    u_int, u_int, int);
 void	tty_repeat_space(struct tty *, u_int);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
@@ -3096,6 +3119,7 @@ void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
 void	tty_set_progress_bar(struct tty *, struct progress_bar *);
+void	tty_set_program_status(struct tty *, const struct window_pane *);
 void	tty_default_attributes(struct tty *, u_int,
 	    const struct tty_style_ctx *);
 void	tty_update_mode(struct tty *, int, struct screen *);
@@ -3463,6 +3487,8 @@ struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_set_session(struct client *, struct session *);
+void	 server_client_set_program_status(struct client *);
+void	 server_client_program_status_changed(struct window_pane *);
 void	 server_client_lost(struct client *);
 void	 server_client_suspend(struct client *);
 void	 server_client_detach(struct client *, enum msgtype);
@@ -3572,7 +3598,7 @@ void	 recalculate_sizes_now(int);
 struct input_ctx *input_init(struct window_pane *, struct colour_palette *);
 void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
-struct evbuffer *input_pending(struct input_ctx *);
+const char *input_pending(struct input_ctx *, size_t *);
 void	 input_parse_pane(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, const u_char *, size_t);
 void	 input_parse_screen(struct input_ctx *, struct screen *,
@@ -3638,6 +3664,7 @@ const char *grid_line_flags_string(int);
 const char *grid_cell_flags_string(int);
 const char *grid_cell_attr_string(int);
 time_t	 grid_line_time(const struct grid_line *);
+void	 grid_compact_lines(struct grid *, u_int, u_int);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
@@ -3719,6 +3746,7 @@ void	 screen_write_start(struct screen_write_ctx *, struct screen *);
 void	 screen_write_start_callback(struct screen_write_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *);
 void	 screen_write_stop(struct screen_write_ctx *);
+void	 screen_write_flush(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
 size_t printflike(1, 2) screen_write_strlen(const char *, ...);
 int printflike(7, 8) screen_write_text(struct screen_write_ctx *, u_int, u_int,
@@ -3750,7 +3778,8 @@ void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
 void	 screen_write_end_sync(struct screen_write_ctx *);
-void	 screen_write_sync_clear_dirty(struct window_pane *);
+void	 screen_write_clear_pending(struct window_pane *);
+void	 screen_write_flush_batch(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
@@ -3779,6 +3808,8 @@ void	 screen_write_fullredraw(struct screen_write_ctx *);
 void	 screen_write_collect_end(struct screen_write_ctx *);
 void	 screen_write_collect_add(struct screen_write_ctx *,
 	     const struct grid_cell *);
+size_t	 screen_write_collect_multiple(struct screen_write_ctx *,
+	     const struct grid_cell *, const u_char *, size_t);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, const char *,
 	     u_char *, u_int);
@@ -3922,6 +3953,8 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
+void		 window_pane_set_program_status(struct window_pane *, char *,
+		     char *, char *);
 void		 window_pane_clear_program_status(struct window_pane *, int);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
@@ -4265,11 +4298,12 @@ void		 session_theme_changed(struct session *);
 void		 session_update_history(struct session *);
 
 /* utf8.c */
-enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
-enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
+enum utf8_state	 utf8_towc(const struct utf8_data *, int *);
+enum utf8_state	 utf8_fromwc(int wc, struct utf8_data *);
 int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
+int		 utf8_get_one(utf8_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
 void		 utf8_to_data(utf8_char, struct utf8_data *);
 void		 utf8_set(struct utf8_data *, u_char);
@@ -4311,7 +4345,11 @@ int	log_get_level(void);
 void	log_open(const char *);
 void	log_toggle(const char *);
 void	log_close(void);
-void printflike(1, 2) log_debug(const char *, ...);
+void printflike(1, 2) log_dodebug(const char *, ...);
+#define log_debug(...) do { \
+	if (log_get_level() > 0) \
+		log_dodebug(__VA_ARGS__); \
+} while (0)
 __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.108 2026/10/12 10:50:06 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.110 2026/11/23 08:11:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -94,6 +94,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->sel = NULL;
 
 	s->write_list = NULL;
+	s->write_start = s->write_end = s->write_scrolled = 0;
 	s->hyperlinks = NULL;
 
 	screen_reinit(s);
@@ -429,6 +430,7 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 		 */
 		available = s->cy;
 		if (gd->flags & GRID_HISTORY) {
+			grid_compact_lines(gd, gd->hsize, needed);
 			gd->hscrolled += needed;
 			gd->hsize += needed;
 		} else if (needed > 0 && available > 0) {

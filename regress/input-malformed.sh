@@ -42,6 +42,32 @@ start_cmd csi-interm-discard 8 3 \
     "perl -e 'print qq{\e[    \030OK}'; sleep 2"
 check_capture csi-interm-discard 'OK'
 
+# Accept large values, discard excessive parameters, and keep zeroes valid.
+start_pane csi-large 8 3 'X\033[2147483639CY'
+check_capture csi-large 'X      Y'
+start_pane csi-max 8 3 'X\033[2147483647CY'
+check_capture csi-max 'XY'
+start_pane csi-overflow 8 3 'X\033[2147483648CY'
+check_capture csi-overflow 'XY'
+zeroes=$(awk 'BEGIN { for (i = 0; i < 62; i++) printf "0" }')
+start_pane csi-zeroes 8 3 "X\033[${zeroes}1CY"
+check_capture csi-zeroes 'X Y'
+
+# Apply missing parameters as defaults and discard only the bad colon group.
+start_pane csi-missing 8 3 '\033[31;;mX'
+check_raw_matches csi-missing 'C 0,0 .*fg=default\[8\]'
+start_pane csi-colon-overflow 8 3 '\033[31;2147483648:2;32mX'
+check_raw_matches csi-colon-overflow 'C 0,0 .*fg=green\[2\]'
+
+# Check leading missing parameters and reject excessive lists.
+start_pane csi-leading-missing 8 3 '\033[;3HX'
+check_capture csi-leading-missing '  X'
+params=$(awk 'BEGIN { for (i = 0; i < 22; i++) printf "0;"; printf "31" }')
+start_pane csi-many 8 3 "\033[${params}mX"
+check_raw_matches csi-many 'C 0,0 .*fg=red\[1\]'
+start_pane csi-too-many 8 3 "\033[0;${params}mX"
+check_raw_matches csi-too-many 'C 0,0 .*fg=default\[8\]'
+
 test_discard osc-discard '\e]2;'
 test_discard apc-discard '\e_'
 

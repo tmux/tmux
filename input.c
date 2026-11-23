@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.284 2026/11/12 14:03:43 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.291 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -134,16 +134,17 @@ struct input_ctx {
 #define INPUT_DISCARD 0x1
 #define INPUT_LAST 0x2
 
-	struct input_requests		 requests;
-	u_int				 request_count;
-	struct event			 request_timer;
+	struct input_requests		requests;
+	u_int				request_count;
+	struct event			request_timer;
 
-	/*
-	 * All input received since we were last in the ground state. Sent to
-	 * control clients on connection.
-	 */
-	struct evbuffer			*since_ground;
-	struct event			 ground_timer;
+	/* Input since the last ground state, for capture-pane -P. */
+#define INPUT_GROUND_START 64
+	u_char			       *since_ground_buf;
+	size_t				since_ground_len;
+	size_t				since_ground_space;
+	struct event			ground_timer;
+
 #ifdef ENABLE_IMAGES
 	void				*kitty_state;
 #endif
@@ -158,6 +159,7 @@ static struct input_request *input_make_request(struct input_ctx *,
 static void	input_free_request(struct input_request *);
 static int	input_add_request(struct input_ctx *, enum input_request_type,
 		    int);
+static int	input_number(char **);
 static int	input_split(struct input_ctx *);
 static int	input_get(struct input_ctx *, u_int, int, int);
 static void	input_set_state(struct input_ctx *,
@@ -888,9 +890,8 @@ input_init(struct window_pane *wp, struct colour_palette *palette)
 	ictx->input_space = INPUT_BUF_START;
 	ictx->input_buf = xmalloc(INPUT_BUF_START);
 
-	ictx->since_ground = evbuffer_new();
-	if (ictx->since_ground == NULL)
-		fatalx("out of memory");
+	ictx->since_ground_space = INPUT_GROUND_START;
+	ictx->since_ground_buf = xmalloc(INPUT_GROUND_START);
 	evtimer_set(&ictx->ground_timer, input_ground_timer_callback, ictx);
 
 	TAILQ_INIT(&ictx->requests);
@@ -920,7 +921,7 @@ input_free(struct input_ctx *ictx)
 #ifdef ENABLE_IMAGES
 	kitty_free_state(ictx->kitty_state);
 #endif
-	evbuffer_free(ictx->since_ground);
+	free(ictx->since_ground_buf);
 	event_del(&ictx->ground_timer);
 
 	screen_write_stop_sync(ictx->wp);
@@ -954,10 +955,11 @@ input_reset(struct input_ctx *ictx, int clear)
 }
 
 /* Return pending data. */
-struct evbuffer *
-input_pending(struct input_ctx *ictx)
+const char *
+input_pending(struct input_ctx *ictx, size_t *len)
 {
-	return (ictx->since_ground);
+	*len = ictx->since_ground_len;
+	return ((const char *)ictx->since_ground_buf);
 }
 
 /* Change input state. */
@@ -971,6 +973,43 @@ input_set_state(struct input_ctx *ictx, const struct input_transition *itr)
 		ictx->state->enter(ictx);
 }
 
+/* Try collecting multiple printable ASCII characters. */
+static size_t
+input_try_multiple(struct input_ctx *ictx, const struct input_transition *itr,
+    const u_char *buf, size_t len)
+{
+	struct grid_cell	*gc = &ictx->cell.cell;
+	size_t			 n;
+	int			 set;
+
+	if (itr->handler != input_print || ictx->utf8started)
+		return (0);
+	set = ictx->cell.set == 0 ? ictx->cell.g0set : ictx->cell.g1set;
+	if (set == 1)
+		return (0);
+
+	n = screen_write_collect_multiple(&ictx->ctx, gc, buf, len);
+	if (n == 0)
+		return (0);
+	ictx->ch = buf[n - 1];
+	utf8_set(&gc->data, ictx->ch);
+	memcpy(&ictx->last, &gc->data, sizeof ictx->last);
+	ictx->flags |= INPUT_LAST;
+	return (n);
+}
+
+/* Save a byte of pending input. */
+static void
+input_add_pending(struct input_ctx *ictx)
+{
+	if (ictx->since_ground_len == ictx->since_ground_space) {
+		ictx->since_ground_buf = xreallocarray(ictx->since_ground_buf,
+		    2, ictx->since_ground_space);
+		ictx->since_ground_space *= 2;
+	}
+	ictx->since_ground_buf[ictx->since_ground_len++] = ictx->ch;
+}
+
 /* Parse data. */
 static void
 input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
@@ -978,7 +1017,7 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 	struct screen_write_ctx		*sctx = &ictx->ctx;
 	const struct input_state	*state = NULL;
 	const struct input_transition	*itr = NULL;
-	size_t				 off = 0;
+	size_t				 off = 0, n;
 
 	/* Parse the input. */
 	while (off < len) {
@@ -1003,6 +1042,12 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 		}
 		state = ictx->state;
 
+		n = input_try_multiple(ictx, itr, buf + off - 1, len - off + 1);
+		if (n != 0) {
+			off += n - 1;
+			continue;
+		}
+
 		/*
 		 * Any state except print stops the current collection. This is
 		 * an optimization to avoid checking if the attributes have
@@ -1010,7 +1055,7 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 		 * sequences that don't make a terminal change, but they should
 		 * be the minority.
 		 */
-		if (itr->handler != input_print)
+		if (itr->handler != input_print && state == &input_state_ground)
 			screen_write_collect_end(sctx);
 
 		/*
@@ -1026,7 +1071,7 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 
 		/* If not in ground state, save input. */
 		if (ictx->state != &input_state_ground)
-			evbuffer_add(ictx->since_ground, &ictx->ch, 1);
+			input_add_pending(ictx);
 	}
 }
 
@@ -1096,14 +1141,32 @@ input_parse_screen(struct input_ctx *ictx, struct screen *s,
 	screen_write_stop(sctx);
 }
 
+/* Parse a nonnegative numeric parameter. */
+static int
+input_number(char **ptr)
+{
+	char	*s;
+	u_int	 n = 0;
+
+	for (s = *ptr; *s >= '0' && *s <= '9'; s++) {
+		if (n >= INT_MAX / 10)
+			return (-1);
+		n = n * 10 + (*s - '0');
+	}
+	if (s == *ptr)
+		return (-1);
+	*ptr = s;
+	return (n);
+}
+
 /* Split the parameter list (if any). */
 static int
 input_split(struct input_ctx *ictx)
 {
-	const char		*errstr;
 	char			*ptr, *out;
 	struct input_param	*ip;
 	u_int			 i;
+	int			 n;
 
 	for (i = 0; i < ictx->param_list_len; i++) {
 		if (ictx->param_list[i].type == INPUT_STRING)
@@ -1116,19 +1179,27 @@ input_split(struct input_ctx *ictx)
 	ip = &ictx->param_list[0];
 
 	ptr = ictx->param_buf;
-	while ((out = strsep(&ptr, ";")) != NULL) {
-		if (*out == '\0')
-			ip->type = INPUT_MISSING;
-		else {
-			if (strchr(out, ':') != NULL) {
-				ip->type = INPUT_STRING;
-				ip->str = xstrdup(out);
-			} else {
+	while (ptr != NULL) {
+		out = ptr;
+		n = input_number(&ptr);
+		if (*ptr == '\0' || *ptr == ';') {
+			if (n == -1)
+				ip->type = INPUT_MISSING;
+			else {
 				ip->type = INPUT_NUMBER;
-				ip->num = strtonum(out, 0, INT_MAX, &errstr);
-				if (errstr != NULL)
-					return (-1);
+				ip->num = n;
 			}
+			if (*ptr == ';')
+				*ptr++ = '\0';
+			else
+				ptr = NULL;
+		} else {
+			ptr = out;
+			out = strsep(&ptr, ";");
+			if (strchr(out, ':') == NULL)
+				return (-1);
+			ip->type = INPUT_STRING;
+			ip->str = xstrdup(out);
 		}
 		ip = &ictx->param_list[++ictx->param_list_len];
 		if (ictx->param_list_len == nitems(ictx->param_list))
@@ -1235,7 +1306,12 @@ static void
 input_ground(struct input_ctx *ictx)
 {
 	event_del(&ictx->ground_timer);
-	evbuffer_drain(ictx->since_ground, EVBUFFER_LENGTH(ictx->since_ground));
+	ictx->since_ground_len = 0;
+	if (ictx->since_ground_space > INPUT_GROUND_START) {
+		ictx->since_ground_space = INPUT_GROUND_START;
+		ictx->since_ground_buf = xrealloc(ictx->since_ground_buf,
+		    INPUT_GROUND_START);
+	}
 
 	if (ictx->input_space > INPUT_BUF_START) {
 		ictx->input_space = INPUT_BUF_START;
@@ -2321,7 +2397,6 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 	char			*s = ictx->param_list[i].str, *copy, *ptr, *out;
 	int			 p[8];
 	u_int			 n;
-	const char		*errstr;
 
 	for (n = 0; n < nitems(p); n++)
 		p[n] = -1;
@@ -2330,8 +2405,8 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 	ptr = copy = xstrdup(s);
 	while ((out = strsep(&ptr, ":")) != NULL) {
 		if (*out != '\0') {
-			p[n++] = strtonum(out, 0, INT_MAX, &errstr);
-			if (errstr != NULL || n == nitems(p)) {
+			p[n++] = input_number(&out);
+			if (p[n - 1] == -1 || *out != '\0' || n == nitems(p)) {
 				free(copy);
 				return;
 			}
@@ -2909,14 +2984,8 @@ input_program_status(struct window_pane *wp, const char *p)
 	else if (message != NULL && strcmp(message, wp->program_message) != 0)
 		changed = 1;
 	if (changed) {
-		window_pane_clear_program_status(wp, 1);
-
-		wp->program_state = state;
-		state = NULL;
-		wp->program_name = name;
-		name = NULL;
-		wp->program_message = message;
-		message = NULL;
+		window_pane_set_program_status(wp, state, name, message);
+		state = name = message = NULL;
 
 		server_status_window(wp->window);
 		server_redraw_window_borders(wp->window);

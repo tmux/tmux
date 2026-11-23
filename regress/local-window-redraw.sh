@@ -25,12 +25,13 @@ $TMUX2 new -d -s local -x40 -y12 'sleep 100' || exit 1
 $TMUX2 new-window -d -t local:1 "exec cat '$TMP/output'" || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g focus-events on || exit 1
+$TMUX2 set -as terminal-features ',screen:programstatus' || exit 1
 $TMUX2 bind -n F1 'select-window -L ; select-window -t :1' || exit 1
 exec 3>"$TMP/output"
 
 # Two real terminal clients share the session; only the first selects window 1.
 first=$($TMUX new -dP -F '#{pane_id}' -x40 -y12 "$TMUX2 attach -t local") || exit 1
-$TMUX new-window -d "$TMUX2 attach -t local" || exit 1
+second=$($TMUX new-window -dP -F '#{pane_id}' "$TMUX2 attach -t local") || exit 1
 wait_for_clients 2 $TMUX2 || exit 1
 $TMUX send-keys -t "$first" F1 || exit 1
 printf '\033[2J\033[HLOCAL_INITIAL' >&3
@@ -46,6 +47,14 @@ $TMUX2 refresh-client -t "$client" || exit 1
 sleep 0.2
 $TMUX capture-pane -pet "$first" >"$TMP/after" || exit 1
 cmp "$TMP/before" "$TMP/after" || exit 1
+
+# Program status follows the client's local window on updates and refreshes.
+printf '\033]7501;state=working:app=local\007' >&3
+wait_for_output working $TMUX display-message -pt "$first" '#{pane_program_state}' || exit 1
+$TMUX2 refresh-client -t "$client" || exit 1
+sleep 0.2
+wait_for_output working $TMUX display-message -pt "$first" '#{pane_program_state}' || exit 1
+wait_for_output '' $TMUX display-message -pt "$second" '#{pane_program_state}' || exit 1
 
 # Losing the local client must send focus out for its displayed window.
 $TMUX2 set-hook -g pane-focus-out 'set -g @local-focus-out yes' || exit 1

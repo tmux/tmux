@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.173 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.175 2026/11/22 13:39:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2010,10 +2010,8 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 
-	if (log_get_level() != 0) {
-		log_debug("%s: starting @%u redraw (%s)", c->name, w->id,
-		    redraw_flags_to_string(flags));
-	}
+	log_debug("%s: starting @%u redraw (%s)", c->name, w->id,
+	    redraw_flags_to_string(flags));
 
 	scene = redraw_get_scene(c);
 	if (scene == NULL)
@@ -2057,14 +2055,14 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		if (wp != NULL) {
 			if (wp->base.mode & MODE_SYNC)
 				screen_write_stop_sync(wp);
-			screen_write_sync_clear_dirty(wp);
+			screen_write_clear_pending(wp);
 		} else {
 			TAILQ_FOREACH(loop, &scene->w->panes, entry) {
 				if (!window_pane_is_visible(loop))
 					continue;
 				if (loop->base.mode & MODE_SYNC)
 					screen_write_stop_sync(loop);
-				screen_write_sync_clear_dirty(loop);
+				screen_write_clear_pending(loop);
 			}
 		}
 	}

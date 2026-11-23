@@ -125,6 +125,8 @@ sub frames {
 }
 my $link = "\e]8;id=l;https://example.com/a/longer/path\e\\";
 
+# A temporary change must stay dirty when the original contents are restored.
+frames('restore', sub { print "\e[11;1H${rgb}Z\e[11;1Ha" });
 # Two cells at opposite ends of a line, like two spinners.
 frames('far', sub { print "\e[1;5H\e[38;2;255;0;0m$_[0]\e[1;75H$_[0]" });
 # Pairs of cells 7 columns apart on a line of one colour.
@@ -182,6 +184,9 @@ $OUTER respawn-pane -k -t outer:0.0 \
 
 wait_for_file "$DIR/painted" "application did not paint"
 sleep 1
+
+frames restore 500
+check_screen "after restored frames"
 
 # Two cells 70 columns apart: redrawing the line is about 6000 bytes.
 frames far 1000

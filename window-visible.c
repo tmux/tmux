@@ -1,4 +1,4 @@
-/* $OpenBSD: window-visible.c,v 1.6 2026/10/02 15:20:41 nicm Exp $ */
+/* $OpenBSD: window-visible.c,v 1.7 2026/11/21 16:37:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -144,6 +144,13 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 			found_self = 1;
 			continue;
 		}
+		if (!found_self || !window_pane_is_visible(wp))
+			continue;
+
+		tb = wp->yoff > 0 ? wp->yoff - 1 : 0;
+		bb = wp->yoff + (int)wp->sy;
+		if (py < tb || py > bb)
+			continue;
 
 		if (window_pane_is_floating(wp) &&
 		    window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
@@ -153,15 +160,9 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 		if (no_border) {
 			tb = wp->yoff;
 			bb = wp->yoff + (int)wp->sy - 1;
-		} else {
-			tb = wp->yoff > 0 ? wp->yoff - 1 : 0;
-			bb = wp->yoff + (int)wp->sy;
+			if (py < tb || py > bb)
+				continue;
 		}
-		if (!found_self ||
-		    !window_pane_is_visible(wp) ||
-		    py < tb ||
-		    py > bb)
-			continue;
 		if (!window_pane_is_floating(wp) && (py == tb || py == bb))
 			continue;
 

@@ -23,7 +23,8 @@ check_size()
 	[ "$got" = "$1" ] || fail "size $got, expected $1"
 }
 
-$TMUX new-session -d -x 80 -y 24 'sleep 100' || exit 1
+# Keep panes alive until cleanup, even on slow test runners.
+$TMUX new-session -d -x 80 -y 24 'cat' || exit 1
 
 for type in joined separate separate-active; do
 	$TMUX set -w pane-border-type "$type" || exit 1
@@ -34,7 +35,7 @@ for type in joined separate separate-active; do
 		for status in off top bottom top-floating bottom-floating; do
 			$TMUX set -w pane-border-status "$status" || exit 1
 			id=$($TMUX new-pane -dPF '#{pane_id}' -B "$lines" \
-			    -x 20 -y 6 -X 0 -Y 0 'sleep 100') || exit 1
+			    -x 20 -y 6 -X 0 -Y 0 'cat') || exit 1
 
 			# Starting at the top edge used to add an unwanted row.
 			$TMUX resize-pane -t "$id" -x 100% -y 100% || exit 1
@@ -70,7 +71,7 @@ for lines in single none; do
 			$TMUX set -w pane-scrollbars-position "$position" || exit 1
 			for style in 'width=1,pad=0' 'width=3,pad=2'; do
 				id=$($TMUX new-pane -dPF '#{pane_id}' -B "$lines" \
-				    -x 20 -y 6 -X 0 -Y 0 'sleep 100') || exit 1
+				    -x 20 -y 6 -X 0 -Y 0 'cat') || exit 1
 				$TMUX set -p -t "$id" pane-scrollbars-style "$style" || exit 1
 				reserved=0
 				if [ "$mode" = on ]; then

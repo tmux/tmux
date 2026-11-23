@@ -1039,6 +1039,13 @@ image_grid_line_has_images(struct grid_line *gl)
 	return (gl->images != NULL && !TAILQ_EMPTY(&gl->images->spans));
 }
 
+/* Check whether a grid has any image placements. */
+int
+image_grid_has_images(const struct grid *gd)
+{
+	return (gd->images != NULL && !TAILQ_EMPTY(&gd->images->placements));
+}
+
 /* Check whether a grid area has any image spans. */
 int
 image_grid_area_has_images(struct grid *gd, u_int x, u_int y, u_int sx,
@@ -1324,11 +1331,15 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	struct image_placement	*plmt;
 	struct grid_line	*gl;
 	struct image_line	*line;
-	u_int			 cx = s->cx, cy = s->cy, y, lines;
+	u_int			 cx, cy, y, lines;
 	u_int			 sx = ig->sx, sy = ig->sy;
 	u_int			 cursor_x = 0, cursor_rows;
 	u_int			 origin_y = 0, h_origin_y, region_height;
 	u_int			 remaining, n;
+
+	screen_write_flush(ctx);
+	cx = s->cx;
+	cy = s->cy;
 
 	if (sx > screen_size_x(s) - cx)
 		sx = screen_size_x(s) - cx;

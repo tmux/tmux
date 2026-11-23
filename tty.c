@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.498 2026/11/13 16:47:32 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.503 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -37,6 +37,7 @@ static int	tty_log_fd = -1;
 
 static void	tty_start_timer_callback(int, short, void *);
 static void	tty_start_start_timer(struct tty *);
+static int	tty_block_maybe(struct tty *, int);
 static void	tty_clipboard_query_callback(int, short, void *);
 static void	tty_send_size_query(struct tty *, int);
 static void	tty_set_italics(struct tty *);
@@ -76,6 +77,7 @@ static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 	((ctx)->xoff == 0 && (ctx)->sx >= (tty)->sx)
 
 #define TTY_BLOCK_INTERVAL (100000 /* 100 milliseconds */)
+#define TTY_BLOCK_GRACE (10000 /* 10 milliseconds */)
 #define TTY_BLOCK_START(tty) (1 + ((tty)->sx * (tty)->sy) * 8)
 #define TTY_BLOCK_STOP(tty) (1 + ((tty)->sx * (tty)->sy) / 8)
 
@@ -215,6 +217,12 @@ tty_timer_callback(__unused int fd, __unused short events, void *data)
 	struct client	*c = tty->client;
 	struct timeval	 tv = { .tv_usec = TTY_BLOCK_INTERVAL };
 
+	if (tty->flags & TTY_GRACE) {
+		tty->flags &= ~TTY_GRACE;
+		tty_block_maybe(tty, 1);
+		return;
+	}
+
 	log_debug("%s: %zu discarded", c->name, tty->discarded);
 
 	c->flags |= CLIENT_ALLREDRAWFLAGS;
@@ -230,27 +238,41 @@ tty_timer_callback(__unused int fd, __unused short events, void *data)
 }
 
 static int
-tty_block_maybe(struct tty *tty)
+tty_block_maybe(struct tty *tty, int expired)
 {
 	struct client	*c = tty->client;
 	size_t		 size = EVBUFFER_LENGTH(tty->out);
 	struct timeval	 tv = { .tv_usec = TTY_BLOCK_INTERVAL };
+	struct timeval	 grace = { .tv_usec = TTY_BLOCK_GRACE };
 
 	if (size == 0)
 		tty->flags &= ~TTY_NOBLOCK;
-	else if (tty->flags & TTY_NOBLOCK)
+	if ((tty->flags & (TTY_NOBLOCK|TTY_NOBACKOFF)) ||
+	    size < TTY_BLOCK_START(tty) ||
+	    c->redraw > 0) {
+		if (tty->flags & TTY_GRACE) {
+			tty->flags &= ~TTY_GRACE;
+			evtimer_del(&tty->timer);
+		}
 		return (0);
-
-	if (size < TTY_BLOCK_START(tty))
-		return (0);
+	}
 
 	if (tty->flags & TTY_BLOCK)
 		return (1);
+	if (!expired) {
+		if (~tty->flags & TTY_GRACE) {
+			tty->flags |= TTY_GRACE;
+			evtimer_add(&tty->timer, &grace);
+		}
+		return (0);
+	}
 	tty->flags |= TTY_BLOCK;
 
 	log_debug("%s: can't keep up, %zu discarded", c->name, size);
 
 	evbuffer_drain(tty->out, size);
+	free(tty->program_status_last);
+	tty->program_status_last = NULL;
 	c->discarded += size;
 
 	tty->discarded = 0;
@@ -278,7 +300,7 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 			c->redraw -= nwrite;
 		log_debug("%s: waiting for redraw, %zu bytes left", c->name,
 		    c->redraw);
-	} else if (tty_block_maybe(tty))
+	} else if (tty_block_maybe(tty, 0))
 		return;
 
 	if (EVBUFFER_LENGTH(tty->out) != 0)
@@ -302,7 +324,11 @@ tty_open(struct tty *tty, char **cause)
 	image_tty_update(tty);
 #endif
 
-	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER);
+	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER|TTY_GRACE);
+	if (options_get_number(global_options, "disable-backoff"))
+		tty->flags |= TTY_NOBACKOFF;
+	else
+		tty->flags &= ~TTY_NOBACKOFF;
 
 	event_set(&tty->event_in, c->fd, EV_PERSIST|EV_READ,
 	    tty_read_callback, tty);
@@ -443,6 +469,9 @@ tty_send_requests(struct tty *tty)
 		tty_puts(tty, "\033[>q");
 	if (~flags & TTY_HAVESYNC)
 		tty_puts(tty, "\033[?2026$p");
+	if (~flags & TTY_HAVEPROGRAMSTATUS)
+		tty_puts(tty, "\033]7501;?\033\\");
+
 #ifdef ENABLE_IMAGES
 	if (tty_term_flag(term, TTYC_XT) && (~flags & TTY_HAVEKITTYGRAPHICS))
 		tty_puts(tty, "\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\");
@@ -496,10 +525,12 @@ tty_stop_tty(struct tty *tty)
 
 	evtimer_del(&tty->start_timer);
 	evtimer_del(&tty->clipboard_timer);
+	free(tty->program_status_last);
+	tty->program_status_last = NULL;
 	tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZPIXELS|TTY_WINSZAPPLY);
 
 	event_del(&tty->timer);
-	tty->flags &= ~TTY_BLOCK;
+	tty->flags &= ~(TTY_BLOCK|TTY_GRACE);
 
 	event_del(&tty->event_in);
 	event_del(&tty->event_out);
@@ -514,6 +545,8 @@ tty_stop_tty(struct tty *tty)
 	if (tcsetattr(c->fd, TCSANOW, &tty->tio) == -1)
 		return;
 
+	if (tty->term->flags & TERM_PROGRAMSTATUS)
+		tty_raw(tty, "\033]7501;state=clear\033\\");
 	tty_raw(tty, tty_term_string_ii(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
 	if (tty_acs_needed(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
@@ -565,6 +598,7 @@ tty_close(struct tty *tty)
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
 	tty_stop_tty(tty);
+	tty->flags &= ~TTY_HAVEPROGRAMSTATUS;
 
 	if (tty->flags & TTY_OPENED) {
 #ifdef ENABLE_IMAGES
@@ -941,7 +975,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		mode &= ~MODE_CURSOR_BLINKING;
 
 	changed = mode ^ tty->mode;
-	if (log_get_level() != 0 && changed != 0) {
+	if (changed != 0) {
 		log_debug("%s: current mode %s", c->name,
 		    screen_mode_to_string(tty->mode));
 		log_debug("%s: setting mode %s", c->name,
@@ -1245,9 +1279,9 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 }
 
 /* Clear a line. */
-static void
+void
 tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
-    u_int px, u_int nx, u_int bg)
+    u_int px, u_int nx, u_int bg, int wrapped)
 {
 	struct client		*c = tty->client;
 
@@ -1258,7 +1292,7 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 		return;
 
 	/* If genuine BCE is available, can try escape sequences. */
-	if (!tty_fake_bce(tty, defaults, bg)) {
+	if (!wrapped && nx >= 10 && !tty_fake_bce(tty, defaults, bg)) {
 		/* Off the end of the line, use EL if available. */
 		if (px + nx >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
 			tty_cursor(tty, px, py);
@@ -1282,8 +1316,14 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 	}
 
 	/* Couldn't use an escape sequence, use spaces. */
-	tty_cursor(tty, px, py);
-	tty_repeat_space(tty, nx);
+	if (px != 0 || !wrapped)
+		tty_cursor(tty, px, py);
+	if (nx == 1)
+		tty_putc(tty, ' ');
+	else if (nx == 2)
+		tty_putn(tty, "  ", 2, 2);
+	else
+		tty_repeat_space(tty, nx);
 }
 
 /* Clear a line, adjusting to visible part of pane. */
@@ -1297,7 +1337,7 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
 	if (tty_clamp_line(tty, ctx, px, py, nx, &l, &x, &rx, &ry))
-		tty_clear_line(tty, &ctx->defaults, ry, x, rx, bg);
+		tty_clear_line(tty, &ctx->defaults, ry, x, rx, bg, 0);
 }
 
 /* Clamp area position to visible part of pane. */
@@ -1436,7 +1476,7 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 
 	/* Couldn't use an escape sequence, loop over the lines. */
 	for (yy = py; yy < py + ny; yy++)
-		tty_clear_line(tty, defaults, yy, px, nx, bg);
+		tty_clear_line(tty, defaults, yy, px, nx, bg, 0);
 }
 
 /* Clear an area in a pane. */
@@ -3072,4 +3112,47 @@ tty_set_progress_bar(struct tty *tty, struct progress_bar *pb)
 {
 	if (tty_term_has(tty->term, TTYC_SPB))
 		tty_putcode_ii(tty, TTYC_SPB, pb->state, pb->progress);
+}
+
+void
+tty_set_program_status(struct tty *tty, const struct window_pane *wp)
+{
+	struct client	*c = tty->client;
+	char		*frame, *encoded = NULL;
+	size_t		 len, size;
+
+	if (!(tty->flags & TTY_STARTED) ||
+	    c->session == NULL ||
+	    (c->flags & (CLIENT_CONTROL|CLIENT_UNATTACHEDFLAGS)))
+		return;
+	if (tty->flags & TTY_BLOCK)
+		return;
+	if (~tty->term->flags & TERM_PROGRAMSTATUS)
+		return;
+
+	if (wp == NULL || wp->program_state == NULL)
+		frame = xstrdup("\033]7501;state=clear\033\\");
+	else {
+		if (wp->program_message != NULL) {
+			len = strlen(wp->program_message);
+			size = 4 * ((len + 2) / 3) + 1; /* storage for base64 */
+			encoded = xmalloc(size);
+			b64_ntop(wp->program_message, len, encoded, size);
+		}
+		xasprintf(&frame, "\033]7501;state=%s%s%s%s%s\033\\",
+		    wp->program_state,
+		    wp->program_name == NULL ? "" : ":app=",
+		    wp->program_name == NULL ? "" : wp->program_name,
+		    wp->program_message == NULL ? "" : ":msg=",
+		    wp->program_message == NULL ? "" : encoded);
+		free(encoded);
+	}
+	if (tty->program_status_last == NULL ||
+	    strcmp(tty->program_status_last, frame) != 0) {
+		tty_puts(tty, frame);
+		free(tty->program_status_last);
+		tty->program_status_last = frame;
+		frame = NULL;
+	}
+	free(frame);
 }

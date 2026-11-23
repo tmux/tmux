@@ -23,6 +23,22 @@ check_raw_matches bce \
 	'C 0,1 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\] attr=NONE\[0\].* bg=blue\[4\]' \
 	'C 0,7 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\] attr=NONE\[0\].* bg=blue\[4\]'
 
+# Allocating blank lines must keep basic, indexed and RGB backgrounds.
+start_pane expandblue 8 3 '\033[44m\033[2J'
+check_raw_matches expandblue \
+	'C 0,0 data=\(1,1, \).* bg=blue\[4\]' \
+	'C 2,7 data=\(1,1, \).* bg=blue\[4\]'
+
+start_pane expandindexed 8 3 '\033[48;5;17m\033[2J'
+check_raw_matches expandindexed \
+	'C 0,0 data=\(1,1, \).* bg=colour17\[1000011\]' \
+	'C 2,7 data=\(1,1, \).* bg=colour17\[1000011\]'
+
+start_pane expandrgb 8 3 '\033[48;2;1;2;3m\033[2J'
+check_raw_matches expandrgb \
+	'C 0,0 data=\(1,1, \).* bg=#010203\[' \
+	'C 2,7 data=\(1,1, \).* bg=#010203\['
+
 start_pane underlines 12 3 '\033[4:2m2\033[4:3m3\033[4:4m4\033[4:5m5'
 check_raw_matches underlines \
 	'C 0,0 data=\(1,1,2\) flags=NONE\[0\] attr=UNDERSCORE_2\[[0-9a-f]+\]' \

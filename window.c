@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.392 2026/11/16 20:28:53 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.397 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1667,7 +1667,7 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
-	screen_write_sync_clear_dirty(wp);
+	screen_write_clear_pending(wp);
 
 	if (wp->event != NULL) {
 		bufferevent_free(wp->event);
@@ -1694,6 +1694,8 @@ window_pane_destroy(struct window_pane *wp)
 		event_del(&wp->resize_timer);
 	if (event_initialized(&wp->sync_timer))
 		event_del(&wp->sync_timer);
+	if (event_initialized(&wp->write_timer))
+		event_del(&wp->write_timer);
 	if (event_initialized(&wp->sb_auto_timer))
 		event_del(&wp->sb_auto_timer);
 	window_pane_clear_resizes(wp, NULL);
@@ -1801,6 +1803,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (sx == wp->sx && sy == wp->sy)
 		return;
 
+	screen_write_flush_batch(wp);
 	screen_write_stop_sync(wp);
 
 	r = xmalloc(sizeof *r);
@@ -2012,21 +2015,32 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 	window_fire_pane_prompt("pane-prompt-opened", wp, type);
 }
 
+/* Replace program status. */
+void
+window_pane_set_program_status(struct window_pane *wp, char *state, char *name,
+    char *message)
+{
+	free(wp->program_state);
+	free(wp->program_name);
+	free(wp->program_message);
+	wp->program_state = state;
+	wp->program_name = name;
+	wp->program_message = message;
+	if (~wp->flags & PANE_DESTROYED)
+		server_client_program_status_changed(wp);
+}
+
 /* Clear program status. */
 void
 window_pane_clear_program_status(struct window_pane *wp, int all)
 {
-	if (!all && wp->program_state != NULL) {
-		if (strcmp(wp->program_state, "done") == 0 ||
-		    strcmp(wp->program_state, "error") == 0)
-			return;
-	}
-	free(wp->program_state);
-	free(wp->program_name);
-	free(wp->program_message);
-	wp->program_state = NULL;
-	wp->program_name = NULL;
-	wp->program_message = NULL;
+	const char	*ps = wp->program_state;
+
+	if (ps == NULL)
+		return;
+	if (!all && (strcmp(ps, "done") == 0 || strcmp(ps, "error") == 0))
+		return;
+	window_pane_set_program_status(wp, NULL, NULL, NULL);
 }
 
 /* Close a pane prompt. */
@@ -2076,6 +2090,7 @@ enum prompt_key_result
 window_pane_prompt_key(struct window_pane *wp, struct client *c, key_code key,
     struct mouse_event *m)
 {
+	struct options			*oo = c->session->options;
 	struct prompt			*prompt = wp->prompt;
 	struct window_pane_prompt	*wpp = wp->prompt_data;
 	enum prompt_key_result		 result;
@@ -2095,7 +2110,7 @@ window_pane_prompt_key(struct window_pane *wp, struct client *c, key_code key,
 		    cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 			result = PROMPT_KEY_NOT_HANDLED;
 		else {
-			if (c != NULL && status_at_line(c) == 0)
+			if (options_get_number(oo, "status-position") == 0)
 				py = 0;
 			else
 				py = wp->sy - 1;
@@ -2670,7 +2685,7 @@ window_pane_start_input(struct window_pane *wp, struct cmdq_item *item,
 		*cause = xstrdup("pane is not empty");
 		return (-1);
 	}
-	if (c->flags & (CLIENT_DEAD|CLIENT_EXITED))
+	if (c == NULL || (c->flags & (CLIENT_DEAD|CLIENT_EXITED)))
 		return (1);
 	if (c->session != NULL)
 		return (1);

@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.69 2026/10/23 06:45:15 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.70 2026/11/21 12:48:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -664,6 +664,7 @@ control_write_output(struct client *c, struct window_pane *wp)
 
 ignore:
 	log_debug("%s: %s: ignoring pane %%%u", __func__, c->name, wp->id);
+	control_discard_pane(c, cp);
 	window_pane_update_used_data(wp, &cp->offset, SIZE_MAX);
 	window_pane_update_used_data(wp, &cp->queued, SIZE_MAX);
 }

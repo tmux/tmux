@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.446 2026/11/16 12:15:04 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.448 2026/11/22 14:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -775,7 +775,7 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 		data->backing_written = 1;
 	old_cy = backing->cy;
 	if (parse) {
-		vasprintf(&text, fmt, ap);
+		xvasprintf(&text, fmt, ap);
 		input_parse_screen(data->ictx, backing, window_copy_init_ctx_cb,
 		    data, text, strlen(text));
 		free(text);
@@ -7503,17 +7503,7 @@ window_copy_cursor_prompt(struct window_mode_entry *wme, int direction,
 			break;
 	}
 
-	data->cx = 0;
-	if (line > gd->hsize) {
-		data->cy = line - gd->hsize;
-		data->oy = 0;
-	} else {
-		data->cy = 0;
-		data->oy = gd->hsize - line;
-	}
-
-	window_copy_update_selection(wme, 1, 0);
-	window_copy_redraw_screen(wme);
+	window_copy_scroll_to(wme, 0, line, 0);
 }
 
 static void
@@ -7864,23 +7854,16 @@ static void
 window_copy_jump_to_mark(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 tmx, tmy;
+	u_int				 tmx, tmy, mx, my;
 
+	mx = data->mx;
+	my = data->my;
 	tmx = data->cx;
 	tmy = screen_hsize(data->backing) + data->cy - data->oy;
-	data->cx = data->mx;
-	if (data->my < screen_hsize(data->backing)) {
-		data->cy = 0;
-		data->oy = screen_hsize(data->backing) - data->my;
-	} else {
-		data->cy = data->my - screen_hsize(data->backing);
-		data->oy = 0;
-	}
 	data->mx = tmx;
 	data->my = tmy;
 	data->showmark = 1;
-	window_copy_update_selection(wme, 0, 0);
-	window_copy_redraw_screen(wme);
+	window_copy_scroll_to(wme, mx, my, 0);
 }
 
 /* Scroll up if the cursor went off the visible screen. */

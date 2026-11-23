@@ -1,4 +1,4 @@
-/* $OpenBSD: input-keys.c,v 1.115 2026/10/12 09:37:07 nicm Exp $ */
+/* $OpenBSD: input-keys.c,v 1.118 2026/11/22 11:08:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -397,10 +397,8 @@ input_key_build(void)
 int
 input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 {
-	if (log_get_level() != 0) {
-		log_debug("writing key 0x%llx (%s) to %%%u", key,
-		    key_string_lookup_key(key, 1), wp->id);
-	}
+	log_debug("writing key 0x%llx (%s) to %%%u", key,
+	    key_string_lookup_key(key, 1), wp->id);
 
 	if (KEYC_IS_MOUSE(key)) {
 		if (m != NULL && m->wp != -1 && (u_int)m->wp == wp->id)
@@ -427,7 +425,7 @@ input_key_extended(struct bufferevent *bev, key_code key)
 {
 	char		 tmp[64], modifier;
 	struct utf8_data ud;
-	wchar_t		 wc;
+	int		 wc;
 
 	switch (key & KEYC_MASK_MODIFIERS) {
 	case KEYC_SHIFT:
@@ -576,6 +574,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	struct input_key_entry	*ike = NULL;
 	key_code		 newkey;
 	struct utf8_data	 ud;
+
+	/* Send keys are like any other key here. */
+	key &= ~KEYC_SENT;
 
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))

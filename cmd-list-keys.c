@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-keys.c,v 1.80 2026/11/09 12:27:36 nicm Exp $ */
+/* $OpenBSD: cmd-list-keys.c,v 1.81 2026/11/21 12:52:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -100,8 +100,8 @@ cmd_list_keys_get_root_and_prefix(u_int *n, struct sort_criteria *sort_crit)
 	struct key_table		 *t;
 	struct key_binding		**lt;
 	u_int				  i, ltsz, len = 0, offset = 0;
-	static struct key_binding	**l = NULL;
-	static u_int			  lsz = 0;
+	struct key_binding		**l = NULL;
+	u_int				  lsz = 0;
 
 	for (i = 0; i < nitems(tables); i++) {
 		t = key_bindings_get_table(tables[i], 0);
@@ -112,6 +112,7 @@ cmd_list_keys_get_root_and_prefix(u_int *n, struct sort_criteria *sort_crit)
 			l = xreallocarray(l, lsz, sizeof *l);
 		}
 		memcpy(l + offset, lt, ltsz * sizeof *l);
+		free(lt);
 		offset += ltsz;
 	}
 
@@ -227,6 +228,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	if (filter_key && n == 0) {
 		cmdq_error(item, "unknown key: %s", keystr);
 		free(prefix);
+		free(l);
 		return (CMD_RETURN_ERROR);
 	}
 	if (single && n > 1)
@@ -254,6 +256,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	format_free(ft);
 	free(prefix);
+	free(l);
 
 	return (CMD_RETURN_NORMAL);
 }

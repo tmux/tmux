@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.20 2026/11/13 09:24:18 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.25 2026/11/22 15:19:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,52 +42,6 @@ static const char* tty_draw_line_states[] = {
 	"DONE"
 };
 
-/* Clear part of the line. */
-static void
-tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
-    const struct grid_cell *defaults, u_int bg, int wrapped)
-{
-	/* Nothing to clear. */
-	if (nx == 0)
-		return;
-
-	/* If genuine BCE is available, can try escape sequences. */
-	if (!wrapped &&
-	    nx >= 10 &&
-	    !tty_fake_bce(tty, defaults, bg)) {
-		/* Off the end of the line, use EL if available. */
-		if (px + nx >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
-			tty_cursor(tty, px, py);
-			tty_putcode(tty, TTYC_EL);
-			return;
-		}
-
-		/* At the start of the line. Use EL1. */
-		if (px == 0 && tty_term_has(tty->term, TTYC_EL1)) {
-			tty_cursor(tty, px + nx - 1, py);
-			tty_putcode(tty, TTYC_EL1);
-			return;
-		}
-
-		/* Section of line. Use ECH if possible. */
-		if (tty_term_has(tty->term, TTYC_ECH)) {
-			tty_cursor(tty, px, py);
-			tty_putcode_i(tty, TTYC_ECH, nx);
-			return;
-		}
-	}
-
-	/* Couldn't use an escape sequence, use spaces. */
-	if (px != 0 || !wrapped)
-		tty_cursor(tty, px, py);
-	if (nx == 1)
-		tty_putc(tty, ' ');
-	else if (nx == 2)
-		tty_putn(tty, "  ", 2, 2);
-	else
-		tty_repeat_space(tty, nx);
-}
-
 /* Is this cell empty? */
 static u_int
 tty_draw_line_get_empty(const struct grid_cell *gc,
@@ -114,6 +68,150 @@ tty_draw_line_get_empty(const struct grid_cell *gc,
 	return (empty);
 }
 
+/* Collect empty cells with the same background without expanding each cell. */
+static u_int
+tty_draw_line_collect_empty(const struct grid_line *gl, u_int px, u_int end,
+    const struct grid_cell *gc)
+{
+	const struct grid_cell_entry	*gce;
+	const struct grid_extd_entry	*gee;
+	u_int				 i;
+	int				 bg;
+
+	if (px >= end ||
+	    gc->attr != 0 ||
+	    gc->link != 0 ||
+	    gc->flags & ~(GRID_FLAG_NOPALETTE|GRID_FLAG_CLEARED))
+		return (0);
+#ifdef ENABLE_IMAGES
+	if (gl->images != NULL)
+		return (0);
+#endif
+
+	for (i = px; i < end; i++) {
+		gce = &gl->celldata[i];
+		if (gce->flags & GRID_FLAG_EXTENDED) {
+			if (gce->offset >= gl->extdsize)
+				break;
+			gee = &gl->extddata[gce->offset];
+			if (gee->flags & ~GRID_FLAG_NOPALETTE ||
+			    gee->attr != 0 ||
+			    gee->link != 0 ||
+			    gee->bg != gc->bg ||
+			    (gee->flags & GRID_FLAG_NOPALETTE) !=
+			    (gc->flags & GRID_FLAG_NOPALETTE) ||
+			    utf8_get_one(gee->data) != ' ')
+				break;
+		} else {
+			if (gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256|
+			    GRID_FLAG_NOPALETTE|GRID_FLAG_CLEARED) ||
+			    gce->data.attr != 0 ||
+			    (gce->flags & GRID_FLAG_NOPALETTE) !=
+			    (gc->flags & GRID_FLAG_NOPALETTE))
+				break;
+			bg = gce->data.bg;
+			if (gce->flags & GRID_FLAG_BG256)
+				bg |= COLOUR_FLAG_256;
+			if (bg != gc->bg ||
+			    (!(gce->flags & GRID_FLAG_CLEARED) &&
+			    gce->data.data != ' '))
+				break;
+		}
+	}
+	return (i - px);
+}
+
+/* Collect more ASCII extended cells with the same style. */
+static u_int
+tty_draw_line_collect_extended(const struct grid_line *gl,
+    const struct grid_cell_entry *gce, u_int nx, char *buf)
+{
+	const struct grid_extd_entry	*gee, *next;
+	u_int				 n;
+	int				 ch;
+
+	if (gce->offset >= gl->extdsize)
+		return (0);
+
+	gee = &gl->extddata[gce->offset];
+	if (gee->flags & ~GRID_FLAG_NOPALETTE)
+		return (0);
+	if (gee->attr & GRID_ATTR_CHARSET)
+		return (0);
+
+	ch = utf8_get_one(gee->data);
+	if (ch < 0x20 || ch > 0x7e)
+		return (0);
+
+	for (n = 0, gce++; n < nx; n++, gce++) {
+		if (~gce->flags & GRID_FLAG_EXTENDED ||
+		    gce->offset >= gl->extdsize)
+			break;
+		next = &gl->extddata[gce->offset];
+		if (next->flags != gee->flags ||
+		    next->attr != gee->attr ||
+		    next->fg != gee->fg ||
+		    next->bg != gee->bg ||
+		    next->us != gee->us ||
+		    next->link != gee->link)
+			break;
+		ch = utf8_get_one(next->data);
+		if (ch < 0x20 ||
+		    ch > 0x7e ||
+		    (ch == ' ' && gee->attr == 0 && gee->link == 0))
+			break;
+		buf[n] = ch;
+	}
+	return (n);
+}
+
+/* Collect more ASCII cells with the same style. */
+static u_int
+tty_draw_line_collect(const struct grid_line *gl, u_int px, u_int end,
+    char *buf, size_t len)
+{
+	const struct grid_cell_entry	*gce, *next;
+	u_int				 n, nx;
+	u_char				 ch;
+
+	if (px >= end || end - px <= 1 || len == 0)
+		return (0);
+#ifdef ENABLE_IMAGES
+	if (gl->images != NULL)
+		return (0);
+#endif
+
+	nx = end - px - 1;
+	if (nx > len)
+		nx = len;
+
+	gce = &gl->celldata[px];
+	if (gce->flags & GRID_FLAG_EXTENDED)
+		return (tty_draw_line_collect_extended(gl, gce, nx, buf));
+
+	if (gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256|GRID_FLAG_NOPALETTE))
+		return (0);
+	if (gce->data.attr & GRID_ATTR_CHARSET)
+		return (0);
+	if (gce->data.data < 0x20 || gce->data.data > 0x7e)
+		return (0);
+
+	for (n = 0, next = gce + 1; n < nx; n++, next++) {
+		if (next->flags != gce->flags ||
+		    next->data.attr != gce->data.attr ||
+		    next->data.fg != gce->data.fg ||
+		    next->data.bg != gce->data.bg)
+			break;
+		ch = next->data.data;
+		if (ch < 0x20 ||
+		    ch > 0x7e ||
+		    (ch == ' ' && gce->data.attr == 0))
+			break;
+		buf[n] = ch;
+	}
+	return (n);
+}
+
 /* Draw a line from screen to tty. */
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
@@ -124,7 +222,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_cell	 gc, ngc, last;
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
-	u_int			 cellsize, bg;
+	u_int			 cellsize, bg, end, n;
 	int			 flags, empty, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
@@ -162,7 +260,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	 * Clamp the width to cellsize - note this is not cellused, because
 	 * there may be empty background cells after it (from BCE).
 	 */
-	cellsize = grid_get_line(gd, gd->hsize + py)->cellsize;
+	gl = grid_get_line(gd, gd->hsize + py);
+	cellsize = gl->cellsize;
 	if (screen_size_x(s) > cellsize)
 		ex = cellsize;
 	else
@@ -216,7 +315,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		}
 		tty_attributes(tty, &last, style_ctx);
 		log_debug("%s: clearing %u padding cells", __func__, cx);
-		tty_draw_line_clear(tty, atx, aty, cx, defaults, bg, 0);
+		tty_clear_line(tty, defaults, aty, atx, cx, bg, 0);
 		if (cx == ex)
 			goto out;
 		atx += cx;
@@ -231,12 +330,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	    tty->cy != UINT_MAX &&
 	    tty->cy + 1 == aty &&
 	    nx == tty->sx) {
-		gl = grid_get_line(gd, gd->hsize + py - 1);
-		if (gl->flags & GRID_LINE_WRAPPED)
+		if (grid_get_line(gd, gd->hsize + py - 1)->flags & GRID_LINE_WRAPPED)
 			wrapped = 1;
 	}
 
 	/* Loop over each character in the range. */
+	end = px + nx;
+	if (end > ex)
+		end = ex;
 	last_i = i = 0;
 	len = 0;
 	width = 0;
@@ -313,19 +414,17 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			else
 				next_state = TTY_DRAW_LINE_NEW1;
 		}
-		if (log_get_level() != 0) {
-			log_debug("%s: cell %u empty %u, bg %u; state: "
-			    "current %s, next %s", __func__, px + i, empty,
-			    gcp->bg, tty_draw_line_states[current_state],
-			    tty_draw_line_states[next_state]);
-		}
+		log_debug("%s: cell %u empty %u, bg %u; state: "
+		    "current %s, next %s", __func__, px + i, empty, gcp->bg,
+		    tty_draw_line_states[current_state],
+		    tty_draw_line_states[next_state]);
 
 		/* If the state has changed, flush any collected data. */
 		if (next_state != current_state) {
 			if (current_state == TTY_DRAW_LINE_EMPTY) {
 				tty_attributes(tty, &last, style_ctx);
-				tty_draw_line_clear(tty, atx + last_i, aty,
-				    i - last_i, defaults, last.bg, wrapped);
+				tty_clear_line(tty, defaults, aty, atx + last_i,
+				    i - last_i, last.bg, wrapped);
 				wrapped = 0;
 			} else if (next_state != TTY_DRAW_LINE_SAME &&
 			    len != 0) {
@@ -359,10 +458,27 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		/* Otherwise move to the next. */
 		current_state = next_state;
 		memcpy(&last, gcp, sizeof last);
-		if (empty != 0)
+		if (empty != 0) {
 			i += empty;
-		else
+			n = tty_draw_line_collect_empty(gl, px + i, end, gcp);
+			if (n != 0) {
+				i += n;
+				grid_view_get_cell(gd, px + i - 1, py, &last);
+			}
+		} else {
 			i += gcp->data.width;
+			if (gcp->data.size == 1 && gcp->data.width == 1) {
+				n = tty_draw_line_collect(gl, px + i - 1, end,
+				    buf + len, (sizeof buf) - len);
+				if (n != 0) {
+					len += n;
+					width += n;
+					i += n;
+					last.data.data[0] = buf[len - 1];
+					current_state = TTY_DRAW_LINE_SAME;
+				}
+			}
+		}
 	}
 
 out:

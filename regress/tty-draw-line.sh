@@ -69,6 +69,7 @@ $TMUX2 -f/dev/null new -d -x20 -y6 -s test \
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g mode-style "fg=white,bg=red" || exit 1
 $TMUX2 setw -g mode-keys vi || exit 1
+$TMUX2 set -as terminal-features '*:RGB:usstyle' || exit 1
 $TMUX2 neww -d \
 	"printf '\033[31;44;1mRED\033[0m\tTAIL\nu:e\314\201:\347\225\214:\360\237\207\272\360\237\207\270:Z\nAAA      BBB'; exec sleep 100" || exit 1
 $TMUX2 neww -d \
@@ -95,6 +96,10 @@ $TMUX2 neww -d \
 	"awk 'BEGIN { for (i = 0; i < 1100; i++) printf \"a\" }'; exec sleep 100" || exit 1
 $TMUX2 neww -d \
 	"printf 'u\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245'; exec sleep 100" || exit 1
+$TMUX2 neww -d \
+	"awk 'BEGIN { printf \"\\033[31m\"; for (i = 0; i < 1030; i++) printf \"a\"; printf \"\\033[32mBC\\033[1m  DE\\033[0m\" }'; exec sleep 100" || exit 1
+$TMUX2 neww -d \
+	"awk 'BEGIN { printf \"\\033[38;2;1;2;3;48;2;4;5;6m\"; for (i = 0; i < 1030; i++) printf \"a\"; printf \"\\033[38;2;7;8;9mBC\\033[48;2;10;11;12mDE\\033[4m\\033[58;2;13;14;15mFG\\033[58;2;16;17;18mHI\\033[0m\\347\\225\\214tail\" }'; exec sleep 100" || exit 1
 $TMUX2 selectw -t:0 || exit 1
 
 $TMUX -f/dev/null new -d -x20 -y6 || exit 1
@@ -273,6 +278,22 @@ sleep 1
 capture
 len=$(sed -n 1p $TMP | wc -c)
 [ "$len" -ge 1100 ] || fail "long same-style line was truncated"
+
+# Runs crossing the buffer boundary must preserve later styles and spaces.
+$TMUX2 resizew -t:14 -x1100 -y6 || exit 1
+$TMUX2 selectw -t:14 || exit 1
+sleep 1
+want=$($TMUX2 capturep -peS0 -E0 -t:14) || exit 1
+got=$($TMUX capturep -peS0 -E0) || exit 1
+[ "$got" = "$want" ] || fail "long styled run differs from pane"
+
+# RGB runs must also stop at colour, underline-colour and Unicode changes.
+$TMUX2 resizew -t:15 -x1100 -y6 || exit 1
+$TMUX2 selectw -t:15 || exit 1
+sleep 1
+want=$($TMUX2 capturep -peS0 -E0 -t:15) || exit 1
+got=$($TMUX capturep -peS0 -E0) || exit 1
+[ "$got" = "$want" ] || fail "long RGB run differs from pane"
 
 # Too many combining marks on one base character must not leave a standalone
 # width-zero cell that can make tty_draw_line loop forever on redraw.
