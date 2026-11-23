@@ -317,6 +317,19 @@ struct window_copy_fold_request {
 							/* cursor at cmd end */
 };
 
+#ifdef ENABLE_IMAGES
+/* Pending image run while rebuilding the backing from its source. */
+struct window_copy_image_ctx {
+	struct screen	*source;	/* unfolded source screen */
+	struct screen	*backing;	/* backing being rebuilt */
+	u_int		 source_x;	/* first source column of the run */
+	u_int		 source_y;	/* source row including history */
+	u_int		 backing_x;	/* first backing column of the run */
+	u_int		 backing_y;	/* backing row including history */
+	u_int		 width;		/* cells in the run, or zero */
+};
+#endif
+
 /*
  * Scan state while building the folded backing from the unfolded source.
  * Line indices include history; the int members are boolean state.
@@ -927,6 +940,41 @@ window_copy_fold_cell(struct window_copy_mode_data *data,
 	    1);
 }
 
+/* Skip hidden rows without markers after recording any output or separator. */
+static int
+window_copy_fold_hidden_line(struct window_copy_mode_data *data,
+    struct window_copy_fold_ctx *fold, struct grid_line *gl)
+{
+	struct grid		*gd;
+	struct grid_cell	 gc;
+	u_int			 x;
+
+	/* Keep markers and the initial control row in the normal scan. */
+	if (!fold->hiding || (gl->flags & GRID_LINE_OSC133_FLAGS) ||
+	    (fold->initial && fold->source_y == 0)) {
+		return (0);
+	}
+	if (fold->in_output && !fold->output_empty)
+		return (1);
+
+	/* A non-padding cell or image makes this fold nonempty. */
+#ifdef ENABLE_IMAGES
+	if (image_grid_line_has_images(gl)) {
+		window_copy_fold_cell(data, fold);
+		return (1);
+	}
+#endif
+	gd = data->source->grid;
+	for (x = 0; x < gl->cellused; x++) {
+		grid_get_cell(gd, x, fold->source_y, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING) {
+			window_copy_fold_cell(data, fold);
+			break;
+		}
+	}
+	return (1);
+}
+
 /* Keep line breaks on visible rows and the initial output's control row. */
 static void
 window_copy_fold_linefeed(struct screen_write_ctx *ctx,
@@ -1019,6 +1067,47 @@ window_copy_destroy_fold_view(struct window_mode_entry *wme)
 	data->fold_view = 0;
 }
 
+#ifdef ENABLE_IMAGES
+/* Copy image runs when wrapping or hidden cells interrupt their mapping. */
+static void
+window_copy_fold_images(struct window_copy_image_ctx *images,
+    struct window_copy_fold_ctx *fold, u_int width)
+{
+	struct screen	*dst = images->backing;
+	u_int		 x, y;
+
+	/* An overwide cell may have been omitted by screen_write_cell. */
+	if (width > dst->cx)
+		width = 0;
+
+	/* Extend a run while source and backing cells remain adjacent. */
+	if (width != 0) {
+		x = dst->cx - width;
+		y = screen_hsize(dst) + dst->cy;
+		if (images->width != 0 &&
+		    images->source_x + images->width == fold->source_x &&
+		    images->backing_x + images->width == x &&
+		    images->backing_y == y) {
+			images->width += width;
+			return;
+		}
+	}
+	/* Flush the previous run before starting another or ending the row. */
+	if (images->width != 0) {
+		image_grid_copy_area(dst->grid, images->backing_x,
+		    images->backing_y, images->source->grid, images->source_x,
+		    images->source_y, images->width, 1);
+	}
+	images->width = width;
+	if (width == 0)
+		return;
+	images->source_x = fold->source_x;
+	images->source_y = fold->source_y;
+	images->backing_x = x;
+	images->backing_y = y;
+}
+#endif
+
 /* Recreate the backing screen with any collapsed OSC 133 output omitted. */
 static void
 window_copy_rebuild_backing(struct window_mode_entry *wme)
@@ -1034,15 +1123,24 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		.prompt_dy = UINT_MAX,
 		.output_line = UINT_MAX
 	};
-	u_int				 y, x, total, last, dy;
+	u_int				 y, x, total, last, dy, sx;
 	int				 was_hiding;
+#ifdef ENABLE_IMAGES
+	struct window_copy_image_ctx	 images = {0};
+	u_int				 image_width;
+	int				 has_images, image_tail;
+#endif
 
 	sgd = src->grid;
 	total = sgd->hsize + sgd->sy;
+	sx = screen_size_x(&data->screen);
 	dst = xcalloc(1, sizeof *dst);
-	screen_init(dst, screen_size_x(&data->screen),
-	    screen_size_y(&data->screen), screen_hlimit(src));
+	screen_init(dst, sx, screen_size_y(&data->screen), screen_hlimit(src));
 	dst->grid->flags |= GRID_HISTORY;
+#ifdef ENABLE_IMAGES
+	images.source = src;
+	images.backing = dst;
+#endif
 	free(data->lines);
 	data->lines = NULL;
 	data->line_count = 0;
@@ -1053,6 +1151,10 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		sgl = grid_get_line(sgd, last - 1);
 		if (sgl->cellused != 0 || (sgl->flags & GRID_LINE_OSC133_FLAGS))
 			break;
+#ifdef ENABLE_IMAGES
+		if (image_grid_line_has_images(sgl))
+			break;
+#endif
 		last--;
 	}
 	y = window_copy_first_prompt(sgd);
@@ -1065,20 +1167,36 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 
 	/* Include the final cell boundary for markers after the last cell. */
 	for (y = 0; y < last; y++) {
+		/* Keep joined source rows in one mapping coordinate space. */
+		if (y != 0) {
+			sgl = grid_get_line(sgd, y - 1);
+			if (sgl->flags & GRID_LINE_WRAPPED)
+				fold.wrapped_x += sgl->cellused;
+			else {
+				fold.wrapped_y = y;
+				fold.wrapped_x = 0;
+			}
+		}
+		fold.source_y = y;
+		sgl = grid_get_line(sgd, y);
+		if (window_copy_fold_hidden_line(data, &fold, sgl))
+			continue;
+
 		/* Wrap before mapping the next source row. */
-		if (!fold.hiding && dst->cx == screen_size_x(dst)) {
+		if (!fold.hiding && dst->cx == sx) {
 			screen_write_linefeed(&ctx, 1, 8);
 			screen_write_carriagereturn(&ctx);
 		}
-		sgl = grid_get_line(sgd, y);
 		osc133 = &sgl->osc133_data;
+#ifdef ENABLE_IMAGES
+		has_images = image_grid_line_has_images(sgl);
+#endif
 		for (x = 0; x <= sgl->cellused; x++) {
 			/* Wrapped backing rows may outnumber source rows. */
 			window_copy_grow_line_info(data,
 			    screen_hsize(dst) + screen_size_y(dst));
 			dy = dst->grid->hsize + dst->cy;
 			was_hiding = fold.hiding;
-			fold.source_y = y;
 			fold.source_x = x;
 			if (!fold.hiding)
 				window_copy_map_line(data, &fold, dst);
@@ -1131,11 +1249,41 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			if (fold.hiding)
 				continue;
 			screen_write_cell(&ctx, &gc);
+#ifdef ENABLE_IMAGES
+			if (has_images) {
+				window_copy_fold_images(&images, &fold,
+				    gc.data.width);
+			}
+#endif
 			if (fold.tree) {
 				window_copy_set_line_info(data, dy, y,
 				    fold.output_line, WINDOW_COPY_LINE_MEMBER);
 			}
 		}
+#ifdef ENABLE_IMAGES
+		if (has_images) {
+			/* Image-only cells also make a fold nonempty. */
+			image_tail = sgl->cellused < sgd->sx &&
+			    image_grid_area_has_images(sgd, sgl->cellused, y,
+			    sgd->sx - sgl->cellused, 1);
+			if (image_tail)
+				window_copy_fold_cell(data, &fold);
+			window_copy_fold_images(&images, &fold, 0);
+
+			/* Copy spans beyond the last text cell. */
+			if (image_tail && !fold.hiding && dst->cx < sx) {
+				image_width = sgd->sx - sgl->cellused;
+				if (image_width > sx - dst->cx)
+					image_width = sx - dst->cx;
+				image_grid_copy_area(dst->grid, dst->cx, dy,
+				    sgd, sgl->cellused, y, image_width, 1);
+			}
+			if (!fold.hiding && fold.tree) {
+				window_copy_set_line_info(data, dy, y,
+				    fold.output_line, WINDOW_COPY_LINE_MEMBER);
+			}
+		}
+#endif
 		window_copy_fold_empty_line(data, &fold, sgl, dy);
 		window_copy_fold_linefeed(&ctx, &fold, sgl, last);
 		if (fold.initial && y == 0) {
@@ -1143,14 +1291,6 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			fold.tree = 1;
 			fold.hiding = data->source_flags[0] &
 			    WINDOW_COPY_FOLD_COLLAPSED;
-		}
-
-		/* Keep joined source rows in one mapping coordinate space. */
-		if (sgl->flags & GRID_LINE_WRAPPED)
-			fold.wrapped_x += sgl->cellused;
-		else {
-			fold.wrapped_y = y + 1;
-			fold.wrapped_x = 0;
 		}
 	}
 	screen_write_stop(&ctx);
@@ -7244,16 +7384,23 @@ window_copy_cursor_line_active(struct window_mode_entry *wme)
 	return (strcmp(s, "default") != 0);
 }
 
+/* Size the number column for the largest displayed row index. */
 static u_int
 window_copy_line_number_width(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 lines, digits;
+	int				 mode;
 
-	if (!window_copy_line_numbers_active(wme))
+	mode = window_copy_line_number_mode(wme);
+	if (mode == WINDOW_COPY_LINE_NUMBERS_OFF)
 		return (0);
 
 	lines = screen_hsize(data->backing) + screen_size_y(data->backing) + 1;
+	if (data->fold_view && mode != WINDOW_COPY_LINE_NUMBERS_RELATIVE &&
+	    lines < data->source_line_count) {
+		lines = data->source_line_count;
+	}
 	digits = 1;
 	while (lines >= 10) {
 		lines /= 10;
