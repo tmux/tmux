@@ -16,6 +16,32 @@ CHANGES FROM 3.8 TO 3.8a
 * Respect the ncv terminal capability when combining attributes and colours
   (issue 5727).
 
+* Prevent live pane output from overwriting open menus (issue 5593).
+
+* Stop delaying Escape when a terminal does not answer a window size query
+  (issue 5777).
+
+* Preserve copy mode position and selection when displaying pane numbers
+  (issue 5812).
+
+* Show status line menus for inactive windows in the visible window, while
+  keeping menu actions targeted at the clicked window.
+
+* Fix select-layout -E pushing panes outside the window in layouts with
+  nested splits (issue 5776).
+
+* Fix a crash when using a tree mode menu after the client that opened it
+  disconnects (issue 5801).
+
+* Restore bright palette colours for bold text with pane-colours
+  (issue 5883).
+
+* Keep a pane alive when respawn-pane -k -E replaces its process with an
+  empty pane (issue 5701).
+
+* Deliver keys that arrive in the same input batch as the key that opens a
+  prompt (issue 5782).
+
 CHANGES FROM 3.7c TO 3.8
 
 * Many improvements to floating panes:
