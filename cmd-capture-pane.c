@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-capture-pane.c,v 1.72 2026/11/22 09:36:03 nicm Exp $ */
+/* $OpenBSD: cmd-capture-pane.c,v 1.73 2026/11/23 07:39:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -194,7 +194,7 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 	buf = xstrdup("");
 	if (args_has(args, 'C')) {
 		for (i = 0; i < linelen; i++) {
-			if (line[i] >= ' ' && line[i] != '\\') {
+			if (line[i] >= ' ' && line[i] <= '~' && line[i] != '\\') {
 				tmp[0] = line[i];
 				tmp[1] = '\0';
 			} else
