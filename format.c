@@ -1011,7 +1011,7 @@ format_cb_history_bytes(struct format_tree *ft)
 	for (i = 0; i < gd->hsize + gd->sy; i++) {
 		gl = grid_get_line(gd, i);
 		size += gl->cellsize * sizeof *gl->celldata;
-		size += gl->extdsize * sizeof *gl->extddata;
+		size += gl->extdalloc * sizeof *gl->extddata;
 	}
 	size += (gd->hsize + gd->sy) * sizeof *gl;
 
@@ -1037,7 +1037,7 @@ format_cb_history_all_bytes(struct format_tree *ft)
 	for (i = 0; i < lines; i++) {
 		gl = grid_get_line(gd, i);
 		cells += gl->cellsize;
-		extended_cells += gl->extdsize;
+		extended_cells += gl->extdalloc;
 	}
 
 	xasprintf(&value, "%u,%zu,%u,%zu,%u,%zu", lines,

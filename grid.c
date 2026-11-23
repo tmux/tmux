@@ -153,7 +153,7 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 static void
 grid_compact_line(struct grid_line *gl)
 {
-	int			 new_extdsize = 0;
+	u_int			 new_extdsize = 0;
 	struct grid_extd_entry	*new_extddata;
 	struct grid_cell_entry	*gce;
 	struct grid_extd_entry	*gee;
@@ -168,6 +168,8 @@ grid_compact_line(struct grid_line *gl)
 			new_extdsize++;
 	}
 
+	if (new_extdsize == gl->extdsize && gl->extdalloc == gl->extdsize)
+		return;
 	if (new_extdsize == 0) {
 		free(gl->extddata);
 		gl->extddata = NULL;
@@ -191,6 +193,16 @@ grid_compact_line(struct grid_line *gl)
 	gl->extddata = new_extddata;
 	gl->extdsize = new_extdsize;
 	gl->extdalloc = new_extdsize;
+}
+
+/* Free up unused extended cells in a set of lines. */
+void
+grid_compact_lines(struct grid *gd, u_int py, u_int ny)
+{
+	u_int	yy;
+
+	for (yy = py; yy < py + ny; yy++)
+		grid_compact_line(&gd->linedata[yy]);
 }
 
 /* Get line data. */
@@ -509,6 +521,7 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 
 	/* Move the line into the history. */
 	memcpy(gl_history, gl_upper, sizeof *gl_history);
+	grid_compact_line(gl_history);
 	grid_line_set_time(gl_history);
 
 	/* Then move the region up and clear the bottom line. */
@@ -1674,6 +1687,7 @@ grid_reflow(struct grid *gd, u_int sx)
 	free(gd->linedata);
 	gd->linedata = target->linedata;
 	free(target);
+	grid_compact_lines(gd, 0, gd->hsize);
 	gd->scroll_generation++;
 }
 

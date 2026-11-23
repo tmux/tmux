@@ -426,6 +426,7 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 		 */
 		available = s->cy;
 		if (gd->flags & GRID_HISTORY) {
+			grid_compact_lines(gd, gd->hsize, needed);
 			gd->hscrolled += needed;
 			gd->hsize += needed;
 		} else if (needed > 0 && available > 0) {

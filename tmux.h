@@ -3595,6 +3595,7 @@ const char *grid_line_flags_string(int);
 const char *grid_cell_flags_string(int);
 const char *grid_cell_attr_string(int);
 time_t	 grid_line_time(const struct grid_line *);
+void	 grid_compact_lines(struct grid *, u_int, u_int);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
