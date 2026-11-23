@@ -1,4 +1,4 @@
-/* $OpenBSD: window-client.c,v 1.52 2026/11/21 12:52:38 nicm Exp $ */
+/* $OpenBSD: window-client.c,v 1.53 2026/11/23 08:44:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -97,14 +97,16 @@ static const char *window_client_info_lines[] = {
 	WINDOW_CLIENT_FEATURE(osc7) " "
 	WINDOW_CLIENT_FEATURE(overline),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
+		WINDOW_CLIENT_FEATURE(programstatus) " "
 	WINDOW_CLIENT_FEATURE(progressbar) " "
 	WINDOW_CLIENT_FEATURE(rectfill) " "
-	WINDOW_CLIENT_FEATURE(sixel) " "
-	WINDOW_CLIENT_FEATURE(strikethrough),
+		WINDOW_CLIENT_FEATURE(sixel),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
+		WINDOW_CLIENT_FEATURE(strikethrough) " "
 	WINDOW_CLIENT_FEATURE(sync) " "
 	WINDOW_CLIENT_FEATURE(title) " "
-	WINDOW_CLIENT_FEATURE(usstyle) " "
+		WINDOW_CLIENT_FEATURE(usstyle),
+	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(utf8),
 	"#[#{E:tree-mode-border-style},acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",
 
