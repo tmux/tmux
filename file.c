@@ -1,4 +1,4 @@
-/* $OpenBSD: file.c,v 1.23 2026/11/21 12:38:48 nicm Exp $ */
+/* $OpenBSD: file.c,v 1.24 2026/11/23 11:58:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -159,11 +159,9 @@ static void
 file_fire_done_cb(__unused int fd, __unused short events, void *arg)
 {
 	struct client_file	*cf = arg;
-	struct client		*c = cf->c;
 
-	if (cf->cb != NULL &&
-	    (cf->closed || c == NULL || (~c->flags & CLIENT_DEAD)))
-		cf->cb(c, cf->path, cf->error, 1, cf->buffer, cf->data);
+	if (cf->cb != NULL)
+		cf->cb(cf->c, cf->path, cf->error, 1, cf->buffer, cf->data);
 	file_free(cf);
 }
 
@@ -171,6 +169,9 @@ file_fire_done_cb(__unused int fd, __unused short events, void *arg)
 void
 file_fire_done(struct client_file *cf)
 {
+	if (cf->done)
+		return;
+	cf->done = 1;
 	event_once(-1, EV_TIMEOUT, file_fire_done_cb, cf, NULL);
 }
 
@@ -855,7 +856,8 @@ file_write_ready(struct client_files *files, struct imsg *imsg)
 	if (msglen != sizeof *msg)
 		return (-1);
 	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
+	cf = RB_FIND(client_files, files, &find);
+	if (cf == NULL || cf->done)
 		return (0);
 	if (msg->error != 0) {
 		cf->error = msg->error;
@@ -876,7 +878,8 @@ file_write_done(struct client_files *files, struct imsg *imsg)
 	if (msglen != sizeof *msg)
 		return (-1);
 	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
+	cf = RB_FIND(client_files, files, &find);
+	if (cf == NULL || cf->done)
 		return (0);
 	if (cf->c == NULL || (~cf->c->flags & CLIENT_WRITE_ACK))
 		return (0);
@@ -900,7 +903,8 @@ file_read_data(struct client_files *files, struct imsg *imsg)
 	if (msglen < sizeof *msg)
 		return (-1);
 	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
+	cf = RB_FIND(client_files, files, &find);
+	if (cf == NULL || cf->done)
 		return (0);
 
 	log_debug("file %d read %zu bytes", cf->stream, bsize);
@@ -925,7 +929,8 @@ file_read_done(struct client_files *files, struct imsg *imsg)
 	if (msglen != sizeof *msg)
 		return (-1);
 	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
+	cf = RB_FIND(client_files, files, &find);
+	if (cf == NULL || cf->done)
 		return (0);
 
 	log_debug("file %d read done", cf->stream);

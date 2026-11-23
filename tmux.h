@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1496 2026/11/23 08:44:19 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1497 2026/11/23 11:58:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2217,6 +2217,7 @@ struct client_file {
 	int				 fd;
 	int				 error;
 	int				 closed;
+	int				 done;
 
 	client_file_cb			 cb;
 	void				*data;

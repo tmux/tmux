@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-source-file.c,v 1.64 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-source-file.c,v 1.65 2026/11/23 11:58:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -115,7 +115,7 @@ cmd_source_file_complete(struct cmd_source_file_data *cdata)
 }
 
 static void
-cmd_source_file_done(__unused struct client *oc, const char *path,
+cmd_source_file_done(struct client *oc, const char *path,
     int error, int closed, struct evbuffer *buffer, void *data)
 {
 	struct cmd_source_file_data	*cdata = data;
@@ -129,6 +129,8 @@ cmd_source_file_done(__unused struct client *oc, const char *path,
 
 	if (!closed)
 		return;
+	if (oc != NULL && (oc->flags & CLIENT_DEAD))
+		goto out;
 
 	if (error != 0)
 		cmdq_error(item, "%s: %s", strerror(error), path);
@@ -141,12 +143,14 @@ cmd_source_file_done(__unused struct client *oc, const char *path,
 	}
 
 	n = ++cdata->current;
-	if (n < cdata->nfiles)
+	if (n < cdata->nfiles) {
 		file_read(c, cdata->files[n], cmd_source_file_done, cdata);
-	else {
-		cmd_source_file_complete(cdata);
-		cmdq_continue(item);
+		return;
 	}
+
+out:
+	cmd_source_file_complete(cdata);
+	cmdq_continue(item);
 }
 
 static void

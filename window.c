@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.397 2026/11/23 08:44:19 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.398 2026/11/23 11:58:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2603,17 +2603,17 @@ window_pane_input_callback(struct client *c, __unused const char *path,
 	size_t				 len = EVBUFFER_LENGTH(buffer);
 
 	wp = window_pane_find_by_id(cdata->wp);
-	if (cdata->file != NULL && (wp == NULL || c->flags & CLIENT_DEAD)) {
-		if (wp == NULL) {
-			c->retval = 1;
-			c->flags |= CLIENT_EXIT;
-		}
-		file_cancel(cdata->file);
-	} else if (cdata->file == NULL || closed || error != 0) {
+	if (cdata->file != NULL && wp == NULL) {
+		c->retval = 1;
+		c->flags |= CLIENT_EXIT;
+	}
+	if (cdata->file == NULL || closed || error != 0) {
 		cmdq_continue(cdata->item);
 		server_client_unref(c);
 		free(cdata);
-	} else
+	} else if (wp == NULL)
+		file_cancel(cdata->file);
+	else
 		input_parse_buffer(wp, buf, len);
 	evbuffer_drain(buffer, len);
 }
