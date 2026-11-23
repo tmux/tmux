@@ -3221,23 +3221,15 @@ window_copy_cmd_search_forward_text(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
-/* Forget the previous incremental search origin before opening a new prompt. */
-void
-window_copy_reset_search(struct window_pane *wp)
+/* Forget the saved origin so the next incremental search starts here. */
+static enum window_copy_cmd_action
+window_copy_cmd_search_reset(struct window_copy_cmd_state *cs)
 {
-	struct window_mode_entry	*wme;
-	struct window_copy_mode_data	*data;
+	struct window_copy_mode_data	*data = cs->wme->data;
 
-	if (wp == NULL)
-		return;
-	wme = TAILQ_FIRST(&wp->modes);
-	if (wme == NULL)
-		return;
-	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
-		return;
-	data = wme->data;
 	data->searchx = -1;
 	data->searchy = -1;
+	return (WINDOW_COPY_CMD_NOTHING);
 }
 
 static enum window_copy_cmd_action
@@ -4228,6 +4220,12 @@ static const struct {
 	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_forward_incremental_regex
+	},
+	{ .command = "search-reset",
+	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_search_reset
 	},
 	{ .command = "search-reverse",
 	  .args = { "", 0, 0, NULL },

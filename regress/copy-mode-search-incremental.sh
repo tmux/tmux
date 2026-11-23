@@ -125,6 +125,57 @@ for wrap in on off; do
 	done
 done
 
+# Direct incremental callers can mark the start of a new search explicitly.
+$TMUX set -g wrap-search on || exit 1
+search_format='#{pane_search_string}|#{search_present}|#{search_count}'
+search_format=$search_format'|#{search_count_current}|#{selection_present}'
+for table in copy-mode copy-mode-vi; do
+	$TMUX bind -T "$table" F12 command-prompt -i -p '(unrelated)' \
+		'set -g @unrelated "%%"' || exit 1
+done
+for mode in emacs vi; do
+	$TMUX set -g mode-keys "$mode" || exit 1
+	if [ "$mode" = emacs ]; then
+		column=3
+	else
+		column=0
+	fi
+	for suffix in '' -regex; do
+		$TMUX copy-mode || exit 1
+		$TMUX send -X history-top || exit 1
+		$TMUX send -X start-of-line || exit 1
+		$TMUX send -X begin-selection || exit 1
+		$TMUX send -X search-forward-incremental$suffix '=123' || exit 1
+		check_cursor 123 "$column"
+		save_position
+
+		# A generic incremental prompt must not reset the search origin.
+		keys F12 x Enter
+		wait_for_output '=x' $TMUX show -gv @unrelated || exit 1
+		check_position
+		$TMUX send -X search-backward-incremental$suffix '=45' || exit 1
+		check_cursor 459 0
+		$TMUX send -X search-forward-incremental$suffix '=123' || exit 1
+		check_cursor 123 "$column"
+
+		# Resetting is idempotent and preserves the selection and marks.
+		search=$($TMUX display -p "$search_format") || exit 1
+		save_position
+		$TMUX send -X search-reset || exit 1
+		$TMUX send -X search-reset || exit 1
+		check_position
+		wait_for_output "$search" $TMUX display -p "$search_format" ||
+			exit 1
+		$TMUX send -X search-backward-incremental$suffix '=45' || exit 1
+		check_cursor 45 0
+		$TMUX send -X search-reset || exit 1
+		$TMUX send -X search-forward-incremental$suffix '=123' || exit 1
+		check_cursor 123 "$column"
+		$TMUX send -X cancel || exit 1
+	done
+done
+$TMUX set -g mode-keys emacs || exit 1
+
 $TMUX new-window \
 	'printf "foo1 foo2\nfoo3\n\033]2;ready\007"; exec cat' || exit 1
 wait_for_output ready $TMUX display -p '#{pane_title}' || exit 1
@@ -179,10 +230,14 @@ for host in status pane; do
 	else
 		flags=-i
 	fi
-	$TMUX bind -T copy-mode C-s command-prompt "$flags" -p '(down)' \
-	    'send -X search-forward-incremental -- "%%"' || exit 1
-	$TMUX bind -T copy-mode C-r command-prompt "$flags" -p '(up)' \
-	    'send -X search-backward-incremental -- "%%"' || exit 1
+	$TMUX bind -T copy-mode C-s \
+	    "send -X search-reset; command-prompt $flags -p '(down)' {
+		send -X search-forward-incremental -- '%%'
+	    }" || exit 1
+	$TMUX bind -T copy-mode C-r \
+	    "send -X search-reset; command-prompt $flags -p '(up)' {
+		send -X search-backward-incremental -- '%%'
+	    }" || exit 1
 	$TMUX copy-mode || exit 1
 	keys 'M-<' C-s 1 2 3 Enter
 	check_cursor 123 3

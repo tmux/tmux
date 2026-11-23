@@ -2555,6 +2555,11 @@ command.
 .Xc
 Search forward for the specified plain text.
 .It Xo
+.Ic search\-reset
+.Xc
+Reset the saved origin so that the next incremental search starts at the
+current cursor position.
+.It Xo
 .Ic search\-reverse
 (vi: N)
 (emacs: N)
@@ -2643,6 +2648,10 @@ are designed to emulate
 .Xr emacs 1 .
 When first pressed they allow a new search term to be entered; if pressed with
 an empty search term they repeat the previously used search term.
+These bindings run
+.Ic search\-reset
+before opening the prompt to start a new search at the current cursor position.
+Custom incremental search bindings should do the same.
 .Pp
 The
 .Ql next\-prompt
