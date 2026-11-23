@@ -83,6 +83,10 @@ tty_draw_line_collect_empty(const struct grid_line *gl, u_int px, u_int end,
 	    gc->link != 0 ||
 	    gc->flags & ~(GRID_FLAG_NOPALETTE|GRID_FLAG_CLEARED))
 		return (0);
+#ifdef ENABLE_IMAGES
+	if (gl->images != NULL)
+		return (0);
+#endif
 
 	for (i = px; i < end; i++) {
 		gce = &gl->celldata[i];

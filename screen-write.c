@@ -241,6 +241,13 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 static int
 screen_write_can_batch(struct window_pane *wp)
 {
+#ifdef ENABLE_IMAGES
+	struct window	*w = wp->window;
+	struct grid	*gd = wp->base.grid;
+
+	if (gd->images && (w->damage_count != 0 || image_grid_has_images(gd)))
+		return (0);
+#endif
 	if (SCREEN_IS_ALTERNATE(&wp->base) && (wp->flags & PANE_SYNCSEEN))
 		return (0);
 	return (1);
@@ -519,7 +526,7 @@ screen_write_start_batch(struct window_pane *wp)
 }
 
 /* Flush before operations which cannot be collected. */
-static void
+void
 screen_write_flush(struct screen_write_ctx *ctx)
 {
 	screen_write_collect_end(ctx);

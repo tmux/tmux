@@ -26,6 +26,8 @@ import sys
 import termios
 import time
 
+from image_terminal import Terminal
+
 tmux, directory = sys.argv[1:]
 fg = r'\E[38;2;%p1%d;%p2%d;%p3%dm'
 bg = r'\E[48;2;%p1%d;%p2%d;%p3%dm'
@@ -68,30 +70,6 @@ collision_input.write_bytes(b''.join(
      ('\033[48;2;%d;%d;%dm@' % colour)).encode() for colour in sequence))
 
 
-def collision_cells(data):
-    fg = bg = None
-    cells = []
-    for m in re.finditer(rb'\033\[([0-9;]*)m|(@)', data):
-        if m[2] is not None:
-            cells.append((fg, bg))
-            continue
-        args = iter(int(n or 0) for n in m[1].split(b';'))
-        for code in args:
-            if code == 0:
-                fg = bg = None
-            elif code == 39:
-                fg = None
-            elif code == 49:
-                bg = None
-            elif code in (38, 48):
-                mode = next(args)
-                value = tuple(next(args) for _ in range(3)) if mode == 2 else next(args)
-                if code == 38:
-                    fg = value
-                else:
-                    bg = value
-    return cells
-
 for index, (name, features, overrides, rgb, direct) in enumerate(cases):
     server = [tmux, '-S', directory + '/socket-%d' % index, '-f/dev/null']
     pid = fd = None
@@ -131,6 +109,23 @@ for index, (name, features, overrides, rgb, direct) in enumerate(cases):
 
     def has_feature(feature):
         return feature in run('list-clients', '-F', '#{client_termfeatures}').split(',')
+
+    def check_collision_cells():
+        terminal = Terminal(sx=80, sy=24)
+        positions = [(i % terminal.sx, i // terminal.sx)
+                     for i in range(len(sequence))]
+        offset = 0
+
+        def cells_ready():
+            nonlocal offset
+            terminal.feed(output[offset:])
+            offset = len(output)
+            return all(terminal.cells.get(pos, (' ',))[0] == '@'
+                       for pos in positions)
+
+        wait_for(cells_ready)
+        actual = [terminal.cells[pos][1:3] for pos in positions]
+        assert actual == [(c, c) for c in sequence], (actual, bytes(output))
 
     try:
         run('new-session', '-d', '-s', 'rgb', '-x', '80', '-y', '24',
@@ -181,12 +176,10 @@ for index, (name, features, overrides, rgb, direct) in enumerate(cases):
             # Feed colours after attach, so they also exercise incremental output.
             run('respawn-pane', '-k',
                 "cat '%s'; printf '\033[0m'; exec sleep 100" % collision_input)
-            wait_for(lambda: len(collision_cells(output)) >= len(sequence))
-            assert collision_cells(output) == [(c, c) for c in sequence], bytes(output)
+            check_collision_cells()
             output.clear()
             run('refresh-client')
-            wait_for(lambda: len(collision_cells(output)) >= len(sequence))
-            assert collision_cells(output) == [(c, c) for c in sequence], bytes(output)
+            check_collision_cells()
     finally:
         if fd is not None:
             drain()

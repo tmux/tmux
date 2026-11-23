@@ -3706,6 +3706,7 @@ void	 screen_write_start(struct screen_write_ctx *, struct screen *);
 void	 screen_write_start_callback(struct screen_write_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *);
 void	 screen_write_stop(struct screen_write_ctx *);
+void	 screen_write_flush(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
 size_t printflike(1, 2) screen_write_strlen(const char *, ...);
 int printflike(7, 8) screen_write_text(struct screen_write_ctx *, u_int, u_int,

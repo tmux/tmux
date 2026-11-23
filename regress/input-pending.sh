@@ -84,9 +84,9 @@ append_pending '\033[4'
 finish_pending 'm'
 
 # Raw and escaped captures must preserve NUL, UTF-8, high bytes and backslash.
-append_pending '\033]999;A\000\001\303\251\377\\END'
+append_pending '\033]999;A\000\001\177\303\251\377\\END'
 $TMUX capture-pane -pPC >"$DIR/actual" || exit 1
-printf '%s\n' '\033]999;A\000\001\303\251\377\134END' >"$DIR/expected"
+printf '%s\n' '\033]999;A\000\001\177\303\251\377\134END' >"$DIR/expected"
 cmp "$DIR/expected" "$DIR/actual" || fail 'escaped pending input differs'
 finish_pending '\007'
 

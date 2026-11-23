@@ -151,6 +151,7 @@ void		 image_grid_copy_area(struct grid *, u_int, u_int,
 		     struct grid *, u_int, u_int, u_int, u_int);
 void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(struct grid_line *);
+int		 image_grid_has_images(const struct grid *);
 int		 image_grid_has_image(struct grid *, u_int);
 u_int		 image_grid_clear(struct grid *, u_int);
 u_int		 image_grid_clear_visible(struct grid *, enum image_type);

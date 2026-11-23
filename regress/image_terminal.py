@@ -163,7 +163,7 @@ class Terminal:
                 self.csi(match[1], match[2][0])
                 pos += match.end()
             elif rest[0] == 27:
-                match = re.match(rb'\033(?:[()][0-~]|.)', rest, re.S)
+                match = re.match(rb'\033(?:[()][0-~]|[^()])', rest)
                 if match is None:
                     break
                 if match[0] == b'\033M':
