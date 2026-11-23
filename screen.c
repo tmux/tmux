@@ -343,6 +343,8 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 	if (sy < 1)
 		sy = 1;
 
+	if (sx != screen_size_x(s) || sy != screen_size_y(s))
+		s->grid->resize_generation++;
 	if (sx != screen_size_x(s)) {
 		s->grid->sx = sx;
 		screen_reset_tabs(s);

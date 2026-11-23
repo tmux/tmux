@@ -998,6 +998,7 @@ struct grid {
 	u_int			 scroll_added;
 	u_int			 scroll_collected;
 	u_int			 scroll_generation;
+	u_int			 resize_generation;
 
 	struct grid_line	*linedata;
 #ifdef ENABLE_IMAGES
