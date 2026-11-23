@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.126 2026/10/27 13:00:14 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.127 2026/11/23 09:39:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -382,7 +382,7 @@ cmdq_insert_hook(__unused struct session *s, struct cmdq_item *item,
 	va_end(ap);
 
 	ep = event_payload_create();
-	if (current != NULL)
+	if (current != NULL && cmd_find_valid_state(current))
 		event_payload_set_target(ep, current);
 	event_payload_set_pointer(ep, "_cmdq_item", item, NULL, NULL);
 
