@@ -13,6 +13,7 @@ Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache/
+bench/logs/
 cmd-parse.c
 compat/.dirstamp
 config.log
