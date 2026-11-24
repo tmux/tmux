@@ -31,14 +31,39 @@ for keys in emacs vi; do
 	done
 done
 
-# Wide characters wrapping early must not add spaces to copied selections.
+# Unused rows below a short transcript must not prevent selecting it all.
+seq='\033]133;A\007p> \033]133;B\007first\r\n'
+seq="${seq}\033]133;C\007hello\033]133;D;0\007\r\n"
+seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
+for keys in emacs vi; do
+	for view in -U -c; do
+		start_pane_history short 80 24 "$seq"
+		$TMUX set -g mode-keys "$keys" || exit 1
+		$TMUX copy-mode "$view" || exit 1
+		printf 'p> first\nhello\nNEXT>' >"$EXP"
+		$TMUX send -X copy-output -a || exit 1
+		$TMUX save-buffer "$TMP" || exit 1
+		cmp "$TMP" "$EXP" || fail "$keys $view short all output"
+		$TMUX set-buffer sentinel || exit 1
+		$TMUX send -X select-output -a || exit 1
+		$TMUX send -X copy-selection || exit 1
+		$TMUX save-buffer "$TMP" || exit 1
+		cmp "$TMP" "$EXP" || fail "$keys $view short all selection"
+	done
+done
+
+# Wide characters wrapping early must not add spaces when copying either grid.
 for keys in emacs vi; do
 	for payload in 'AB界CD' 'A界界界Z' 'é界Z' 'AB 界CD' 'AB  界CD'; do
-		for width in 2 3 5 8 20; do
+		for sizes in '80 2' '80 3' '80 5' '80 8' '80 20' \
+		    '3 80' '5 80' '20 80'; do
+			set -- $sizes
+			initial_width=$1
+			width=$2
 			seq='\033]133;A\007p> \033]133;B\007first\r\n'
 			seq="${seq}\033]133;C\007${payload}\033]133;D;0\007\r\n"
 			seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
-			start_pane_history wide 80 24 "$seq"
+			start_pane_history wide "$initial_width" 24 "$seq"
 			$TMUX set -g mode-keys "$keys" || exit 1
 			$TMUX copy-mode -U || exit 1
 			$TMUX resize-window -x "$width" || exit 1
@@ -46,12 +71,14 @@ for keys in emacs vi; do
 			printf '%s' "$payload" >"$EXP"
 			$TMUX send -X copy-output || exit 1
 			$TMUX save-buffer "$TMP" || exit 1
-			cmp "$TMP" "$EXP" || fail "$keys wide output at $width"
+			cmp "$TMP" "$EXP" || \
+				fail "$keys wide output, $initial_width to $width"
 			$TMUX set-buffer sentinel || exit 1
 			$TMUX send -X select-output || exit 1
 			$TMUX send -X copy-selection || exit 1
 			$TMUX save-buffer "$TMP" || exit 1
-			cmp "$TMP" "$EXP" || fail "$keys wide selection at $width"
+			cmp "$TMP" "$EXP" || \
+				fail "$keys wide selection, $initial_width to $width"
 		done
 	done
 done

@@ -1100,19 +1100,9 @@ window_copy_write_fold_cell(struct window_copy_mode_data *data,
 	struct screen		*dst = ctx->s;
 	struct grid_line	*gl;
 	struct grid_cell	 cell;
-	u_int			 y, sx = screen_size_x(dst);
+	u_int			 y;
 
 	if (!fold->keep_line && fold->source_x >= fold->tab_end) {
-		/* Do not copy unused allocation after an early wide-cell wrap. */
-		if (gc->data.width > 1 && gc->data.width <= sx &&
-		    dst->cx > sx - gc->data.width && dst->cx < sx) {
-			gl = grid_get_line(dst->grid, screen_hsize(dst) + dst->cy);
-			if (gl->cellsize > dst->cx) {
-				gl->celldata = xreallocarray(gl->celldata, dst->cx,
-				    sizeof *gl->celldata);
-				gl->cellsize = dst->cx;
-			}
-		}
 		screen_write_cell(ctx, gc);
 
 		/* Unchanged blank cells still belong to the copied source. */
@@ -8367,6 +8357,7 @@ window_copy_get_output_range(struct window_mode_entry *wme, int all,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = window_copy_source_grid(data);
+	struct grid_line			*gl;
 	struct grid_reader		 gr;
 	u_int				 total, cursor_x, cursor_y;
 	int				 found;
@@ -8380,6 +8371,14 @@ window_copy_get_output_range(struct window_mode_entry *wme, int all,
 	total = gd->hsize + gd->sy;
 	*sx = *sy = 0;
 	*ey = total - 1;
+
+	/* Folded backing omits unused trailing rows. */
+	while (data->fold_view && *ey > 0) {
+		gl = grid_get_line(gd, *ey);
+		if (gl->cellused != 0 || (gl->flags & GRID_LINE_OSC133_FLAGS))
+			break;
+		(*ey)--;
+	}
 	*ex = grid_get_line(gd, *ey)->cellused;
 	return (1);
 }
@@ -8699,8 +8698,10 @@ window_copy_copy_grid_line_length(struct grid *gd, u_int sy,
 		line_wrapped = 1;
 	if (wrapped != NULL)
 		*wrapped = line_wrapped;
+
+	/* Allocation may extend past an early wide-character wrap. */
 	if (line_wrapped)
-		length = gl->cellsize;
+		length = gl->cellused;
 	else
 		length = grid_line_length(gd, sy);
 	return (length);
