@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.503 2026/11/23 08:44:19 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.504 2026/11/24 20:28:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -454,8 +454,6 @@ tty_send_requests(struct tty *tty)
 		return;
 	}
 
-	if (~flags & TTY_HAVEDA)
-		tty_puts(tty, "\033[c");
 	if (~flags & TTY_HAVEDA2)
 		tty_puts(tty, "\033[>c");
 	if (~flags & TTY_HAVEXDA)
@@ -468,6 +466,10 @@ tty_send_requests(struct tty *tty)
 
 	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 	tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+
+	/* Primary DA marks the end of the startup requests. */
+	if (~flags & TTY_HAVEDA)
+		tty_puts(tty, "\033[c");
 
 	tty->last_requests = time(NULL);
 }

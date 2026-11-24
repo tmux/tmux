@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.224 2026/11/23 08:44:19 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.225 2026/11/24 20:28:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1538,7 +1538,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
 
 	tty_update_features(tty);
-	tty->flags |= TTY_HAVEDA;
+	tty->flags |= TTY_ALL_REQUEST_FLAGS;
+	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG);
 
 	return (0);
 }
