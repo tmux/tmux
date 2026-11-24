@@ -51,6 +51,30 @@ check_layout()
 	    grep -c '^1$')" -eq 1 ] || fail "$name did not preserve the floating pane"
 }
 
+tiled_grid()
+{
+	printf '%sx%s' \
+	    "$($TMUX list-panes -t layouts:columns -F '#{pane_left}' | \
+	    sort -nu | wc -l | tr -d ' ')" \
+	    "$($TMUX list-panes -t layouts:columns -F '#{pane_top}' | \
+	    sort -nu | wc -l | tr -d ' ')"
+}
+
+check_tiled_grid()
+{
+	minimum=$1
+	maximum=$2
+	expected=$3
+	$TMUX set-option -w -t layouts:columns tiled-layout-min-columns \
+	    "$minimum" || exit 1
+	$TMUX set-option -w -t layouts:columns tiled-layout-max-columns \
+	    "$maximum" || exit 1
+	$TMUX select-layout -t layouts:columns tiled || exit 1
+	actual=$(tiled_grid)
+	[ "$actual" = "$expected" ] ||
+	    fail "tiled min=$minimum max=$maximum produced $actual, expected $expected"
+}
+
 $TMUX new-session -d -s layouts -n many -x100 -y40 'exec sleep 100' || exit 1
 $TMUX set-option -g window-size manual || exit 1
 $TMUX split-window -d -h -t layouts:many 'exec sleep 100' || exit 1
@@ -106,6 +130,23 @@ $TMUX select-layout -t layouts:many -o || exit 1
 [ "$(layout)" = "$tiled" ] || fail "select-layout -o did not restore layout"
 $TMUX select-layout -t layouts:many || exit 1
 $TMUX select-layout -t layouts:many -E || exit 1
+
+# Check the tiled column limits with ten panes. Keep the window spread while
+# adding panes so repeated splits do not run out of space.
+$TMUX new-window -d -t layouts: -n columns 'exec sleep 100' || exit 1
+i=1
+while [ "$i" -lt 10 ]; do
+	$TMUX split-window -d -t layouts:columns 'exec sleep 100' || exit 1
+	$TMUX select-layout -t layouts:columns even-horizontal || exit 1
+	i=$((i + 1))
+done
+$TMUX select-layout -t layouts:columns tiled || exit 1
+[ "$(tiled_grid)" = 3x4 ] || fail "default tiled grid is not 3x4"
+check_tiled_grid 1 0 3x4
+check_tiled_grid 1 2 2x5
+check_tiled_grid 3 0 4x3
+check_tiled_grid 3 3 3x4
+check_tiled_grid 5 2 2x5
 
 # Each arranger has a deliberate one-pane early return.
 $TMUX new-window -d -t layouts: -n one 'exec sleep 100' || exit 1
