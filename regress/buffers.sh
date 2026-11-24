@@ -9,7 +9,7 @@
 # - set-buffer creating automatic buffers (buffer0, buffer1, ... with the
 #   most recent first), -b creating/replacing a named buffer, -a appending,
 #   -n renaming and the error paths (no data, unknown buffer);
-# - show-buffer for the top and for named buffers;
+# - show-buffer for the top and for named buffers, including during startup;
 # - delete-buffer for the top and named buffers, and when nothing exists;
 # - list-buffers -F custom formats and -f filters;
 # - paste-buffer into a pane: newline-to-CR translation by default, -r raw,
@@ -99,7 +99,17 @@ assert_alive()
 	fi
 }
 
-check_ok new-session -d -s B -x 80 -y 24
+# The startup configuration runs without a client to show the buffer to.
+cat >"$TMP" <<'EOF'
+set-buffer -b startup before
+show-buffer -b startup; set-buffer -b startup after
+EOF
+if ! $TEST_TMUX -LtestA$$ -f"$TMP" new-session -d -s B -x 80 -y 24; then
+	echo "Server failed to start with show-buffer in the configuration."
+	exit 1
+fi
+check_show '-b startup' 'after'
+check_ok delete-buffer -b startup
 
 # ---------------------------------------------------------------------------
 # set-buffer, show-buffer, delete-buffer, list-buffers.
