@@ -377,7 +377,7 @@ exit_mode q
 # --- killing the mode's own session -----------------------------------------
 # Killing the attached session also destroys the pane hosting the tree. The
 # confirmation callback must finish without redrawing the destroyed mode.
-$TMUX set-option -g detach-on-destroy off || exit 1
+$TMUX set-option -t aaa detach-on-destroy off || exit 1
 $TMUX choose-tree -s -t aaa:0 -F 'G7' -O name || exit 1
 wait_count ': G7' 2
 $TMUX send-keys -t aaa:0 g x || fail "send-keys session kill failed"
@@ -392,5 +392,36 @@ while [ "$i" -lt 50 ]; do
 	i=$((i + 1))
 done
 [ "$i" -lt 50 ] || fail "killing the tree session killed the server"
+
+# --- killing the mode's own window ------------------------------------------
+# GitHub issue 5864. Killing the only window of aaa also destroys the session.
+# Run with detach-on-destroy off first so the client returns to zzz and can be
+# reused for the default (on) case, where it detaches.
+client=$($TMUX list-clients -F '#{client_name}') || exit 1
+for detach in off on; do
+	$TMUX new-session -d -s aaa 'cat' || exit 1
+	expected_client_session=
+	if [ "$detach" = off ]; then
+		$TMUX set-option -t aaa detach-on-destroy off || exit 1
+		expected_client_session=zzz
+	fi
+	$TMUX switch-client -c "$client" -t aaa || exit 1
+	$TMUX choose-tree -w -t aaa:0 -F "WK $detach" || exit 1
+	wait_for "WK $detach"
+	$TMUX send-keys -t aaa:0 x || fail "send-keys window kill failed"
+	wait_for 'Kill window 0?'
+	$TMUX send-keys -t aaa:0 y || fail "window kill confirmation failed"
+	i=0
+	while [ "$i" -lt 50 ]; do
+		sessions=$($TMUX list-sessions -F '#{session_name}' 2>/dev/null) ||
+			fail "server exited after killing the tree window ($detach)"
+		client_session=$($TMUX list-clients -F '#{client_session}' 2>/dev/null) ||
+			fail "server exited after killing the tree window ($detach)"
+		[ "$sessions" = zzz ] && [ "$client_session" = "$expected_client_session" ] && break
+		sleep 0.2
+		i=$((i + 1))
+	done
+	[ "$i" -lt 50 ] || fail "window kill ($detach): sessions='$sessions' client session='$client_session'"
+done
 
 exit 0
