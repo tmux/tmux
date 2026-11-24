@@ -61,4 +61,34 @@ for keys in emacs vi; do
 	$TMUX send -X cancel || exit 1
 done
 
+# An output start before the next prompt on the same row anchors the old fold.
+$TMUX new-window -n inline \
+	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007FIRST\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND\033]133;D;0\007\r\n\033]133;A\007P2> \033]133;B\007'; exec sleep 100" || exit 1
+sleep 1
+for keys in emacs vi; do
+	$TMUX set -w -t :inline mode-keys "$keys" || exit 1
+	for prompt in P0 P1 P2; do
+		if [ "$prompt" = P0 ]; then
+			expected=FIRST
+			hidden=SECOND
+		else
+			expected=SECOND
+			hidden=FIRST
+		fi
+		$TMUX copy-mode -t :inline -c || exit 1
+		$TMUX send -t :inline -X search-backward-text "$prompt>" || exit 1
+		$TMUX set-buffer sentinel || exit 1
+		$TMUX send -t :inline -X copy-output || exit 1
+		[ "$($TMUX show-buffer)" = "$expected" ] || exit 1
+		$TMUX set-buffer sentinel || exit 1
+		$TMUX send -t :inline -X select-output || exit 1
+		$TMUX send -t :inline -X copy-selection || exit 1
+		[ "$($TMUX show-buffer)" = "$expected" ] || exit 1
+		case "$($TMUX capture-pane -t :inline -Mp)" in
+		*"$hidden"*) exit 1 ;;
+		esac
+		$TMUX send -t :inline -X cancel || exit 1
+	done
+done
+
 exit 0

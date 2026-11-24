@@ -14,16 +14,31 @@ seq="${seq}\033]133;A\007P2> \033]133;B\007"
 commands_seq=$seq
 
 # Narrow output can create more backing rows than there are source rows.
-for hlimit in 2000 1; do
-	start_pane_hlimit mapping 80 8 "$commands_seq" "$hlimit"
-	$TMUX copy-mode -t mapping: -U || exit 1
-	$TMUX resize-window -t mapping: -x 5 || exit 1
-	$TMUX send -t mapping: -X search-backward-text FFFFF || exit 1
-	$TMUX set-buffer sentinel || exit 1
-	$TMUX send -t mapping: -X copy-output || exit 1
-	$TMUX save-buffer "$TMP" || exit 1
-	printf '%s\n' "$first" >"$EXP"
-	cmp "$TMP" "$EXP" || fail "copy-output with history-limit $hlimit"
+for hlimit in 2000 1 0; do
+	for keys in emacs vi; do
+		start_pane_hlimit mapping 80 8 "$commands_seq" "$hlimit"
+		$TMUX set -w -t mapping: mode-keys "$keys" || exit 1
+		$TMUX copy-mode -t mapping: -U || exit 1
+		$TMUX resize-window -t mapping: -x 5 || exit 1
+		$TMUX send -t mapping: -X search-backward-text FFFFF || exit 1
+		$TMUX set-buffer sentinel || exit 1
+		$TMUX send -t mapping: -X copy-output || exit 1
+		$TMUX save-buffer "$TMP" || exit 1
+		printf '%s\n' "$first" >"$EXP"
+		cmp "$TMP" "$EXP" || \
+			fail "$keys copy-output with history-limit $hlimit"
+
+		# Copying the source alone does not check the rebuilt backing.
+		$TMUX capture-pane -t mapping: -pMJ -S - -E - >"$TMP" || exit 1
+		grep -Fq "$first" "$TMP" || \
+			fail "$keys retained output with history-limit $hlimit"
+		$TMUX set-buffer sentinel || exit 1
+		$TMUX send -t mapping: -X select-output || exit 1
+		$TMUX send -t mapping: -X copy-selection || exit 1
+		$TMUX save-buffer "$TMP" || exit 1
+		cmp "$TMP" "$EXP" || \
+			fail "$keys select-output with history-limit $hlimit"
+	done
 done
 
 # Selection endpoints must land on the appropriate wrapped segment.

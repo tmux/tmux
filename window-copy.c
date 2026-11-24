@@ -1206,8 +1206,9 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	total = sgd->hsize + sgd->sy;
 	sx = screen_size_x(&data->screen);
 	dst = xcalloc(1, sizeof *dst);
-	screen_init(dst, sx, screen_size_y(&data->screen), screen_hlimit(src));
-	dst->grid->flags |= GRID_HISTORY;
+
+	/* Retain every snapshot row, including extra rows from wrapping. */
+	screen_init(dst, sx, screen_size_y(&data->screen), UINT_MAX);
 #ifdef ENABLE_IMAGES
 	images.source = src;
 	images.backing = dst;
@@ -2648,9 +2649,6 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
-	struct window_copy_fold_request	 request = {
-		.action = WINDOW_COPY_FOLD_EXPAND
-	};
 	struct grid_reader		 gr;
 	struct grid			*gd;
 	void				*buf;
@@ -2658,7 +2656,7 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	u_int				 sx, sy, ex, ey, last;
 	u_int				 bsx, bsy, bex, bey;
 	int				 all = args_has(cs->wargs, 'a');
-	int				 wrapped;
+	int				 wrapped, changed;
 
 	if (!window_copy_get_output_range(wme, all, &sx, &sy, &ex, &ey))
 		return (WINDOW_COPY_CMD_NOTHING);
@@ -2671,12 +2669,15 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	free(buf);
 
 	if (data->fold_view) {
-		if (all) {
-			window_copy_set_all_folds_collapsed(data, 0);
+		/* Expand at C even when the next prompt shares its row. */
+		if (all)
+			changed = window_copy_set_all_folds_collapsed(data, 0);
+		else
+			changed = window_copy_set_fold_collapsed(data, sy, 0);
+		if (changed) {
+			window_copy_clear_selection(wme);
+			window_copy_clear_marks(wme);
 			window_copy_rebuild_backing(wme);
-		} else {
-			request.target = sy;
-			window_copy_apply_fold_request(wme, &request);
 		}
 	}
 	if (!window_copy_find_backing_position(wme, sx, sy, &bsx, &bsy) ||
