@@ -1454,6 +1454,7 @@ options_push_changes(const char *name)
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	}
+	/* Redraw panes so copy mode picks up the changed gutter format. */
 	if (*name == '@' || strcmp(name, "copy-mode-exit-status-format") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			wp->flags |= PANE_STYLECHANGED;

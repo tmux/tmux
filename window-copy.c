@@ -796,7 +796,7 @@ static int
 window_copy_any_fold_collapsed(struct window_copy_mode_data *data)
 {
 	struct grid			*gd = data->source->grid;
-	struct grid_line			*gl;
+	struct grid_line		*gl;
 	struct window_copy_fold_scan	 scan = {0};
 	u_int				 y;
 
@@ -824,7 +824,7 @@ window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
     int collapsed)
 {
 	struct grid			*gd = data->source->grid;
-	struct grid_line			*gl;
+	struct grid_line		*gl;
 	struct window_copy_fold_scan	 scan = {0};
 	u_int				 y;
 	int				 changed = 0;
@@ -4359,7 +4359,7 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*old = data->source->grid;
 	struct grid			*gd = src->grid, *rgd;
-	struct grid_line			*gl, *new_gl, *rgl;
+	struct grid_line		*gl, *new_gl, *rgl;
 	struct screen			*resized;
 	u_char				*flags;
 	u_int				 y, x, new_y, wx = 0, wy = 0;
@@ -4766,7 +4766,7 @@ window_copy_find_fold(struct window_mode_entry *wme, u_int target,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = window_copy_source_grid(data);
-	struct grid_line			*gl;
+	struct grid_line		*gl;
 	struct window_copy_fold_scan	 scan = {0};
 	u_int				 candidate = UINT_MAX;
 	u_int				 last_prompt = UINT_MAX, y;
@@ -4864,7 +4864,7 @@ window_copy_find_backing_position(struct window_mode_entry *wme, u_int source_x,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct window_copy_line		*line;
-	struct grid_line			*gl;
+	struct grid_line		*gl;
 	u_int				 x, y, total;
 
 	if (!data->fold_view) {
@@ -8365,7 +8365,7 @@ window_copy_get_output_range(struct window_mode_entry *wme, int all,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = window_copy_source_grid(data);
-	struct grid_line			*gl;
+	struct grid_line		*gl;
 	struct grid_reader		 gr;
 	u_int				 total, cursor_x, cursor_y;
 	int				 found;
