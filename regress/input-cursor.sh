@@ -35,5 +35,14 @@ start_pane cbt 16 3 '0123456789\r\033[10C\033[Zx\n'
 check_capture cbt '01234567x9'
 check_cursor cbt '0,1'
 
+start_pane cht 56 3 '|\033[6IX\r\n|\t\t\t\t\t\tX\n'
+check_capture cht '|                                               X
+|						X'
+check_cursor cht '0,2'
+
+start_pane chtstops 20 3 '\033[3g\033[4G\033H\033[10G\033H\rA\033[IX\033[2IY\n'
+check_capture chtstops 'A  X               Y'
+check_cursor chtstops '0,1'
+
 $TMUX kill-server 2>/dev/null
 exit $exit_status
