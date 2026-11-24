@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1202 2026/11/23 08:44:19 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1203 2026/11/24 07:38:58 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 23 2026 $
+.Dd $Mdocdate: November 24 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2552,6 +2552,11 @@ command.
 .Ar text
 .Xc
 Search forward for the specified plain text.
+.It Xo
+.Ic search\-reset
+.Xc
+Reset the saved origin so that the next incremental search starts at the
+current cursor position.
 .It Xo
 .Ic search\-reverse
 (vi: N)

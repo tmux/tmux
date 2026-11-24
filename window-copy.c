@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.448 2026/11/22 14:17:18 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.449 2026/11/24 07:38:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -605,7 +605,9 @@ window_copy_common_init(struct window_mode_entry *wme)
 		data->searchregex = 0;
 		data->searchstr = NULL;
 	}
-	data->searchx = data->searchy = data->searcho = -1;
+	data->searchx = -1;
+	data->searchy = -1;
+	data->searcho = -1;
 	data->searchcount = -1;
 	data->searchindex = -1;
 	data->searchall = 1;
@@ -3204,6 +3206,16 @@ window_copy_cmd_search_forward_text(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_search_reset(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	data->searchx = -1;
+	data->searchy = -1;
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
     int direction, int regex)
 {
@@ -3211,12 +3223,21 @@ window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
 	struct window_copy_mode_data	*data = wme->data;
 	const char			*arg0 = args_string(cs->wargs, 0);
 	const char			*ss = data->searchstr;
+	u_int				 saved_cx, saved_cy, saved_oy, limit;
+	int				 found, keys;
 	char				 prefix;
 	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_MOVE;
 
 	data->timeout = 0;
 
 	log_debug("%s: %s", __func__, arg0);
+
+	keys = options_get_number(wme->wp->window->options, "mode-keys");
+	if (keys == MODEKEY_EMACS) {
+		saved_cx = data->cx;
+		saved_cy = data->cy;
+		saved_oy = data->oy;
+	}
 
 	prefix = *arg0++;
 	if (data->searchx == -1 || data->searchy == -1) {
@@ -3227,8 +3248,10 @@ window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
 		data->cx = data->searchx;
 		data->cy = data->searchy;
 		data->oy = data->searcho;
-		data->cx = window_copy_cursor_limit(wme,
+		limit = window_copy_cursor_limit(wme,
 		    screen_hsize(data->backing) + data->cy - data->oy, 0);
+		if (data->cx > limit)
+			data->cx = limit;
 		action = WINDOW_COPY_CMD_REDRAW;
 	}
 	if (*arg0 == '\0') {
@@ -3251,12 +3274,20 @@ window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
 	data->searchregex = regex;
 	free(data->searchstr);
 	data->searchstr = xstrdup(arg0);
-	if (data->searchtype == WINDOW_COPY_SEARCHUP) {
-		if (!window_copy_search_up(wme, regex))
-			return (WINDOW_COPY_CMD_REDRAW);
-	} else {
-		if (!window_copy_search_down(wme, regex))
-			return (WINDOW_COPY_CMD_REDRAW);
+	if (data->searchtype == WINDOW_COPY_SEARCHUP)
+		found = window_copy_search_up(wme, regex);
+	else
+		found = window_copy_search_down(wme, regex);
+	if (!found) {
+		if (keys == MODEKEY_EMACS) {
+			data->cx = saved_cx;
+			data->cy = saved_cy;
+			if (data->oy != saved_oy) {
+				data->oy = saved_oy;
+				window_copy_search_marks(wme, NULL, regex, 1);
+			}
+		}
+		return (WINDOW_COPY_CMD_REDRAW);
 	}
 	return (action);
 }
@@ -4171,6 +4202,12 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_forward_incremental_regex
 	},
+	{ .command = "search-reset",
+	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_search_reset
+	},
 	{ .command = "search-reverse",
 	  .args = { "", 0, 0, NULL },
 	  .flags = 0,
@@ -4301,7 +4338,8 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 			clear = WINDOW_COPY_CMD_CLEAR_NEVER;
 		if (clear != WINDOW_COPY_CMD_CLEAR_NEVER) {
 			window_copy_clear_marks(wme);
-			data->searchx = data->searchy = -1;
+			data->searchx = -1;
+			data->searchy = -1;
 		}
 		if (action == WINDOW_COPY_CMD_MOVE)
 			action = WINDOW_COPY_CMD_REDRAW;
