@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-save-buffer.c,v 1.58 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-save-buffer.c,v 1.59 2026/11/24 07:14:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -99,6 +99,8 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	bufdata = paste_buffer_data(pb, &bufsize);
 
 	if (cmd_get_entry(self) == &cmd_show_buffer_entry) {
+		if (c == NULL)
+			return (CMD_RETURN_NORMAL);
 		if (c->session != NULL || (c->flags & CLIENT_CONTROL)) {
 			evb = evbuffer_new();
 			if (evb == NULL)
