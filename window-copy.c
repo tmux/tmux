@@ -690,7 +690,7 @@ window_copy_expand_exit_status(struct window_mode_entry *wme,
 	const char		*value;
 	char			*expanded;
 
-	ft = format_create(NULL, NULL, 0, 0);
+	ft = format_create_defaults(NULL, NULL, NULL, NULL, wme->wp);
 	format_add(ft, "exit_status", "0");
 	format_add(ft, "exit_status_present", "0");
 	if (line->exit_status_present) {
@@ -1382,6 +1382,12 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		free(data->backing);
 	}
 	data->backing = dst;
+
+	/* Keep format lookups in range until the cursor is restored. */
+	if (data->oy > screen_hsize(dst))
+		data->oy = screen_hsize(dst);
+	if (data->cy >= screen_size_y(dst))
+		data->cy = screen_size_y(dst) - 1;
 	window_copy_update_exit_status_width(wme);
 }
 
@@ -7717,7 +7723,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	u_int				 sx = screen_size_x(s);
 	u_int				 hsize = screen_hsize(data->backing);
 	u_int				 width, line_width, backing_y;
-	u_int				 absolute, line_number, content_sx;
+	u_int				 absolute, line_number, content_sx, source_x;
 	const char			*value;
 	char				*expanded;
 	struct format_tree		*ft;
@@ -7771,10 +7777,17 @@ window_copy_write_line(struct window_mode_entry *wme,
 		if (data->fold_view && data->source_line_count != 0)
 			absolute = data->source_line_count;
 
-		/* Mapped rows retain source numbers despite hidden output. */
+		/* Number joined text from the source row at its left edge. */
 		line = window_copy_get_line_info(data, backing_y);
-		if (line != NULL && line->source_line != UINT_MAX)
-			absolute = line->source_line + 1;
+		if (line != NULL && line->wrapped_line != UINT_MAX) {
+			absolute = line->wrapped_line;
+			source_x = 0;
+			if (line->source_col > line->backing_col)
+				source_x = line->source_col - line->backing_col;
+			window_copy_unwrap_source_position(data, &source_x,
+			    &absolute);
+			absolute++;
+		}
 		mode = window_copy_line_number_mode(wme);
 		/* Use source numbers by default in a fold-aware view. */
 		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT) {
@@ -7951,9 +7964,9 @@ window_copy_style_changed(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 
+	window_copy_update_exit_status_width(wme);
 	if (data->screen.sel != NULL)
 		window_copy_set_selection(wme, 0, 1);
-	window_copy_update_exit_status_width(wme);
 	window_copy_redraw_screen(wme);
 }
 

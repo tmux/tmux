@@ -67,4 +67,50 @@ for width in 3 1; do
 	fi
 done
 
+# Gutter formats have the same pane context as other copy-mode formats.
+$INNER send -X cancel || exit 1
+$INNER resize-window -x 80 || exit 1
+$INNER set -p @gutter_label PANE || exit 1
+$INNER set -p copy-mode-exit-status-format \
+	'#{@gutter_label}:#{pane_id}:#{exit_status}' || exit 1
+$INNER copy-mode -U || exit 1
+$INNER send -X history-top || exit 1
+sleep 0.3
+pane=$($INNER display -p '#{pane_id}')
+$OUTER capture-pane -p >"$TMP" || exit 1
+if ! grep -q "PANE:$pane:7" "$TMP"; then
+	echo 'gutter format lost pane context'
+	exit_status=1
+fi
+
+# A changing gutter width must move the selection with its text.
+$INNER send -X cancel || exit 1
+$INNER set -g @gutter_width X || exit 1
+$INNER set -p copy-mode-exit-status-format '#{@gutter_width}' || exit 1
+$INNER set -g copy-mode-selection-style 'fg=white,bg=blue' || exit 1
+$INNER copy-mode -U || exit 1
+$INNER send -X history-top || exit 1
+$INNER send -X search-forward-text 0123 || exit 1
+$INNER send -X start-of-line || exit 1
+$INNER send -X begin-selection || exit 1
+$INNER send -X -N 3 cursor-right || exit 1
+$INNER set -g @gutter_width WIDE || exit 1
+sleep 0.3
+$OUTER capture-pane -pR >"$TMP" || exit 1
+if ! grep -q 'C 1,6 data=(1,1,0).* bg=blue\[4\]' "$TMP"; then
+	echo 'selection did not follow the wider gutter'
+	exit_status=1
+fi
+$INNER send -X copy-selection || exit 1
+[ "$($INNER show-buffer)" = 012 ] || exit 1
+
+# Changing the format itself must also recalculate the gutter width.
+$INNER set -p copy-mode-exit-status-format CHANGED || exit 1
+sleep 0.3
+$OUTER capture-pane -p >"$TMP" || exit 1
+if ! grep -q 'CHANGED- p>' "$TMP"; then
+	echo 'gutter format change did not update its width'
+	exit_status=1
+fi
+
 exit "$exit_status"

@@ -30,4 +30,24 @@ for mode in default absolute hybrid; do
 	$TMUX send -X cancel || exit 1
 done
 
+# Joined rows are numbered from their first source row, rather than the last.
+$TMUX new-window -n reflow "$INPUT_HOLD" || exit 1
+$TMUX set -w window-size manual || exit 1
+$TMUX resize-window -x 20 || exit 1
+$TMUX respawn-pane -k \
+	"printf '\033]133;A\007p> \033]133;B\007first\r\n\033]133;C\007'; printf '%060d' 0 | tr 0 A; printf '\033]133;D;0\007\r\n\033]133;A\007NEXT> \033]133;B\007\033]2;reflow-ready\007'; $INPUT_HOLD" || exit 1
+wait_for_output reflow-ready $TMUX display -p '#{pane_title}' || exit 1
+for mode in default absolute hybrid; do
+	$TMUX resize-window -x 20 || exit 1
+	$TMUX set -g copy-mode-line-numbers "$mode" || exit 1
+	$TMUX copy-mode -U || exit 1
+	$TMUX send -X history-top || exit 1
+	$TMUX send -X search-forward-text AAAAA || exit 1
+	$TMUX resize-window -x 80 || exit 1
+	sleep 0.3
+	$OUTER capture-pane -p >"$TMP" || exit 1
+	grep -q '^  2 .*AAAAA' "$TMP" || fail "$mode joined source line number"
+	$TMUX send -X cancel || exit 1
+done
+
 exit "$exit_status"
