@@ -431,7 +431,6 @@ screen_write_start_pane(struct screen_write_ctx *ctx, struct window_pane *wp,
 		s = wp->screen;
 	screen_write_init(ctx, s);
 	ctx->wp = wp;
-	ctx->owner = wp;
 
 	log_debug("%s: size %ux%u, pane %%%u (at %u,%u)", __func__,
 	    screen_size_x(ctx->s), screen_size_y(ctx->s), wp->id, wp->xoff,
@@ -2102,7 +2101,6 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int			 y;
-	struct osc133_marker	 osc133 = {0};
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2112,10 +2110,6 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 		image_redraw_area(ctx, s->cx, s->cy, sx - s->cx, 1);
 	image_redraw_area(ctx, 0, s->cy + 1, sx, sy - (s->cy + 1));
 #endif
-
-	/* Erasing to the end clears the whole screen at 0,0. */
-	if (s->cx == 0 && s->cy == 0)
-		osc133 = input_osc_133_save_marker(ctx->owner, s);
 
 	/* Scroll into history if it is enabled and clearing entire screen. */
 	if (s->cx == 0 &&
@@ -2131,7 +2125,6 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 		}
 		grid_view_clear(gd, 0, s->cy + 1, sx, sy - (s->cy + 1), bg);
 	}
-	input_osc_133_restore_marker(s, &osc133);
 
 	screen_write_collect_clear(ctx, s->cy + 1, sy - (s->cy + 1));
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -2203,7 +2196,6 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int			 y;
-	struct osc133_marker	 osc133;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2211,8 +2203,6 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 #ifdef ENABLE_IMAGES
 	image_redraw_all(ctx);
 #endif
-
-	osc133 = input_osc_133_save_marker(ctx->owner, s);
 
 	/* Scroll into history if it is enabled. */
 	if ((s->grid->flags & GRID_HISTORY) &&
@@ -2228,8 +2218,6 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 #endif
 		grid_view_clear(s->grid, 0, 0, sx, sy, bg);
 	}
-
-	input_osc_133_restore_marker(s, &osc133);
 
 	screen_write_collect_clear(ctx, 0, sy);
 
