@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1203 2026/11/24 07:38:58 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1204 2026/11/24 22:05:40 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -2809,8 +2809,13 @@ The same as
 .Cm main\-vertical
 but mirrored so the main pane is on the right of the window.
 .It Cm tiled
-Panes are spread out as evenly as possible over the window in both rows and
+By default, panes are spread out as evenly as possible over the window in both rows and
 columns.
+The
+.Em tiled\-layout\-min\-columns
+and
+.Em tiled\-layout\-max\-columns
+options control the minimum and maximum columns.
 .El
 .Pp
 In addition,
@@ -6367,11 +6372,15 @@ see the
 .Sx STYLES
 section.
 .Pp
+.It Ic tiled\-layout\-min\-columns Ar number
+Set the minimum number of columns that will be created in the
+.Cm tiled
+layout before the number of rows will be increased.
+.Pp
 .It Ic tiled\-layout\-max\-columns Ar number
 Set the maximum number of columns in the
 .Cm tiled
 layout.
-A value of 0 (the default) means no limit.
 When a limit is set, panes are arranged to not exceed this number of columns,
 with additional panes stacked in extra rows.
 .Pp

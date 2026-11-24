@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.257 2026/11/22 14:53:31 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.258 2026/11/24 22:05:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1831,6 +1831,15 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 0,
 	  .text = "Whether typing should be sent to all panes simultaneously."
+	},
+
+	{ .name = "tiled-layout-min-columns",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 1,
+	  .maximum = USHRT_MAX,
+	  .default_num = 1,
+	  .text = "Minimum number of columns in the 'tiled' layout. "
 	},
 
 	{ .name = "tiled-layout-max-columns",
