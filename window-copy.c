@@ -7436,7 +7436,7 @@ window_copy_line_number_mode(struct window_mode_entry *wme)
 		return (WINDOW_COPY_LINE_NUMBERS_OFF);
 	mode = options_get_number(oo, "copy-mode-line-numbers");
 	if (data->line_numbers == 2 && mode == WINDOW_COPY_LINE_NUMBERS_OFF)
-		return (WINDOW_COPY_LINE_NUMBERS_ABSOLUTE);
+		return (WINDOW_COPY_LINE_NUMBERS_DEFAULT);
 	return (mode);
 }
 
