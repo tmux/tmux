@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.449 2026/11/24 07:38:58 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.450 2026/11/24 09:09:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1105,10 +1105,12 @@ window_copy_cursor_hyperlink_cb(struct format_tree *ft)
 	struct window_pane		*wp = format_get_pane(ft);
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->screen.grid;
+	struct screen			*s = &data->screen;
+	struct grid			*gd = s->grid;
+	u_int				 x;
 
-	return (format_grid_hyperlink(gd, data->cx, gd->hsize + data->cy,
-	    &data->screen));
+	x = window_copy_cursor_offset(wme, data->cx, screen_size_x(s));
+	return (format_grid_hyperlink(gd, x, gd->hsize + data->cy, s));
 }
 
 static void *
