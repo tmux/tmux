@@ -92,11 +92,10 @@ sleep 1
 capture
 check_grep "!123+ p\$ two"
 
+$TMUX2 send -X search-forward-text two || exit 1
 $TMUX2 send -X select-line || exit 1
 $TMUX2 send -X copy-selection || exit 1
 selection=$($TMUX2 show-buffer)
-case $selection in
-*RC=*) fail "exit status was copied" ;;
-esac
+[ "$selection" = 'p$ two' ] || fail "unexpected selection: $selection"
 
 exit 0

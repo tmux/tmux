@@ -1098,11 +1098,28 @@ window_copy_write_fold_cell(struct window_copy_mode_data *data,
     const struct grid_cell *gc)
 {
 	struct screen		*dst = ctx->s;
+	struct grid_line	*gl;
 	struct grid_cell	 cell;
-	u_int			 y;
+	u_int			 y, sx = screen_size_x(dst);
 
 	if (!fold->keep_line && fold->source_x >= fold->tab_end) {
+		/* Do not copy unused allocation after an early wide-cell wrap. */
+		if (gc->data.width > 1 && gc->data.width <= sx &&
+		    dst->cx > sx - gc->data.width && dst->cx < sx) {
+			gl = grid_get_line(dst->grid, screen_hsize(dst) + dst->cy);
+			if (gl->cellsize > dst->cx) {
+				gl->celldata = xreallocarray(gl->celldata, dst->cx,
+				    sizeof *gl->celldata);
+				gl->cellsize = dst->cx;
+			}
+		}
 		screen_write_cell(ctx, gc);
+
+		/* Unchanged blank cells still belong to the copied source. */
+		y = screen_hsize(dst) + dst->cy;
+		gl = grid_get_line(dst->grid, y);
+		if (gl->cellused < dst->cx)
+			grid_set_cell(dst->grid, dst->cx - 1, y, gc);
 		return;
 	}
 

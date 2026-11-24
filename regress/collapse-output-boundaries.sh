@@ -31,6 +31,31 @@ for keys in emacs vi; do
 	done
 done
 
+# Wide characters wrapping early must not add spaces to copied selections.
+for keys in emacs vi; do
+	for payload in 'AB界CD' 'A界界界Z' 'é界Z' 'AB 界CD' 'AB  界CD'; do
+		for width in 2 3 5 8 20; do
+			seq='\033]133;A\007p> \033]133;B\007first\r\n'
+			seq="${seq}\033]133;C\007${payload}\033]133;D;0\007\r\n"
+			seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
+			start_pane_history wide 80 24 "$seq"
+			$TMUX set -g mode-keys "$keys" || exit 1
+			$TMUX copy-mode -U || exit 1
+			$TMUX resize-window -x "$width" || exit 1
+			$TMUX send -X history-top || exit 1
+			printf '%s' "$payload" >"$EXP"
+			$TMUX send -X copy-output || exit 1
+			$TMUX save-buffer "$TMP" || exit 1
+			cmp "$TMP" "$EXP" || fail "$keys wide output at $width"
+			$TMUX set-buffer sentinel || exit 1
+			$TMUX send -X select-output || exit 1
+			$TMUX send -X copy-selection || exit 1
+			$TMUX save-buffer "$TMP" || exit 1
+			cmp "$TMP" "$EXP" || fail "$keys wide selection at $width"
+		done
+	done
+done
+
 # All four markers can be placed beyond the last stored text cell.
 seq='\033[11G\033]133;A\007\033[21G\033]133;B\007\r\n'
 seq="${seq}\033[11G\033]133;C\007\r\nHIDDEN"
