@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.291 2026/11/23 08:44:19 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.292 2026/11/24 09:15:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3553,6 +3553,31 @@ input_fire_command_event(struct window_pane *wp, const char *name)
 	events_fire(name, ep);
 }
 
+/* Record the first primary or secondary prompt marker on a line. */
+static void
+input_osc_133_mark_prompt(struct grid_line *gl, u_int col, const char *p)
+{
+	const char	*cp;
+
+	if (gl == NULL)
+		return;
+	if (gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_SECOND_PROMPT))
+		return;
+
+	while ((cp = strstr(p, ";k=")) != NULL) {
+		p = cp + 3;
+		if (*p != 's' && *p != 'c')
+			continue;
+		if (p[1] == '\0' || p[1] == ';') {
+			gl->flags |= GRID_LINE_SECOND_PROMPT;
+			break;
+		}
+	}
+	if (cp == NULL)
+		gl->flags |= GRID_LINE_START_PROMPT;
+	gl->osc133_data.prompt_col = col;
+}
+
 /* Handle the OSC 133 sequence. */
 static void
 input_osc_133(struct input_ctx *ictx, const char *p)
@@ -3562,7 +3587,6 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	struct grid		*gd = s->grid;
 	u_int			 line = s->cy + gd->hsize;
 	struct grid_line	*gl = NULL;
-	const char		*cp;
 	int			 status;
 
 	if (line < gd->hsize + gd->sy)
@@ -3571,10 +3595,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	switch (*p) {
 	case 'A':
 	case 'N':
-		if (gl != NULL) {
-			gl->osc133_data.prompt_col = s->cx;
-			gl->flags |= GRID_LINE_START_PROMPT;
-		}
+		input_osc_133_mark_prompt(gl, s->cx, p);
 		if (wp != NULL) {
 			if (*p == 'A' && wp->program_state != NULL) {
 				window_pane_clear_program_status(wp, 0);
@@ -3586,24 +3607,17 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 		}
 		break;
 	case 'P':
-		if (gl != NULL) {
-			cp = strstr(p, ";k=s");
-			if (cp != NULL && (cp[4] == ';' || cp[4] == '\0'))
-				gl->flags |= GRID_LINE_SECOND_PROMPT;
-			else
-				gl->flags |= GRID_LINE_START_PROMPT;
-			gl->osc133_data.prompt_col = s->cx;
-		}
+		input_osc_133_mark_prompt(gl, s->cx, p);
 		break;
 	case 'B':
 	case 'I':
-		if (gl != NULL) {
+		if (gl != NULL && (~gl->flags & GRID_LINE_START_COMMAND)) {
 			gl->flags |= GRID_LINE_START_COMMAND;
 			gl->osc133_data.cmd_col = s->cx;
 		}
 		break;
 	case 'C':
-		if (gl != NULL) {
+		if (gl != NULL && (~gl->flags & GRID_LINE_START_OUTPUT)) {
 			gl->flags |= GRID_LINE_START_OUTPUT;
 			gl->osc133_data.out_start_col = s->cx;
 		}
