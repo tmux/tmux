@@ -32,7 +32,7 @@ cells = {(x, y): red for y in range(2, 5) for x in range(2, 6)}
 def snapshot(test, client, expected):
     """Check image pixels after a full redraw."""
     test.redraw()
-    terminal = Terminal()
+    terminal = Terminal(sx=test.sx, sy=test.sy)
     terminal.feed(client.data)
     terminal.check(expected)
     return terminal
@@ -44,6 +44,16 @@ def pixels(cells):
         for (x, y), colour in cells.items()
         for py in range(16) for px in range(8)}
 
+
+# A placement must scroll off a one-row pane.
+with image_test(sys.argv[1], sy=1) as test:
+    client = test.attach()
+    test.emit(b'\033[?1049h' + upload)
+    for operation in (b'\n', b'\033M'):
+        test.emit(graphics('a=p,i=7,p=9,c=1,r=1,C=1'))
+        snapshot(test, client, pixels({(0, 0): red}))
+        test.emit(operation)
+        snapshot(test, client, {})
 
 cases = [
     ('ASCII text', origin + b'ab'),

@@ -2,6 +2,15 @@
 
 . ./input-common.inc
 
+start_pane single-lf 12 1 'old\r\nX'
+check_capture single-lf X
+
+start_pane single-ri 12 1 'old\r\033MX'
+check_capture single-ri X
+
+start_pane_history single-ri-history 12 1 'old\r\033MX'
+check_capture single-ri-history X
+
 start_pane_history history 6 3 'one\ntwo\nthree\nfour\nfive'
 check_raw_matches history \
 	'^G 6x3 \([1-9][0-9]*/2000\)$' \

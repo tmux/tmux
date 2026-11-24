@@ -142,13 +142,13 @@ grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower,
 		}
 	} else {
 		rupper = grid_view_y(gd, rupper);
-#ifdef ENABLE_IMAGES
-		saved = image_grid_save_lines(gd, rupper, rupper + 1, n, 1);
-#endif
 		if (n == 0) {
 			grid_view_discard_line(gd, rupper, bg);
 			return;
 		}
+#ifdef ENABLE_IMAGES
+		saved = image_grid_save_lines(gd, rupper, rupper + 1, n, 1);
+#endif
 		grid_move_lines(gd, rupper, rupper + 1, n, bg);
 #ifdef ENABLE_IMAGES
 		image_grid_restore_lines(gd, saved);
@@ -167,24 +167,17 @@ grid_view_scroll_region_down(struct grid *gd, u_int rupper, u_int rlower,
 	u_int			 n = rlower - rupper;
 
 	rupper = grid_view_y(gd, rupper);
-
-#ifdef ENABLE_IMAGES
-	saved = image_grid_save_lines(gd, rupper + 1, rupper, n, 1);
-#endif
 	if (n == 0) {
 		grid_view_discard_line(gd, rupper, bg);
 		return;
 	}
+#ifdef ENABLE_IMAGES
+	saved = image_grid_save_lines(gd, rupper + 1, rupper, n, 1);
+#endif
 	grid_move_lines(gd, rupper + 1, rupper, n, bg);
 #ifdef ENABLE_IMAGES
 	image_grid_restore_lines(gd, saved);
 #endif
-=======
-
-	rupper = grid_view_y(gd, rupper);
-
-	grid_move_lines(gd, rupper + 1, rupper, n, bg);
->>>>>>> refs/remotes/tmux-openbsd/master
 }
 
 /* Insert lines. */
