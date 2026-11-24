@@ -5,9 +5,10 @@
 . ./input-common.inc
 
 start_pane_hlimit numbers 80 12 '' 20000
-$TMUX respawn-pane -k \
+target=numbers:
+$TMUX respawn-pane -t "$target" -k \
 	"printf '\033]133;A\007p> \033]133;B\007first\r\n\033]133;C\007'; seq 1 12000; printf '\033]133;D;0\007\033]133;A\007NEXT> \033]133;B\007\033]2;numbers-ready\007'; $INPUT_HOLD" || exit 1
-wait_for_output numbers-ready $TMUX display -p '#{pane_title}' || exit 1
+wait_for_output numbers-ready $TMUX display -t "$target" -p '#{pane_title}' || exit 1
 $TMUX set -g status off || exit 1
 $TMUX set -g copy-mode-position-format '' || exit 1
 OUTER="$TEST_TMUX -Ln$$ -f/dev/null"
@@ -25,29 +26,30 @@ number_matches()
 
 for mode in default absolute hybrid; do
 	$TMUX set -g copy-mode-line-numbers "$mode" || exit 1
-	$TMUX copy-mode -c || exit 1
+	$TMUX copy-mode -t "$target" -c || exit 1
 	wait_until number_matches || fail "$mode source line number"
-	$TMUX send -X cancel || exit 1
+	$TMUX send -t "$target" -X cancel || exit 1
 done
 
 # Joined rows are numbered from their first source row, rather than the last.
-$TMUX new-window -n reflow "$INPUT_HOLD" || exit 1
-$TMUX set -w window-size manual || exit 1
-$TMUX resize-window -x 20 || exit 1
-$TMUX respawn-pane -k \
+$TMUX new-window -t numbers: -n reflow "$INPUT_HOLD" || exit 1
+target=numbers:reflow
+$TMUX set -w -t "$target" window-size manual || exit 1
+$TMUX resize-window -t "$target" -x 20 || exit 1
+$TMUX respawn-pane -t "$target" -k \
 	"printf '\033]133;A\007p> \033]133;B\007first\r\n\033]133;C\007'; printf '%060d' 0 | tr 0 A; printf '\033]133;D;0\007\r\n\033]133;A\007NEXT> \033]133;B\007\033]2;reflow-ready\007'; $INPUT_HOLD" || exit 1
-wait_for_output reflow-ready $TMUX display -p '#{pane_title}' || exit 1
+wait_for_output reflow-ready $TMUX display -t "$target" -p '#{pane_title}' || exit 1
 for mode in default absolute hybrid; do
-	$TMUX resize-window -x 20 || exit 1
+	$TMUX resize-window -t "$target" -x 20 || exit 1
 	$TMUX set -g copy-mode-line-numbers "$mode" || exit 1
-	$TMUX copy-mode -U || exit 1
-	$TMUX send -X history-top || exit 1
-	$TMUX send -X search-forward-text AAAAA || exit 1
-	$TMUX resize-window -x 80 || exit 1
+	$TMUX copy-mode -t "$target" -U || exit 1
+	$TMUX send -t "$target" -X history-top || exit 1
+	$TMUX send -t "$target" -X search-forward-text AAAAA || exit 1
+	$TMUX resize-window -t "$target" -x 80 || exit 1
 	sleep 0.3
 	$OUTER capture-pane -p >"$TMP" || exit 1
 	grep -q '^  2 .*AAAAA' "$TMP" || fail "$mode joined source line number"
-	$TMUX send -X cancel || exit 1
+	$TMUX send -t "$target" -X cancel || exit 1
 done
 
 exit "$exit_status"

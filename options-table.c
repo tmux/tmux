@@ -1521,13 +1521,6 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of search matches in copy mode."
 	},
 
-	{ .name = "copy-mode-exit-status-format",
-	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "#{?exit_status,#[fg=themered]!, }",
-	  .text = "Format of OSC 133 exit status indicator in copy mode."
-	},
-
 	{ .name = "copy-mode-current-match-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -1560,6 +1553,13 @@ const struct options_table_entry options_table[] = {
 			 "#{?search_count_current,#{search_count_current} of "
 			 "#{search_count} matches,#{search_count} matches}}}}),}}",
 	  .text = "Format of the position indicator in copy mode."
+	},
+
+	{ .name = "copy-mode-exit-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "#{?exit_status,#[fg=themered]!, }",
+	  .text = "Format of OSC 133 exit status indicator in copy mode."
 	},
 
 	{ .name = "copy-mode-position-style",

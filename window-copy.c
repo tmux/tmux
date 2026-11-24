@@ -103,7 +103,8 @@ static int	window_copy_restore_command_end(struct window_mode_entry *,
 		    u_int, u_int);
 static int	window_copy_restore_before(struct window_mode_entry *, u_int);
 #ifdef ENABLE_IMAGES
-static void	window_copy_update_image_refresh(struct window_copy_mode_data *);
+static void	window_copy_update_image_refresh(
+		    struct window_copy_mode_data *);
 static int	window_copy_visible_has_images(struct window_copy_mode_data *);
 #endif
 static char    *window_copy_match_at_cursor(struct window_copy_mode_data *);
@@ -315,6 +316,12 @@ struct window_copy_fold_request {
 							/* for cursor's row */
 	int				 command_end;	/* prefer placeing */
 							/* cursor at cmd end */
+};
+
+/* Temporary marker state while scanning source rows for fold anchors. */
+struct window_copy_fold_scan {
+	int	 command;	/* B seen since the last A or D */
+	int	 output;	/* C seen since the last A or D */
 };
 
 #ifdef ENABLE_IMAGES
@@ -757,14 +764,41 @@ window_copy_first_prompt(struct grid *gd)
 	return (UINT_MAX);
 }
 
+/* Advance the marker scan and report whether this row anchors a fold. */
+static int
+window_copy_scan_fold_line(struct window_copy_fold_scan *scan,
+    struct grid_line *gl)
+{
+	int	 anchor = 0;
+
+	if (gl->flags & GRID_LINE_START_PROMPT) {
+		scan->command = 0;
+		scan->output = 0;
+	}
+	if (gl->flags & GRID_LINE_START_COMMAND)
+		scan->command = 1;
+	if (gl->flags & GRID_LINE_START_OUTPUT) {
+		anchor = 1;
+		scan->output = 1;
+	}
+	if (gl->flags & GRID_LINE_END_OUTPUT) {
+		/* B without C uses D as its separator fold's anchor. */
+		if (!scan->output && scan->command)
+			anchor = 1;
+		scan->command = 0;
+		scan->output = 0;
+	}
+	return (anchor);
+}
+
 /* Check whether any source fold is collapsed. */
 static int
 window_copy_any_fold_collapsed(struct window_copy_mode_data *data)
 {
-	struct grid		*gd = data->source->grid;
-	struct grid_line	*gl;
-	u_int			 y;
-	int			 command = 0, output = 0;
+	struct grid			*gd = data->source->grid;
+	struct grid_line			*gl;
+	struct window_copy_fold_scan	 scan = {0};
+	u_int				 y;
 
 	y = window_copy_first_prompt(gd);
 
@@ -776,24 +810,9 @@ window_copy_any_fold_collapsed(struct window_copy_mode_data *data)
 
 	for (y = 0; y < gd->hsize + gd->sy; y++) {
 		gl = grid_get_line(gd, y);
-		if (gl->flags & GRID_LINE_START_PROMPT) {
-			command = 0;
-			output = 0;
-		}
-		if (gl->flags & GRID_LINE_START_COMMAND)
-			command = 1;
-		if (gl->flags & GRID_LINE_START_OUTPUT) {
-			if (data->source_flags[y] & WINDOW_COPY_FOLD_COLLAPSED)
-				return (1);
-			output = 1;
-		}
-		if (gl->flags & GRID_LINE_END_OUTPUT) {
-			if (!output && command && (data->source_flags[y] &
-			    WINDOW_COPY_FOLD_COLLAPSED)) {
-				return (1);
-			}
-			command = 0;
-			output = 0;
+		if (window_copy_scan_fold_line(&scan, gl) &&
+		    (data->source_flags[y] & WINDOW_COPY_FOLD_COLLAPSED)) {
+			return (1);
 		}
 	}
 	return (0);
@@ -804,10 +823,11 @@ static int
 window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
     int collapsed)
 {
-	struct grid		*gd = data->source->grid;
-	struct grid_line	*gl;
-	u_int			 y;
-	int			 changed = 0, command = 0, output = 0;
+	struct grid			*gd = data->source->grid;
+	struct grid_line			*gl;
+	struct window_copy_fold_scan	 scan = {0};
+	u_int				 y;
+	int				 changed = 0;
 
 	y = window_copy_first_prompt(gd);
 	if (y != 0 && y != UINT_MAX &&
@@ -817,25 +837,10 @@ window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
 
 	for (y = 0; y < gd->hsize + gd->sy; y++) {
 		gl = grid_get_line(gd, y);
-		if (gl->flags & GRID_LINE_START_PROMPT) {
-			command = 0;
-			output = 0;
+		if (window_copy_scan_fold_line(&scan, gl) &&
+		    window_copy_set_fold_collapsed(data, y, collapsed)) {
+			changed = 1;
 		}
-		if (gl->flags & GRID_LINE_START_COMMAND)
-			command = 1;
-		if (gl->flags & GRID_LINE_START_OUTPUT) {
-			if (window_copy_set_fold_collapsed(data, y, collapsed))
-				changed = 1;
-			output = 1;
-		}
-		if (~gl->flags & GRID_LINE_END_OUTPUT)
-			continue;
-		if (!output && command) {
-			changed |= window_copy_set_fold_collapsed(data,
-			    y, collapsed);
-		}
-		command = 0;
-		output = 0;
 	}
 	return (changed);
 }
@@ -1469,7 +1474,8 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 		if (collected != 0) {
 			memmove(data->source_flags,
 			    data->source_flags + collected,
-			    (old_count - collected) * sizeof *data->source_flags);
+			    (old_count - collected) *
+			    sizeof *data->source_flags);
 		}
 		data->source_flags = xreallocarray(data->source_flags,
 		    new_count, sizeof *data->source_flags);
@@ -4760,11 +4766,10 @@ window_copy_find_fold(struct window_mode_entry *wme, u_int target,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = window_copy_source_grid(data);
-	struct grid_line		*gl;
+	struct grid_line			*gl;
+	struct window_copy_fold_scan	 scan = {0};
 	u_int				 candidate = UINT_MAX;
-	u_int				 last_prompt = UINT_MAX;
-	u_int				 output = UINT_MAX, y;
-	int				 command = 0;
+	u_int				 last_prompt = UINT_MAX, y;
 
 	*prompt = 0;
 	*chosen = UINT_MAX;
@@ -4775,21 +4780,9 @@ window_copy_find_fold(struct window_mode_entry *wme, u_int target,
 				break;
 			last_prompt = y;
 			candidate = UINT_MAX;
-			output = UINT_MAX;
-			command = 0;
 		}
-		if (gl->flags & GRID_LINE_START_COMMAND)
-			command = 1;
-		if (gl->flags & GRID_LINE_START_OUTPUT) {
-			output = y;
+		if (window_copy_scan_fold_line(&scan, gl))
 			candidate = y;
-		}
-		if (gl->flags & GRID_LINE_END_OUTPUT) {
-			if (output == UINT_MAX && command)
-				candidate = y;
-			output = UINT_MAX;
-			command = 0;
-		}
 	}
 	if (last_prompt == UINT_MAX || candidate == UINT_MAX)
 		return (0);
@@ -4848,8 +4841,9 @@ window_copy_get_cursor_source(struct window_mode_entry *wme, u_int *source_x,
 		*source_y = y;
 		return;
 	}
+	/* Unmapped padding refers to the start of the last source row. */
 	if (line->source_line == UINT_MAX) {
-		*source_x = UINT_MAX;
+		*source_x = 0;
 		*source_y = data->source_line_count - 1;
 		return;
 	}
@@ -7646,9 +7640,9 @@ window_copy_gutter_control(struct window_copy_mode_data *data,
 	/* End the branch if the next row does not belong to the same fold. */
 	if (next == NULL || (~next->flags & WINDOW_COPY_LINE_MEMBER) ||
 	    next->output_line != line->output_line) {
-		return ('m'); /* ACS L character */
+		return ('m'); /* ACS lower-left corner */
 	}
-	return ('x'); /* ACS | character */
+	return ('x'); /* ACS vertical line */
 }
 
 /* Draw a backing line's fold control, tree and exit status. */
@@ -7723,7 +7717,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 	u_int				 sx = screen_size_x(s);
 	u_int				 hsize = screen_hsize(data->backing);
 	u_int				 width, line_width, backing_y;
-	u_int				 absolute, line_number, content_sx, source_x;
+	u_int				 absolute, line_number, content_sx;
+	u_int				 source_x;
 	const char			*value;
 	char				*expanded;
 	struct format_tree		*ft;

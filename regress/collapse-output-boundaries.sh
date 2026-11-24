@@ -15,16 +15,16 @@ for keys in emacs vi; do
 			seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
 			start_pane_history tabs 80 24 "$seq"
 			$TMUX set -g mode-keys "$keys" || exit 1
-			$TMUX copy-mode -U || exit 1
-			$TMUX resize-window -x "$width" || exit 1
-			$TMUX send -X search-backward-text X || exit 1
+			$TMUX copy-mode -t "$input_session:" -U || exit 1
+			$TMUX resize-window -t "$input_session:" -x "$width" || exit 1
+			$TMUX send -t "$input_session:" -X search-backward-text X || exit 1
 			printf "$payload" >"$EXP"
-			$TMUX send -X copy-output || exit 1
+			$TMUX send -t "$input_session:" -X copy-output || exit 1
 			$TMUX save-buffer "$TMP" || exit 1
 			cmp "$TMP" "$EXP" || fail "$keys tab output at $width"
 			$TMUX set-buffer sentinel || exit 1
-			$TMUX send -X select-output || exit 1
-			$TMUX send -X copy-selection || exit 1
+			$TMUX send -t "$input_session:" -X select-output || exit 1
+			$TMUX send -t "$input_session:" -X copy-selection || exit 1
 			$TMUX save-buffer "$TMP" || exit 1
 			cmp "$TMP" "$EXP" || fail "$keys tab selection at $width"
 		done
@@ -39,16 +39,55 @@ for keys in emacs vi; do
 	for view in -U -c; do
 		start_pane_history short 80 24 "$seq"
 		$TMUX set -g mode-keys "$keys" || exit 1
-		$TMUX copy-mode "$view" || exit 1
+		$TMUX copy-mode -t "$input_session:" "$view" || exit 1
 		printf 'p> first\nhello\nNEXT>' >"$EXP"
-		$TMUX send -X copy-output -a || exit 1
+		$TMUX send -t "$input_session:" -X copy-output -a || exit 1
 		$TMUX save-buffer "$TMP" || exit 1
 		cmp "$TMP" "$EXP" || fail "$keys $view short all output"
 		$TMUX set-buffer sentinel || exit 1
-		$TMUX send -X select-output -a || exit 1
-		$TMUX send -X copy-selection || exit 1
+		$TMUX send -t "$input_session:" -X select-output -a || exit 1
+		$TMUX send -t "$input_session:" -X copy-selection || exit 1
 		$TMUX save-buffer "$TMP" || exit 1
 		cmp "$TMP" "$EXP" || fail "$keys $view short all selection"
+	done
+done
+
+# Blank backing rows map to a real source column when restoring the cursor.
+seq='\033]133;A\007p> \033]133;B\007first\r\n\033]133;C\007'
+seq="${seq}one\r\none\r\none\r\none\r\none\r\none\r\n"
+seq="${seq}\033]133;D;0\007\033]133;A\007LAST> \033]133;B\007"
+for keys in emacs vi; do
+	for command in resize fold-view-toggle copy-output select-output; do
+		start_pane_history unmapped 80 8 "$seq"
+		$TMUX set -g mode-keys "$keys" || exit 1
+		$TMUX copy-mode -t unmapped: -c || exit 1
+		$TMUX send -t unmapped: -X history-bottom || exit 1
+		case "$command" in
+		resize|fold-view-toggle)
+			if [ "$command" = resize ]; then
+				$TMUX resize-window -t unmapped: -x 40 || exit 1
+			else
+				$TMUX send -t unmapped: -X "$command" || exit 1
+			fi
+			actual=$($TMUX display -p -t unmapped: \
+				'#{copy_cursor_x}:#{copy_cursor_line}')
+			if [ "$actual" != '0:LAST>' ]; then
+				printf '%s\n' '0:LAST>' >"$EXP"
+				printf '%s\n' "$actual" >"$TMP"
+				fail "$keys cursor from blank row after $command"
+			fi
+			;;
+		*)
+			$TMUX set-buffer sentinel || exit 1
+			$TMUX send -t unmapped: -X "$command" || exit 1
+			if [ "$command" = select-output ]; then
+				$TMUX send -t unmapped: -X copy-selection || exit 1
+			fi
+			$TMUX save-buffer "$TMP" || exit 1
+			printf 'one\none\none\none\none\none\n' >"$EXP"
+			cmp "$TMP" "$EXP" || fail "$keys $command from blank row"
+			;;
+		esac
 	done
 done
 
@@ -65,17 +104,17 @@ for keys in emacs vi; do
 			seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
 			start_pane_history wide "$initial_width" 24 "$seq"
 			$TMUX set -g mode-keys "$keys" || exit 1
-			$TMUX copy-mode -U || exit 1
-			$TMUX resize-window -x "$width" || exit 1
-			$TMUX send -X history-top || exit 1
+			$TMUX copy-mode -t "$input_session:" -U || exit 1
+			$TMUX resize-window -t "$input_session:" -x "$width" || exit 1
+			$TMUX send -t "$input_session:" -X history-top || exit 1
 			printf '%s' "$payload" >"$EXP"
-			$TMUX send -X copy-output || exit 1
+			$TMUX send -t "$input_session:" -X copy-output || exit 1
 			$TMUX save-buffer "$TMP" || exit 1
 			cmp "$TMP" "$EXP" || \
 				fail "$keys wide output, $initial_width to $width"
 			$TMUX set-buffer sentinel || exit 1
-			$TMUX send -X select-output || exit 1
-			$TMUX send -X copy-selection || exit 1
+			$TMUX send -t "$input_session:" -X select-output || exit 1
+			$TMUX send -t "$input_session:" -X copy-selection || exit 1
 			$TMUX save-buffer "$TMP" || exit 1
 			cmp "$TMP" "$EXP" || \
 				fail "$keys wide selection, $initial_width to $width"
@@ -93,10 +132,10 @@ $TMUX set -g status off || exit 1
 $TMUX set -g window-size manual || exit 1
 $TMUX set -g copy-mode-exit-status-format \
 	'#{?exit_status_present,RC=#{exit_status},}' || exit 1
-$TMUX copy-mode -U || exit 1
-$TMUX capture-pane -pMF -S0 -E0 >"$TMP" || exit 1
+$TMUX copy-mode -t "$input_session:" -U || exit 1
+$TMUX capture-pane -t "$input_session:" -pMF -S0 -E0 >"$TMP" || exit 1
 grep -q '^P ' "$TMP" || fail 'sparse A marker'
-$TMUX capture-pane -pMF -S1 -E1 >"$TMP" || exit 1
+$TMUX capture-pane -t "$input_session:" -pMF -S1 -E1 >"$TMP" || exit 1
 grep -q '^O ' "$TMP" || fail 'sparse C marker'
 
 # The D marker's status must reach the control row on the real client.
@@ -106,8 +145,8 @@ wait_for_clients 1 $TMUX || exit 1
 wait_for_text RC=7 $OUTER capture-pane -p || fail 'sparse D status'
 stop_server $OUTER || exit 1
 
-$TMUX send -X collapse-output -a || exit 1
-$TMUX capture-pane -Mp >"$TMP" || exit 1
+$TMUX send -t "$input_session:" -X collapse-output -a || exit 1
+$TMUX capture-pane -t "$input_session:" -Mp >"$TMP" || exit 1
 grep -q HIDDEN "$TMP" && fail 'output after sparse C was not collapsed'
 grep -q NEXT "$TMP" || fail 'prompt after sparse D was hidden'
 
@@ -116,8 +155,8 @@ seq='\033]133;A\007p> \033[11G\033]133;B\007\r\n'
 seq="${seq}\033]133;D;0\007HIDDEN-SEPARATOR\r\n"
 seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
 start_pane_history command 80 12 "$seq"
-$TMUX copy-mode -c || exit 1
-$TMUX capture-pane -Mp >"$TMP" || exit 1
+$TMUX copy-mode -t "$input_session:" -c || exit 1
+$TMUX capture-pane -t "$input_session:" -Mp >"$TMP" || exit 1
 grep -q HIDDEN "$TMP" && fail 'sparse B marker was missed'
 
 # Gaps traversed by the cursor alone do not make empty output expandable.
@@ -125,10 +164,10 @@ seq='\033]133;A\007p> \033]133;B\007empty\r\n'
 seq="${seq}\033]133;C\007\033[11G\033]133;D;0\007\r\n"
 seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
 start_pane_history empty 80 12 "$seq"
-$TMUX copy-mode -c || exit 1
-$TMUX send -X search-backward-text empty || exit 1
+$TMUX copy-mode -t "$input_session:" -c || exit 1
+$TMUX send -t "$input_session:" -X search-backward-text empty || exit 1
 $TMUX set-buffer sentinel || exit 1
-$TMUX send -X copy-output || exit 1
+$TMUX send -t "$input_session:" -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = sentinel ] || fail 'cursor-only gap became output'
 
 # Hyperlinks are looked up at the displayed cursor, after either gutter.
@@ -139,14 +178,14 @@ seq="${seq}\033]133;D;0\007\r\n\033]133;A\007NEXT> \033]133;B\007"
 start_pane_history hyperlinks 80 12 "$seq"
 for numbers in off default absolute relative hybrid; do
 	$TMUX set -g copy-mode-line-numbers "$numbers" || exit 1
-	$TMUX copy-mode || exit 1
-	$TMUX send -X search-backward-text LABEL || exit 1
+	$TMUX copy-mode -t "$input_session:" || exit 1
+	$TMUX send -t "$input_session:" -X search-backward-text LABEL || exit 1
 	for toggle in 0 1 2; do
-		actual=$($TMUX display -p '#{copy_cursor_hyperlink}')
+		actual=$($TMUX display -t "$input_session:" -p '#{copy_cursor_hyperlink}')
 		[ "$actual" = "$uri" ] || fail "$numbers gutter hyperlink $toggle"
-		$TMUX send -X fold-view-toggle || exit 1
+		$TMUX send -t "$input_session:" -X fold-view-toggle || exit 1
 	done
-	$TMUX send -X cancel || exit 1
+	$TMUX send -t "$input_session:" -X cancel || exit 1
 done
 
 exit "$exit_status"
