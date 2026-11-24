@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.168 2026/11/23 08:11:24 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.169 2026/11/24 09:37:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1387,6 +1387,9 @@ grid_reflow_move_osc133(struct grid_line *to, struct grid_line *from,
 		from->flags &= ~flag;
 		*src_col[i] = 0;
 		if (flag == GRID_LINE_END_OUTPUT) {
+			to->flags &= ~GRID_LINE_END_OUTPUT_STATUS;
+			to->flags |= from->flags & GRID_LINE_END_OUTPUT_STATUS;
+			from->flags &= ~GRID_LINE_END_OUTPUT_STATUS;
 			dst->exit_status = src->exit_status;
 			src->exit_status = 0;
 		}
@@ -1821,6 +1824,8 @@ grid_line_flags_string(int flags)
 		strlcat(s, "START_OUTPUT,", sizeof s);
 	if (flags & GRID_LINE_END_OUTPUT)
 		strlcat(s, "END_OUTPUT,", sizeof s);
+	if (flags & GRID_LINE_END_OUTPUT_STATUS)
+		strlcat(s, "END_OUTPUT_STATUS,", sizeof s);
 	if (flags & GRID_LINE_HYPERLINK)
 		strlcat(s, "HYPERLINK,", sizeof s);
 	if (*s == '\0')

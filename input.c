@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.292 2026/11/24 09:15:37 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.293 2026/11/24 09:37:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3440,23 +3440,22 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 static int
 input_osc_133_exit_status(const char *p)
 {
-	const char	*end;
+	const char	*end, *errstr;
 	char		*copy;
-	const char	*errstr;
 	long long	 status;
 
 	if (p[1] != ';' || p[2] == '\0' || strchr(p + 2, '=') == p + 2)
-		return (0);
+		return (-1);
 	end = strchr(p + 2, ';');
 	if (end == p + 2)
-		return (0);
+		return (-1);
 	if (end == NULL)
 		copy = xstrdup(p + 2);
 	else
 		copy = xstrndup(p + 2, end - (p + 2));
 	if (strchr(copy, '=') != NULL) {
 		free(copy);
-		return (0);
+		return (-1);
 	}
 	status = strtonum(copy, 0, 255, &errstr);
 	free(copy);
@@ -3636,13 +3635,17 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 		if (wp != NULL) {
 			wp->cmd_end_time = time(NULL);
 			wp->flags &= ~PANE_CMDRUNNING;
-			wp->cmd_status = status;
+			wp->cmd_status = (status != -1 ? status : 0);
 			input_fire_command_event(wp, "pane-command-finished");
 		}
 		if (gl != NULL) {
 			gl->flags |= GRID_LINE_END_OUTPUT;
+			if (status != -1)
+				gl->flags |= GRID_LINE_END_OUTPUT_STATUS;
+			else
+				gl->flags &= ~GRID_LINE_END_OUTPUT_STATUS;
 			gl->osc133_data.out_end_col = s->cx;
-			gl->osc133_data.exit_status = status;
+			gl->osc133_data.exit_status = (status != -1 ? status : 0);
 		}
 		break;
 	}
