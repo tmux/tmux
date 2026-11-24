@@ -17,11 +17,11 @@ trap 'exit 1' 1 2 15
 # Outer window list is small; the inner loop visits a session with more
 # windows, so the shared list is reallocated.
 $TMUX new -d -s a || exit 1
-$TMUX neww -d -t a || exit 1
+$TMUX neww -d -t a: || exit 1
 $TMUX new -d -s b || exit 1
 i=1
 while [ $i -lt 120 ]; do
-	$TMUX neww -d -t b || exit 1
+	$TMUX neww -d -t b: || exit 1
 	i=$((i + 1))
 done
 out=$($TMUX display -t a: -p '#{W:#{S:#{W:x}}}' | wc -c)
