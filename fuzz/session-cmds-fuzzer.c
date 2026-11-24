@@ -151,6 +151,7 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 	struct session		*s1, *s2, *s, *snext;
 	struct window		*w[3];
 	struct window_pane	*host, *wp1, *wp2;
+	u_int			 host_id, wp1_id, wp2_id;
 	struct winlink		*wl;
 	struct paste_buffer	*pb;
 	struct cmd_find_state	 fs;
@@ -187,6 +188,9 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 	host = session_cmds_fuzzer_pane(w[0]);
 	wp1 = session_cmds_fuzzer_pane(w[1]);
 	wp2 = session_cmds_fuzzer_pane(w[2]);
+	host_id = host->id;
+	wp1_id = wp1->id;
+	wp2_id = wp2->id;
 	layout_init(w[0], host);
 	layout_init(w[1], wp1);
 	layout_init(w[2], wp2);
@@ -228,9 +232,15 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 	/* Tear the state down the way the server would: every session
 	 * (including ones the commands created), every paste buffer, every
 	 * pane mode, and all spawned children. */
-	window_pane_reset_mode_all(host);
-	window_pane_reset_mode_all(wp1);
-	window_pane_reset_mode_all(wp2);
+	host = window_pane_find_by_id(host_id);
+	if (host != NULL)
+		window_pane_reset_mode_all(host);
+	wp1 = window_pane_find_by_id(wp1_id);
+	if (wp1 != NULL)
+		window_pane_reset_mode_all(wp1);
+	wp2 = window_pane_find_by_id(wp2_id);
+	if (wp2 != NULL)
+		window_pane_reset_mode_all(wp2);
 
 	s = RB_MIN(sessions, &sessions);
 	while (s != NULL) {
