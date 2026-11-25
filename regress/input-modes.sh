@@ -21,9 +21,9 @@ check_raw_matches osc133 \
 	'L 2 \(2\) flags=SECOND_PROMPT\[[0-9a-f]+\].* osc133=2,0,0,0,0' \
 	'L 3 \(3\) flags=SECOND_PROMPT\[[0-9a-f]+\].* osc133=2,0,0,0,0' \
 	'L 4 \(4\) flags=SECOND_PROMPT\[[0-9a-f]+\].* osc133=2,0,0,0,0' \
-	'L 5 \(5\) flags=START_OUTPUT,END_OUTPUT\[[0-9a-f]+\].* osc133=0,0,2,5,7' \
-	'L 6 \(6\) flags=START_OUTPUT,END_OUTPUT\[[0-9a-f]+\].* osc133=0,0,1,4,255' \
-	'L 7 \(7\) flags=START_OUTPUT,END_OUTPUT\[[0-9a-f]+\].* osc133=0,0,2,5,255' \
+	'L 5 \(5\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,2,5,7' \
+	'L 6 \(6\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,1,4,255' \
+	'L 7 \(7\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,2,5,255' \
 	'L 8 \(8\) flags=START_OUTPUT,END_OUTPUT\[[0-9a-f]+\].* osc133=0,0,3,5,0'
 
 # Prompt properties may repeat or appear in any order; values must end.

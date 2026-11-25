@@ -106,7 +106,7 @@ class ImageTest:
             "#{pane_title}") == "READY")
 
     def attach(self, graphical=True, utf8=True, cw=8, ch=16, term=None,
-            kitty_graphics=False):
+            kitty_graphics=False, reply_da=True):
         """Attach a client with a known cell pixel size and image feature."""
         if term is None:
             term = "xterm-256color" if graphical else "screen-256color"
@@ -130,8 +130,9 @@ class ImageTest:
         self.clients.append(client)
         self.wait(lambda: any(line.startswith(str(pid) + ":") for line in
             self.run("list-clients", "-F", "#{client_pid}:").splitlines()))
-        # Answer DA so the startup timeout cannot schedule a later redraw.
-        os.write(fd, b"\033[?65;4c" if graphical else b"\033[?65c")
+        if reply_da:
+            # Finish startup queries before the test checks redraws.
+            os.write(fd, b"\033[?65;4c" if graphical else b"\033[?65c")
         self.wait(lambda: self.client_size(client) ==
             "%dx%d:%dx%d" % (self.sx, self.sy, cw, ch))
         if len(self.clients) == 1 and cw != 0 and ch != 0:

@@ -160,16 +160,17 @@ for index, (name, features, overrides, rgb, direct) in enumerate(cases):
 
         if name == 'updated':
             run('set-option', '-s', 'terminal-overrides', '*:setrgbf=' + custom_fg)
-            # A new DA feature reapplies overrides to the existing terminal.
-            os.write(fd, b'\033[?65;21c')
-            wait_for(lambda: has_feature('margins') and flags_are(True, False))
+            # Apply the override with secondary DA while startup queries are open.
+            os.write(fd, b'\033[>85;1;0c')
+            wait_for(lambda: has_feature('ignorefkeys') and flags_are(True, False))
             run('refresh-client')
             wait_for(lambda: b'\033]999;custom-fg\007' in output)
 
             # Removing the option leaves the custom capability in place.
+            # Primary DA adds another feature and finishes the startup queries.
             run('set-option', '-s', 'terminal-overrides', '')
-            os.write(fd, b'\033[>85;1;0c')
-            wait_for(lambda: has_feature('ignorefkeys'))
+            os.write(fd, b'\033[?65;21c')
+            wait_for(lambda: has_feature('margins'))
             assert flags_are(True, False), (name, 'direct RGB re-enabled')
             assert 'custom-fg' in run('show-messages', '-T'), name
         elif name == 'collisions':

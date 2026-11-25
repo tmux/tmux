@@ -111,17 +111,17 @@ for index, (name, overrides, vt100, direct) in enumerate(cases):
 
         if name == 'updated CUP':
             run('set-option', '-s', 'terminal-overrides', '*:cup=' + custom)
-            # A new DA feature reapplies overrides to the existing terminal.
-            os.write(fd, b'\033[?65;21c')
-            wait_for(lambda: has_feature('margins') and flags_are(True, False))
+            # Apply the override with secondary DA while startup queries are open.
+            os.write(fd, b'\033[>85;1;0c')
+            wait_for(lambda: has_feature('ignorefkeys') and flags_are(True, False))
             run('refresh-client')
             wait_for(lambda: b'\033]999;custom-cup\007' in output)
 
             # Removing the option does not restore the stored capability.
-            # A later feature update must not re-enable direct CUP.
+            # Primary DA adds another feature and finishes the startup queries.
             run('set-option', '-s', 'terminal-overrides', '')
-            os.write(fd, b'\033[>85;1;0c')
-            wait_for(lambda: has_feature('ignorefkeys'))
+            os.write(fd, b'\033[?65;21c')
+            wait_for(lambda: has_feature('margins'))
             assert flags_are(True, False), (name, 'direct CUP re-enabled')
             assert 'custom-cup' in run('show-messages', '-T'), name
         elif name == 'updated VT100':

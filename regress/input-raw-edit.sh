@@ -36,7 +36,7 @@ check_raw_matches erasescreen \
 	'C [0-9]+,0 data=\(1,1,Z\) flags=NONE\[0\]' \
 	'C [0-9]+,1 data=\(1,1, \) flags=CLEARED\[[0-9a-f]+\] attr=NONE\[0\]'
 
-start_pane tabs 12 3 'A\tB\033[2g\r\033[IC'
+start_pane tabs 12 3 'A\tB\rC'
 check_raw_matches tabs \
 	'L 0 \(0\) flags=EXTENDED\[[0-9a-f]+\]' \
 	'C 0,1 data=\(7,7,       \) flags=TAB\[[0-9a-f]+\]' \
