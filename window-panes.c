@@ -1,4 +1,4 @@
-/* $OpenBSD: window-panes.c,v 1.8 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: window-panes.c,v 1.9 2026/11/25 11:21:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -931,6 +931,8 @@ window_panes_draw_screen(struct window_mode_entry *wme)
 	struct grid_cell		 border_gc;
 	u_int				 osx, osy, sx, sy;
 
+	if (data->session->curw == NULL)
+		return;
 	if (!window_panes_get_source(data, NULL, NULL, &w))
 		return;
 	root = w->saved_layout_root;
@@ -1018,6 +1020,7 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 	wme->data = data = xcalloc(1, sizeof *data);
 	data->wp = wp;
 	data->session = s;
+	session_add_ref(s, __func__);
 
 	screen_init(&data->screen, sx, sy, 0);
 	data->screen.mode &= ~MODE_CURSOR;
@@ -1091,6 +1094,7 @@ window_panes_free(struct window_mode_entry *wme)
 		cmdq_continue(data->item);
 	if (data->client != NULL)
 		server_client_unref(data->client);
+	session_remove_ref(data->session, __func__);
 	free(data);
 }
 
@@ -1193,7 +1197,7 @@ window_panes_get_target(struct window_mode_entry *wme, key_code key,
 	struct window_panes_modedata	*data = wme->data;
 	u_int				 x, y;
 
-	if (data->ignore_keys)
+	if (data->ignore_keys || data->session->curw == NULL)
 		return (NULL);
 
 	if (KEYC_IS_MOUSE(key)) {
