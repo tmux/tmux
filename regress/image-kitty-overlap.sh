@@ -140,7 +140,10 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(rectangle(blue, w=16))
     assert terminal.uploads == 4
-    assert image_id(terminal, red) < image_id(terminal, blue)
+    # Both uploads now contain the full scaled source, with different crops.
+    ids = {int(fields[b'x']): image
+        for (image, _), fields in terminal.placements.items()}
+    assert ids[1] < ids[17]
     test.emit(kitty('a=d,d=i,i=1,p=99'))
     terminal.feed(client.data)
     terminal.check(rectangle(red, w=16))

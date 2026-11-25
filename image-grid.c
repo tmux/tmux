@@ -604,6 +604,22 @@ image_grid_has_image(struct grid *gd, u_int id)
 	return (0);
 }
 
+/* Check whether a placement still belongs to a grid, including scrollback. */
+int
+image_grid_has_placement(uint64_t index)
+{
+	struct image_store	*store;
+	struct image_placement	*plmt;
+
+	TAILQ_FOREACH(store, &image_stores, entry) {
+		TAILQ_FOREACH(plmt, &store->placements, entry) {
+			if (plmt->index == index)
+				return (1);
+		}
+	}
+	return (0);
+}
+
 /* Remove all placements of an image from a grid. */
 u_int
 image_grid_clear(struct grid *gd, u_int id)
