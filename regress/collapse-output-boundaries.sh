@@ -131,7 +131,7 @@ start_pane_history markers 80 12 "$seq"
 $TMUX set -g status off || exit 1
 $TMUX set -g window-size manual || exit 1
 $TMUX set -g copy-mode-exit-status-format \
-	'#{?exit_status_present,RC=#{exit_status},}' || exit 1
+	'#{?#{!=:#{exit_status},},RC=#{exit_status},}' || exit 1
 $TMUX copy-mode -t "$input_session:" -U || exit 1
 $TMUX capture-pane -t "$input_session:" -pMF -S0 -E0 >"$TMP" || exit 1
 grep -q '^P ' "$TMP" || fail 'sparse A marker'

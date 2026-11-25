@@ -6121,16 +6121,15 @@ Format of the position indicator in copy mode.
 .It Ic copy\-mode\-exit\-status\-format Ar format
 Format of the OSC 133 exit status indicator in the copy-mode gutter.
 The default displays a theme red
-.Ql !
+.Ql \&!
 for a nonzero status and a space otherwise.
 The gutter grows to fit the expanded format.
 The format is drawn to the left of the collapse control, and its alignment
 applies within that area.
-The format is expanded with
+The format provides the additional variable
 .Ql exit_status ,
-the numeric command exit status (zero if absent), and
-.Ql exit_status_present ,
-which is set only when the OSC 133 end-of-output marker includes a status.
+the numeric command exit status.
+It is empty if no OSC 133 end-of-output exit status was provided.
 For example, the following displays a nonzero exit status in red:
 .Bd -literal -offset indent
 set -g copy-mode-exit-status-format '#{?exit_status,#[fg=red]#{exit_status}, }'

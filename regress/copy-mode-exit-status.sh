@@ -111,4 +111,22 @@ $TMUX capture-pane -pR >"$TMP" || exit 1
 grep -q 'data=(1,1,1).* fg=red\[1\]' "$TMP" || \
 	fail 'numeric exit status was not red'
 
+# A reported zero remains distinguishable from an absent exit status.
+$TMUX2 set -p copy-mode-exit-status-format 'RC=[#{exit_status}]' || exit 1
+wait_for_text 'RC=[0]' $TMUX capture-pane -p || exit 1
+wait_for_text 'RC=[]' $TMUX capture-pane -p || exit 1
+capture
+check_grep 'RC=[123]'
+check_grep 'RC=[7]'
+check_grep 'RC=[]'
+
+# A command which has not sent D has no exit status either.
+$TMUX2 new-window -n running \
+	"printf '\033]133;A\007p\$ \033]133;B\007running\r\n\033]133;C\007out\r\n'; exec sleep 100" || exit 1
+$TMUX2 set -p -t :running copy-mode-exit-status-format 'RC=[#{exit_status}]' || exit 1
+$TMUX2 set -w -t :running copy-mode-position-format '' || exit 1
+wait_for_text out $TMUX2 capture-pane -t :running -p || exit 1
+$TMUX2 copy-mode -t :running -U || exit 1
+wait_for_text 'RC=[]- p$ running' $TMUX capture-pane -p || exit 1
+
 exit 0

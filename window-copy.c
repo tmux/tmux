@@ -722,12 +722,10 @@ window_copy_expand_exit_status(struct window_mode_entry *wme,
 	char			*expanded;
 
 	ft = format_create_defaults(NULL, NULL, NULL, NULL, wme->wp);
-	format_add(ft, "exit_status", "0");
-	format_add(ft, "exit_status_present", "0");
-	if (line->exit_status_present) {
+	if (line->exit_status_present)
 		format_add(ft, "exit_status", "%hhu", line->exit_status);
-		format_add(ft, "exit_status_present", "1");
-	}
+	else
+		format_add(ft, "exit_status", "%s", "");
 	value = options_get_string(wme->wp->options,
 	    "copy-mode-exit-status-format");
 	expanded = format_expand(ft, value);

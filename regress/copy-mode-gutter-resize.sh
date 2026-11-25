@@ -19,7 +19,7 @@ $INNER set -g status off || exit 1
 $INNER set -g window-size manual || exit 1
 $INNER set -g copy-mode-position-format '' || exit 1
 $INNER set -g copy-mode-exit-status-format \
-	'#{?exit_status_present,RC=#{exit_status},}' || exit 1
+	'#{?#{!=:#{exit_status},},RC=#{exit_status},}' || exit 1
 $OUTER new-session -d -x 80 -y 12 "$INNER attach" || exit 1
 $OUTER set -g status off || exit 1
 sleep 1
