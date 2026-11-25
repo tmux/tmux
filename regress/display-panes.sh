@@ -411,4 +411,20 @@ for type in separate separate-active; do
 	$TMUX kill-window -t m:single || exit 1
 done
 
+# Resize a shared window after the session that opened panes mode closes.
+$TMUX new-window -t m: -n shared 'cat' \; \
+    resize-window -x 80 -y 24 \; split-window -d 'cat' || exit 1
+$TMUX new-session -d -s owner 'cat' || exit 1
+$TMUX link-window -s m:shared -t owner:1 \; select-window -t owner:1 || exit 1
+$TMUX set -w -t m:shared display-panes-format \
+    'SHARED#{pane_index}:#{active_window_index}!' || exit 1
+$TMUX display-panes -d 0 -t owner:1.0 || exit 1
+wait_capture 'SHARED0:1!'
+$TMUX kill-session -t owner || exit 1
+$TMUX resize-window -t m:shared -x 79 -y 23 || exit 1
+wait_format m:shared.0 '#{window_width}' 79
+$TMUX send-keys -t m:shared.0 1 || exit 1
+wait_format m:shared.0 '#{pane_in_mode}:#{pane_active}' '0:1'
+wait_format m:shared.0 '#{window_zoomed_flag}' 0
+
 exit 0
