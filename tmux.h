@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1498 2026/11/24 09:37:06 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1499 2026/11/25 09:03:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -989,6 +989,7 @@ struct grid {
 	u_int			 scroll_added;
 	u_int			 scroll_collected;
 	u_int			 scroll_generation;
+	u_int			 resize_generation;
 
 	struct grid_line	*linedata;
 };
