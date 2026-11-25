@@ -850,6 +850,13 @@ enum tty_code_code {
 #define KITTY_KEY_REPORT_ALL 0x8
 #define KITTY_KEY_SUPPORTED (KITTY_KEY_DISAMBIGUATE|KITTY_KEY_REPORT_ALL)
 
+/* Actions in a Kitty keyboard mode request. */
+enum kitty_key_action {
+	KITTY_KEY_REPLACE = 1,
+	KITTY_KEY_ENABLE = 2,
+	KITTY_KEY_DISABLE = 3
+};
+
 /* Mouse protocol constants. */
 #define MOUSE_PARAM_MAX 0xff
 #define MOUSE_PARAM_UTF8_MAX 0x7ff
@@ -2037,7 +2044,7 @@ struct tty {
 	 TTY_HAVEPROGRAMSTATUS|	\
 	 TTY_HAVEKKB)
 	int		 flags;
-	u_int		 kitty_keys;
+	u_int		 kitty_keys;	/* last requested keyboard flags */
 
 	struct tty_term	*term;
 
@@ -3705,7 +3712,7 @@ int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 void	 input_kitty_reset(struct screen *);
 void	 input_kitty_alternate_on(struct screen *);
 void	 input_kitty_alternate_off(struct screen *);
-void	 input_kitty_set(struct screen *, u_int, int);
+void	 input_kitty_set(struct screen *, u_int, enum kitty_key_action);
 void	 input_kitty_push(struct screen *, u_int);
 void	 input_kitty_pop(struct screen *, u_int);
 int	 input_key_kitty(struct screen *, struct bufferevent *, key_code);

@@ -8,16 +8,17 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
+. ./regress-common.inc
+
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 CONF=$(mktemp)
-TMP=$(mktemp)
 
 printf '%s\n' 'set -g extended-keys on' >"$CONF"
 
 TMUX="$TEST_TMUX -LtestKIA$$ -f$CONF"
 TMUX2="$TEST_TMUX -LtestKIB$$ -f$CONF"
 
-trap 'rm -f "$CONF" "$TMP"; $TMUX kill-server 2>/dev/null; \
+trap 'rm -f "$CONF"; $TMUX kill-server 2>/dev/null; \
     $TMUX2 kill-server 2>/dev/null' 0 1 15
 
 $TMUX2 new-session -d -x80 -y24 || exit 1
@@ -28,13 +29,7 @@ exit_status=0
 # Wait for the inner client to enable the requested protocol.
 wait_for_mode()
 {
-	i=0
-	while [ "$($TMUX display-message -pt: '#{pane_key_mode}')" != "$1" ] &&
-	    [ "$i" -lt 50 ]; do
-		sleep 0.1
-		i=$((i + 1))
-	done
-	[ "$($TMUX display-message -pt: '#{pane_key_mode}')" = "$1" ]
+	wait_for_output "$1" $TMUX display-message -pt: '#{pane_key_mode}'
 }
 
 # Check the key name produced from a wire sequence.
@@ -43,14 +38,14 @@ assert_key()
 	keys=$1
 	expected=$2
 
-	$TMUX2 command-prompt -k 'display-message -pl "%%"' >"$TMP" &
-	sleep 0.15
+	$TMUX2 set-option -g @key '' || exit 1
+	$TMUX2 command-prompt -bk 'set-option -g @key "%%"' || exit 1
+
 	# Send raw bytes so the outer tmux does not encode them itself.
 	raw=$(printf '%s' "$keys" | sed -e 's/Escape /\\033/g' -e 's/ //g')
 	$TMUX send-keys -H $(printf "$raw" | od -An -v -t x1)
-	wait
-
-	actual=$(tr -d '[:space:]' <"$TMP")
+	wait_for_output "$expected" $TMUX2 show-option -gqv @key || :
+	actual=$($TMUX2 show-option -gqv @key)
 	if [ "$actual" = "$expected" ]; then
 		[ -n "$VERBOSE" ] && echo "[PASS] $keys -> $actual"
 	else
@@ -66,14 +61,14 @@ if ! wait_for_mode 'Kitty 1'; then
 fi
 
 # Modifiers, including the Kitty-only Super and Hyper.
-assert_key 'Escape [97;2u' 'S-a'
+assert_key 'Escape [97;2u' 'A'
 assert_key 'Escape [97;3u' 'M-a'
 assert_key 'Escape [97;5u' 'C-a'
 assert_key 'Escape [97;6u' 'C-S-a'
 assert_key 'Escape [97;7u' 'C-M-a'
 assert_key 'Escape [97;9u' 's-a'
 assert_key 'Escape [97;17u' 'H-a'
-assert_key 'Escape [65;2u' 'S-A'
+assert_key 'Escape [65;2u' 'A'
 
 # Keys with a dedicated tmux key code.
 assert_key 'Escape [9;5u' 'C-Tab'
@@ -92,10 +87,11 @@ assert_key 'Escape [1;5P' 'C-F1'
 # Functional and non-ASCII keys.
 assert_key 'Escape [57399;5u' 'C-KP0'
 assert_key 'Escape [233;5u' 'C-é'
+assert_key 'Escape [128512;5u' 'C-😀'
 
 # The alternate key and associated text fields are not requested but must be
 # ignored if a terminal sends them anyway.
-assert_key 'Escape [97:65;2u' 'S-a'
+assert_key 'Escape [97:65;2u' 'A'
 assert_key 'Escape [97:65:97;5u' 'C-a'
 assert_key 'Escape [97;5;97u' 'C-a'
 
@@ -105,12 +101,27 @@ assert_key 'Escape [97;5:1u' 'C-a'
 assert_key 'Escape [97;5:2u' 'C-a'
 assert_key 'Escape [97;5:3u Escape [98;5u' 'C-b'
 
+# Unsupported events and code points are consumed without leaking bytes.
+assert_key 'Escape [97;5:0u Escape [98;5u' 'C-b'
+assert_key 'Escape [97;5:4u Escape [98;5u' 'C-b'
+assert_key 'Escape [55296u Escape [98;5u' 'C-b'
+assert_key 'Escape [1114112u Escape [98;5u' 'C-b'
+assert_key 'Escape [57364u Escape [98;5u' 'C-b'
+
 # The Meta modifier bit is not representable and is dropped.
 assert_key 'Escape [97;33u Escape [98;5u' 'C-b'
 
 # Lock modifiers are ignored rather than dropping the key.
 assert_key 'Escape [97;65u' 'a'
 assert_key 'Escape [97;129u' 'a'
+
+# Shifted letters also match ordinary bindings while report-all is active.
+$TMUX2 respawn-pane -k \
+    "stty raw -echo; printf '\033[>9u'; exec cat" || exit 1
+wait_for_mode 'Kitty 9' || exit 1
+$TMUX2 bind-key -n A set-option -g @uppercase yes || exit 1
+$TMUX send-keys -H 1b 5b 39 37 3b 32 75 || exit 1
+wait_for_output yes $TMUX2 show-option -gqv @uppercase || exit 1
 
 $TMUX kill-server 2>/dev/null
 $TMUX2 kill-server 2>/dev/null

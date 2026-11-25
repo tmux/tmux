@@ -11,11 +11,13 @@
 
 PATH=/bin:/usr/bin
 
+. ./regress-common.inc
+
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
-command -v kitty >/dev/null 2>&1 || exit 0
-[ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ] || exit 0
-kitty @ --help 2>/dev/null | grep -q 'send-key' || exit 0
+command -v kitty >/dev/null 2>&1 || exit 101
+[ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ] || exit 101
+kitty @ --help 2>/dev/null | grep -q 'send-key' || exit 101
 
 DIR=$(mktemp -d)
 CONF=$DIR/conf
@@ -39,23 +41,11 @@ kitty -o allow_remote_control=yes --listen-on "unix:$SOCKET" \
 
 # The terminfo entry for kitty may be missing, so treat a server which never
 # appears as a reason to skip rather than as a failure.
-i=0
-while ! $TMUX has-session -t r 2>/dev/null && [ "$i" -lt 150 ]; do
-	sleep 0.1
-	i=$((i + 1))
-done
-$TMUX has-session -t r 2>/dev/null || exit 0
+wait_until $TMUX has-session -t r 2>/dev/null || exit 101
 
 # The client must negotiate the protocol with the real terminal.
-i=0
-while [ "$($TMUX list-clients -F '#{client_key_mode}')" != 'Kitty 1' ] &&
-    [ "$i" -lt 100 ]; do
-	sleep 0.1
-	i=$((i + 1))
-done
-[ "$($TMUX list-clients -F '#{client_key_mode}')" = 'Kitty 1' ] || exit 1
+wait_for_output 'Kitty 1' $TMUX list-clients -F '#{client_key_mode}' || exit 1
 
-# kitty encodes the key, tmux parses it and encodes it again for the pane.
 # Check a key encoded by the real Kitty terminal.
 try_key()
 {
@@ -65,13 +55,10 @@ try_key()
 	: >"$OUT"
 	$TMUX respawn-pane -k -t r: \
 	    "stty raw -echo; printf '\033[>1u'; dd bs=1 count=7 2>/dev/null | od -An -v -t x1 >'$OUT'; sleep 20" || return 1
-	sleep 1
+	wait_for_output 'Kitty 1' $TMUX display-message -pt r: \
+	    '#{pane_key_mode}' || return 1
 	kitty @ --to "unix:$SOCKET" send-key "$key" 2>/dev/null || return 1
-	i=0
-	while [ ! -s "$OUT" ] && [ "$i" -lt 50 ]; do
-		sleep 0.1
-		i=$((i + 1))
-	done
+	wait_until test -s "$OUT" || return 1
 	[ "$(tr -d ' \n' <"$OUT")" = "$expected" ]
 }
 

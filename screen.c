@@ -88,7 +88,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->default_cstyle = SCREEN_CURSOR_DEFAULT;
 	s->mode = MODE_CURSOR;
 	s->default_mode = 0;
-	memset(&s->kitty_keys, 0, sizeof s->kitty_keys);
+	input_kitty_reset(s);
 	memset(&s->saved_kitty_keys, 0, sizeof s->saved_kitty_keys);
 	s->ccolour = -1;
 	s->default_ccolour = -1;

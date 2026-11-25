@@ -134,9 +134,22 @@ check_key 1 M-BSpace 1b5b3132373b3375
 check_key 9 A 1b5b39373b3275
 check_key 1 C-A 1b5b39373b3675
 check_key 1 M-Z 1b5b3132323b3475
+check_key 1 C-é 1b5b3233333b3575
+check_key 1 C-😀 1b5b3132383531323b3575
 
 # Modified F3 must be distinct from a cursor position report under flag 1.
 check_key 1 S-F3 1b5b31333b327e
+
+# Non-text keypad keys stay distinct under flag 1.
+check_key 1 KPBegin 1b5b35373432377e
+check_key 1 S-KPBegin 1b5b35373432373b327e
+check_key 9 KPBegin 1b5b35373432377e
+
+# The modifyOtherKeys output format does not change Kitty encoding.
+for format in csi-u xterm kitty; do
+	$TMUX set-option -s extended-keys-format "$format" || exit 1
+	check_key 1 C-a 1b5b39373b3575
+done
 
 # Unencodable key names are dropped without leaving an Escape prefix.
 : >"$OUT"

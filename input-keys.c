@@ -463,9 +463,9 @@ input_key_extended(struct bufferevent *bev, key_code key)
 		key &= KEYC_MASK_KEY;
 
 	if (options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_XTERM)
+	    EXTENDED_KEYS_XTERM) {
 		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
-	else
+	} else
 		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
 
 	input_key_write(__func__, bev, tmp, strlen(tmp));

@@ -1672,8 +1672,8 @@ format_cb_client_key_mode(struct format_tree *ft)
 	}
 
 	/* This mirrors the choice made in tty_update_features(). */
-	kitty = ((c->tty.term->flags & TERM_KITTYKEYS) != 0);
-	eks = (options_get_number(global_options, "extended-keys") != 0);
+	kitty = (c->tty.term->flags & TERM_KITTYKEYS) != 0;
+	eks = options_get_number(global_options, "extended-keys") != 0;
 	if (kitty)
 		eks = 0;
 	if (eks && tty_term_has(c->tty.term, TTYC_ENEKS))
@@ -2624,24 +2624,30 @@ format_cb_pane_unseen_changes(struct format_tree *ft)
 static void *
 format_cb_pane_key_mode(struct format_tree *ft)
 {
-	char	*s;
+	struct screen	*s;
+	const char	*mode;
+	char		*value;
 
-	if (ft->wp != NULL && ft->wp->screen != NULL) {
-		if (ft->wp->screen->kitty_keys.flags != 0) {
-			xasprintf(&s, "Kitty %u",
-			    ft->wp->screen->kitty_keys.flags);
-			return (s);
-		}
-		switch (ft->wp->screen->mode & EXTENDED_KEY_MODES) {
-		case MODE_KEYS_EXTENDED:
-			return (xstrdup("Ext 1"));
-		case MODE_KEYS_EXTENDED_2:
-			return (xstrdup("Ext 2"));
-		default:
-			return (xstrdup("VT10x"));
-		}
+	if (ft->wp == NULL || ft->wp->screen == NULL)
+		return (NULL);
+	s = ft->wp->screen;
+	if (s->kitty_keys.flags != 0) {
+		xasprintf(&value, "Kitty %u", s->kitty_keys.flags);
+		return (value);
 	}
-	return (NULL);
+	switch (s->mode & EXTENDED_KEY_MODES) {
+	case MODE_KEYS_EXTENDED:
+		mode = "Ext 1";
+		break;
+	case MODE_KEYS_EXTENDED_2:
+		mode = "Ext 2";
+		break;
+	default:
+		mode = "VT10x";
+		break;
+	}
+	value = xstrdup(mode);
+	return (value);
 }
 
 /* Callback for pane_last. */

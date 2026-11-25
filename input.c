@@ -1685,9 +1685,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (options_get_number(global_options, "extended-keys") == 0)
 			break;
 		n = input_get(ictx, 0, 0, 0);
-		m = input_get(ictx, 1, 1, 1);
-		if (n >= 0 && m >= 1 && m <= 3)
+		m = input_get(ictx, 1, 0, 1);
+		if (n >= 0 &&
+		    m >= KITTY_KEY_REPLACE &&
+		    m <= KITTY_KEY_DISABLE) {
 			input_kitty_set(s, n, m);
+		}
 		break;
 	case INPUT_CSI_KITTY_PUSH:
 		if (options_get_number(global_options, "extended-keys") == 0)
@@ -1699,7 +1702,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_KITTY_POP:
 		if (options_get_number(global_options, "extended-keys") == 0)
 			break;
-		n = input_get(ictx, 0, 1, 1);
+		n = input_get(ictx, 0, 0, 1);
 		if (n >= 0)
 			input_kitty_pop(s, n);
 		break;

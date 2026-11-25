@@ -5,6 +5,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
+. ./regress-common.inc
+
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 KCONF=$(mktemp)
 LCONF=$(mktemp)
@@ -30,24 +32,13 @@ wait_for_mode()
 {
 	tmux=$1
 	wanted=$2
-	i=0
-	while [ "$($tmux display-message -pt: '#{pane_key_mode}')" != "$wanted" ] &&
-	    [ "$i" -lt 50 ]; do
-		sleep 0.1
-		i=$((i + 1))
-	done
-	[ "$($tmux display-message -pt: '#{pane_key_mode}')" = "$wanted" ]
+	wait_for_output "$wanted" $tmux display-message -pt: '#{pane_key_mode}'
 }
 
 # Wait for the capture file to contain output.
-wait_for_output()
+wait_for_capture()
 {
-	i=0
-	while [ ! -s "$1" ] && [ "$i" -lt 50 ]; do
-		sleep 0.1
-		i=$((i + 1))
-	done
-	[ -s "$1" ]
+	wait_until test -s "$1"
 }
 
 # Read the keyboard mode for the requested client session.
@@ -70,13 +61,13 @@ wait_for_client_mode()
 	tmux=$1
 	session=$2
 	wanted=$3
-	i=0
-	while [ "$(client_mode "$tmux" "$session")" != "$wanted" ] &&
-	    [ "$i" -lt 50 ]; do
-		sleep 0.1
-		i=$((i + 1))
-	done
-	[ "$(client_mode "$tmux" "$session")" = "$wanted" ]
+	wait_for_output "$wanted" client_mode "$tmux" "$session"
+}
+
+# Check whether the captured terminal output contains a byte sequence.
+capture_has()
+{
+	od -An -v -t x1 <"$OUT" | tr -d ' \n' | grep -q "$1"
 }
 
 # Each client must be negotiated independently. A tmux with extended-keys off
@@ -98,12 +89,9 @@ wait_for_client_mode "$M" csiu 'Ext' || exit 1
 uc=$($M list-clients -F '#{client_name} #{client_session}' |
     awk '$2 == "csiu" { print $1 }')
 [ -n "$uc" ] || exit 1
-$M command-prompt -t"$uc" -k 'display-message -pl "%%"' >"$TMP" &
-pid=$!
-sleep 0.2
-$UA send-keys Escape '[97;5u'
-wait "$pid"
-[ "$(tr -d '[:space:]' <"$TMP")" = 'C-a' ] || exit 1
+$M command-prompt -t"$uc" -bk 'set-option -g @key "%%"' || exit 1
+$UA send-keys Escape '[97;5u' || exit 1
+wait_for_output C-a $M show-option -gqv @key || exit 1
 
 # A Kitty-capable terminal must still be reported when it is not in use.
 $M set-option -g extended-keys off
@@ -125,7 +113,7 @@ $R new-session -d -x80 -y24 \
 $RU new-session -d -x80 -y24 "$R attach-session" || exit 1
 wait_for_client_mode "$R" '' 'Ext' || exit 1
 $RU send-keys C-a
-wait_for_output "$OUT" || exit 1
+wait_for_capture "$OUT" || exit 1
 [ "$(tr -d ' \n' <"$OUT")" = '1b5b39373b3575' ] || exit 1
 $RU kill-server 2>/dev/null
 $R kill-server 2>/dev/null
@@ -139,13 +127,15 @@ printf '%s\n' "set -as terminal-overrides ',*:Eneks@:Dseks@'" >>"$KCONF"
 LQ="$TEST_TMUX -LtestKlq$$ -f$KCONF"
 LU="$TEST_TMUX -LtestKlu$$ -f$LCONF"
 $LQ new-session -d -x80 -y24 \
-    "stty raw -echo; sleep 2; printf '\033[>1u\033[?u'; dd bs=1 count=5 2>/dev/null | od -An -v -t x1 >'$OUT'; dd bs=1 count=7 2>/dev/null | od -An -v -t x1 >'$TMP'; sleep 5" || exit 1
+    "stty raw -echo; $LQ wait-for ready; printf '\033[>1u\033[?u'; dd bs=1 count=5 2>/dev/null | od -An -v -t x1 >'$OUT'; dd bs=1 count=7 2>/dev/null | od -An -v -t x1 >'$TMP'; sleep 5" || exit 1
 $LU new-session -d -x80 -y24 "$LQ attach-session" || exit 1
-wait_for_output "$OUT" || exit 1
+wait_for_clients 1 $LQ || exit 1
+$LQ wait-for -S ready || exit 1
+wait_for_capture "$OUT" || exit 1
 [ "$(tr -d ' \n' <"$OUT")" = '1b5b3f3175' ] || exit 1
 wait_for_client_mode "$LQ" '' 'VT10x' || exit 1
 $LU send-keys C-a
-wait_for_output "$TMP" || exit 1
+wait_for_capture "$TMP" || exit 1
 [ "$(tr -d ' \n' <"$TMP")" = '1b5b39373b3575' ] || exit 1
 $LU kill-server 2>/dev/null
 $LQ kill-server 2>/dev/null
@@ -156,13 +146,14 @@ $LQ kill-server 2>/dev/null
 PO="$TEST_TMUX -LtestKpo$$ -f$KCONF"
 PI="$TEST_TMUX -LtestKpi$$ -f$LCONF"
 $PI new-session -d -x80 -y24 -s q || exit 1
-$PO new-session -d -x80 -y24 "sleep 1; $PI attach-session -t q" || exit 1
-$PO pipe-pane -O -t: "cat >>'$OUT'"
+$PO new-session -d -x80 -y24 "$PI wait-for pipe-ready; $PI attach-session -t q" || exit 1
+$PO pipe-pane -O -t: "cat >>'$OUT'" || exit 1
+$PI wait-for -S pipe-ready || exit 1
 wait_for_client_mode "$PI" '' 'VT10x' || exit 1
-sleep 1
-od -An -v -t x1 <"$OUT" | tr -d ' \n' | grep -q 1b5b3f75 && exit 1
+wait_until capture_has 1b5b63 || exit 1
+capture_has 1b5b3f75 && exit 1
 $PI set-option -g extended-keys on
 wait_for_client_mode "$PI" '' 'Kitty 1' || exit 1
-od -An -v -t x1 <"$OUT" | tr -d ' \n' | grep -q 1b5b3f75 || exit 1
+wait_until capture_has 1b5b3f75 || exit 1
 
 exit 0

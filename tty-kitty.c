@@ -295,7 +295,6 @@ tty_keys_kitty_query(struct tty *tty, const char *buf, size_t len,
 	if (!apply)
 		return (0);
 
-	tty->kitty_keys = flags;
 	tty->flags |= TTY_HAVEKKB;
 	log_debug("%s: received Kitty keyboard flags %u", c->name, flags);
 	tty_parse_client_features(c, "kittykeys", ",");
@@ -318,9 +317,11 @@ tty_update_kitty(struct tty *tty, struct screen *s)
 		}
 		return;
 	}
-	flags = KITTY_KEY_DISAMBIGUATE;
-	if (s != NULL && (s->kitty_keys.flags & KITTY_KEY_SUPPORTED) != 0)
+	flags = 0;
+	if (s != NULL)
 		flags = s->kitty_keys.flags & KITTY_KEY_SUPPORTED;
+	if (flags == 0)
+		flags = KITTY_KEY_DISAMBIGUATE;
 	if ((tty->flags & TTY_KKBPUSHED) == 0) {
 		xsnprintf(buf, sizeof buf, "\033[>%uu", flags);
 		tty_puts(tty, buf);
@@ -394,7 +395,7 @@ tty_keys_kitty(struct tty *tty, const char *buf, size_t len, size_t *size,
 			return (-1);
 		fields++;
 	}
-	if (fields == 0 || number == 0 || modifiers == 0)
+	if (number == 0 || modifiers == 0)
 		return (-1);
 	if (event == 0 || event >= 3)
 		return (-2);
@@ -433,6 +434,15 @@ tty_keys_kitty(struct tty *tty, const char *buf, size_t len, size_t *size,
 	onlykey = nkey & KEYC_MASK_KEY;
 	if (onlykey == C0_HT && (nkey & KEYC_SHIFT))
 		nkey = KEYC_BTAB|(nkey & ~KEYC_MASK_KEY & ~KEYC_SHIFT);
+
+	/* Match shifted ASCII letters to ordinary tmux key bindings. */
+	if ((nkey & KEYC_MASK_MODIFIERS) == KEYC_SHIFT) {
+		if (onlykey >= 'a' && onlykey <= 'z') {
+			nkey &= ~(KEYC_MASK_KEY|KEYC_SHIFT);
+			nkey |= onlykey - 'a' + 'A';
+		} else if (onlykey >= 'A' && onlykey <= 'Z')
+			nkey &= ~KEYC_SHIFT;
+	}
 
 	if (log_get_level() != 0) {
 		log_debug("%s: Kitty key %.*s is %llx (%s)", c->name,

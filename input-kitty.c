@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <string.h>
-#include <wchar.h>
 
 #include "tmux.h"
 
@@ -170,12 +169,12 @@ input_kitty_alternate_off(struct screen *s)
 
 /* Apply a keyboard mode change from the application. */
 void
-input_kitty_set(struct screen *s, u_int flags, int mode)
+input_kitty_set(struct screen *s, u_int flags, enum kitty_key_action action)
 {
 	flags &= KITTY_KEY_SUPPORTED;
-	if (mode == 2)
+	if (action == KITTY_KEY_ENABLE)
 		s->kitty_keys.flags |= flags;
-	else if (mode == 3)
+	else if (action == KITTY_KEY_DISABLE)
 		s->kitty_keys.flags &= ~flags;
 	else
 		s->kitty_keys.flags = flags;
@@ -243,7 +242,7 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 {
 	const struct input_kitty_key	*ikk;
 	struct utf8_data			 ud;
-	wchar_t				 wc;
+	int				 wc;
 	key_code				 modifiers, onlykey;
 	u_int				 flags, number, modifier;
 	char				 tmp[64];
@@ -269,6 +268,7 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 
 			/* Distinguish modified F3 from cursor reports. */
 			if (ikk->final != 'u' &&
+			    (~key & KEYC_KEYPAD) &&
 			    (modifiers & (KEYC_SUPER|KEYC_HYPER)) == 0 &&
 			    (ikk->key != KEYC_F3 || modifiers == 0)) {
 				return (-1);
