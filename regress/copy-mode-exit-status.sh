@@ -2,6 +2,8 @@
 
 # Check OSC 133 exit status indicators in copy mode using a real client.
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -97,5 +99,16 @@ $TMUX2 send -X select-line || exit 1
 $TMUX2 send -X copy-selection || exit 1
 selection=$($TMUX2 show-buffer)
 [ "$selection" = 'p$ two' ] || fail "unexpected selection: $selection"
+
+# The manual's numeric format shows nonzero statuses in red.
+$TMUX2 set -p copy-mode-exit-status-format \
+	'#{?exit_status,#[fg=red]#{exit_status}, }' || exit 1
+wait_for_text '123+ p$ two' $TMUX capture-pane -p || exit 1
+capture
+check_no_grep '0+ p$ one'
+check_no_grep '0+ p$ three'
+$TMUX capture-pane -pR >"$TMP" || exit 1
+grep -q 'data=(1,1,1).* fg=red\[1\]' "$TMP" || \
+	fail 'numeric exit status was not red'
 
 exit 0

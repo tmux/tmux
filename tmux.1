@@ -6127,10 +6127,14 @@ The gutter grows to fit the expanded format.
 The format is drawn to the left of the collapse control, and its alignment
 applies within that area.
 The format is expanded with
-.Ql exit_status
-and
+.Ql exit_status ,
+the numeric command exit status (zero if absent), and
 .Ql exit_status_present ,
 which is set only when the OSC 133 end-of-output marker includes a status.
+For example, the following displays a nonzero exit status in red:
+.Bd -literal -offset indent
+set -g copy-mode-exit-status-format '#{?exit_status,#[fg=red]#{exit_status}, }'
+.Ed
 .Pp
 .It Ic copy\-mode\-position\-style Ar style
 Set the style of the position indicator in copy mode.
