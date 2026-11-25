@@ -57,6 +57,75 @@ P2>'
 	done
 done
 
+# A gutter control distinguishes C from another command's D on the same row.
+anchors='\033]133;A\007P0> \033]133;B\007silent\r\n\033]133;D;0\007SEPARATOR\033]133;A\007P1> \033]133;B\007second\033]133;C\007SECOND\r\n\033]133;D;0\007\033]133;A\007P2> \033]133;B\007'
+$INNER new-window -t test: -n anchors \
+	"printf '$anchors'; exec sleep 300" || exit 1
+for keys in emacs vi; do
+	$INNER set -w -t test:anchors mode-keys "$keys" || exit 1
+	for row in 1 2; do
+		$INNER copy-mode -t test:anchors -U || exit 1
+		$INNER send -t test:anchors -X search-backward-text P0 || exit 1
+		wait_for_text SEPARATORP1 $OUTER capture-pane -p || exit 1
+		if [ "$row" = 1 ]; then
+			click "$row" 'P0> silent
+P1> secondSECOND
+P2>'
+		else
+			click "$row" 'P0> silent
+SEPARATORP1> second
+P2>'
+		fi
+		$INNER send -t test:anchors -X cancel || exit 1
+	done
+done
+
+# Expanding after resize moves to the command end, even if rows were joined.
+for keys in emacs vi; do
+	for initial_width in 20 80; do
+		if [ "$initial_width" = 20 ]; then
+			width=80
+		else
+			width=20
+		fi
+		for command in command abcdefghijklmnop abcdefghijklmn界; do
+			case "$command" in
+			command) column=11 ;;
+			*) column=20 ;;
+			esac
+			for start in inline next; do
+				$INNER new-window -t test: -n resize 'exec sleep 300' || exit 1
+				$INNER resize-window -t test:resize -x "$initial_width" || exit 1
+				sequence='\033]133;A\007P0> \033]133;B\007'
+				sequence="${sequence}${command}"
+				if [ "$start" = next ]; then
+					sequence="${sequence}\r\n"
+				fi
+				sequence="${sequence}\033]133;C\007"
+				body=$(printf '%060d' 0 | tr 0 X)
+				sequence="${sequence}${body}\r\n\033]133;D;0\007"
+				sequence="${sequence}\033]133;A\007P1> \033]133;B\007"
+				$INNER respawn-pane -t test:resize -k \
+					"printf '$sequence'; printf '\033]2;ready\007'; exec sleep 300" || exit 1
+				wait_for_output ready $INNER display -t test:resize -p '#{pane_title}' || exit 1
+				$INNER set -w -t test:resize mode-keys "$keys" || exit 1
+				$INNER copy-mode -t test:resize -c || exit 1
+				$INNER resize-window -t test:resize -x "$width" || exit 1
+				wait_for_text 'P1>' $OUTER capture-pane -p || exit 1
+				sleep 0.4
+				sequence=$(printf '\033[<0;1;1M\033[<0;1;1m')
+				$OUTER send -l "$sequence" || exit 1
+				wait_for_output "$column" $INNER display -t test:resize -p '#{copy_cursor_x}' || exit 1
+				case "$($INNER display -t test:resize -p '#{copy_cursor_line}')" in
+				"P0> $command"*) ;;
+				*) echo 'gutter expansion restored the wrong command'; exit 1 ;;
+				esac
+				$INNER kill-window -t test:resize || exit 1
+			done
+		done
+	done
+done
+
 # A tree row before the first prompt toggles the initial fold too.
 initial='initial-control\r\nLEADING\r\n\033]133;A\007P> \033]133;B\007first\r\n\033]133;C\007OUTPUT\r\n\033]133;D;0\007\033]133;A\007NEXT> \033]133;B\007'
 $INNER new-window -t test: -n initial \
