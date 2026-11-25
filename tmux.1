@@ -6201,6 +6201,10 @@ with
 and
 .Cm hybrid ,
 they use absolute line numbers.
+In a folded view, absolute line numbers refer to the unfolded source.
+If
+.Ic goto\-line
+requests a hidden line, the view starts at the preceding visible line.
 .Pp
 .It Xo Ic copy\-mode\-keep\-column
 .Op Cm on | off

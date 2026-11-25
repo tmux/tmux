@@ -31,6 +31,38 @@ for mode in default absolute hybrid; do
 	$TMUX send -t "$target" -X cancel || exit 1
 done
 
+# Navigation and the position indicator use the displayed source numbers.
+seq=
+i=0
+while [ "$i" -lt 15 ]; do
+	seq="${seq}\033]133;A\007P$i> \033]133;B\007cmd\r\n"
+	seq="${seq}\033]133;C\007OUTPUT\r\n\033]133;D;0\007"
+	i=$((i + 1))
+done
+seq="${seq}\033]133;A\007NEXT> \033]133;B\007"
+$TMUX new-window -t numbers: -n navigation \
+	"printf '$seq'; printf '\033]2;navigation-ready\007'; $INPUT_HOLD" || exit 1
+target=numbers:navigation
+wait_for_output navigation-ready $TMUX display -t "$target" -p '#{pane_title}' || exit 1
+$TMUX set -w -t "$target" window-size manual || exit 1
+$TMUX resize-window -t "$target" -y5 || exit 1
+for keys in emacs vi; do
+	$TMUX set -w -t "$target" mode-keys "$keys" || exit 1
+	for mode in default absolute relative hybrid; do
+		$TMUX set -w -t "$target" copy-mode-line-numbers "$mode" || exit 1
+		$TMUX copy-mode -t "$target" -c || exit 1
+		for number in 19 20; do
+			$TMUX send -t "$target" -X goto-line "$number" || exit 1
+			wait_for_text 'P9> cmd' $OUTER capture-pane -p -S0 -E0 || \
+				fail "$mode goto-line $number"
+			actual=$($TMUX display -t "$target" -p \
+				'#{copy_position}/#{copy_position_limit}')
+			[ "$actual" = 19/31 ] || fail "$mode source position"
+		done
+		$TMUX send -t "$target" -X cancel || exit 1
+	done
+done
+
 # Joined rows are numbered from their first source row, rather than the last.
 $TMUX new-window -t numbers: -n reflow "$INPUT_HOLD" || exit 1
 target=numbers:reflow
