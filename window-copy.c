@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.450 2026/11/24 09:09:04 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.451 2026/11/25 09:03:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -295,6 +295,7 @@ struct window_copy_mode_data {
 	u_int		 sync_added;	/* snapshot of backing grid counters */
 	u_int		 sync_collected;
 	u_int		 sync_generation;
+	u_int		 sync_resize_generation;
 
 	int		 viewmode;	/* view mode entered */
 
@@ -490,6 +491,7 @@ window_copy_sync_snapshot(struct window_copy_mode_data *data, struct grid *src)
 	data->sync_added = src->scroll_added;
 	data->sync_collected = src->scroll_collected;
 	data->sync_generation = src->scroll_generation;
+	data->sync_resize_generation = src->resize_generation;
 }
 
 /*
@@ -523,9 +525,10 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 	if (data->viewmode || wme->swp != wme->wp)
 		return (0);
 
-	/* Indices only line up at the same size and generation. */
+	/* A resize can expose history for editing. */
 	if (sg->sx != dg->sx || sg->sy != dg->sy ||
-	    sg->scroll_generation != data->sync_generation)
+	    sg->scroll_generation != data->sync_generation ||
+	    sg->resize_generation != data->sync_resize_generation)
 		return (0);
 
 	added = sg->scroll_added - data->sync_added;
@@ -541,12 +544,14 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 	    old_hsize + added - collected != new_hsize)
 		return (0);
 
+	/* Clearing the top row can unwrap the last history row. */
 	kept = old_hsize - collected;
+	if (kept != 0 && (~sg->linedata[kept - 1].flags & GRID_LINE_WRAPPED))
+		dg->linedata[old_hsize - 1].flags &= ~GRID_LINE_WRAPPED;
 
-	if (added == 0 && collected == 0) {
-		/* History is unchanged; only the viewport can have mutated. */
+	if (added == 0 && collected == 0)
 		grid_duplicate_lines(dg, dg->hsize, sg, sg->hsize, sy);
-	} else {
+	else {
 		/* Drop the oldest lines and shift the rest down. */
 		if (collected > 0) {
 			grid_free_lines(dg, 0, collected);
