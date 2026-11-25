@@ -18,6 +18,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <sys/ioctl_compat.h>
 #include <sys/sysctl.h>
 
 #include <AvailabilityMacros.h>
@@ -74,14 +75,18 @@ osdep_get_cwd(int fd)
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1050
 	static char			wd[PATH_MAX];
 	struct proc_vnodepathinfo	pathinfo;
-	pid_t				pgrp;
+	pid_t				pgrp, sid;
 	int				ret;
 
 	if ((pgrp = tcgetpgrp(fd)) == -1)
 		return (NULL);
 
-	ret = proc_pidinfo(pgrp, PROC_PIDVNODEPATHINFO, 0,
-	    &pathinfo, sizeof pathinfo);
+	ret = proc_pidinfo(pgrp, PROC_PIDVNODEPATHINFO, 0, &pathinfo,
+	    sizeof pathinfo);
+	if (ret != sizeof pathinfo && ioctl(fd, TIOCGSID, &sid) != -1) {
+		ret = proc_pidinfo(sid, PROC_PIDVNODEPATHINFO, 0, &pathinfo,
+		    sizeof pathinfo);
+	}
 	if (ret == sizeof pathinfo) {
 		strlcpy(wd, pathinfo.pvi_cdir.vip_path, sizeof wd);
 		return (wd);
