@@ -1203,14 +1203,16 @@ struct progress_bar {
 	int			progress;
 };
 
+/* One saved keyboard mode per main or alternate screen. */
+struct kitty_key_state {
+	u_int	flags;		/* active enhancements */
+	u_int	saved_flags;	/* flags before the last push */
+	int	have_saved;	/* saved_flags is valid */
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
-struct kitty_key_state {
-	u_int	flags;
-	u_int	saved_flags;
-	int	have_saved;
-};
 struct screen {
 	char				*title;
 	char				*path;

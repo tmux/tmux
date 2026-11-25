@@ -25,6 +25,7 @@ $TMUX new-session -d -x80 -y24 "$TMUX2 attach" || exit 1
 
 exit_status=0
 
+# Wait for the inner client to enable the requested protocol.
 wait_for_mode()
 {
 	i=0
@@ -36,6 +37,7 @@ wait_for_mode()
 	[ "$($TMUX display-message -pt: '#{pane_key_mode}')" = "$1" ]
 }
 
+# Check the key name produced from a wire sequence.
 assert_key()
 {
 	keys=$1

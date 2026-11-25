@@ -15,6 +15,7 @@ SOCKETS="testKmc$$ testKka$$ testKua$$ testKrt$$ testKru$$ testKlq$$ testKlu$$ t
 printf '%s\n' 'set -g extended-keys on' >"$KCONF"
 printf '%s\n' 'set -g extended-keys off' >"$LCONF"
 
+# Remove temporary files and stop the test servers.
 cleanup()
 {
 	rm -f "$KCONF" "$LCONF" "$OUT" "$TMP"
@@ -24,6 +25,7 @@ cleanup()
 }
 trap cleanup 0 1 15
 
+# Wait for a pane to enter the requested keyboard mode.
 wait_for_mode()
 {
 	tmux=$1
@@ -37,6 +39,7 @@ wait_for_mode()
 	[ "$($tmux display-message -pt: '#{pane_key_mode}')" = "$wanted" ]
 }
 
+# Wait for the capture file to contain output.
 wait_for_output()
 {
 	i=0
@@ -47,6 +50,7 @@ wait_for_output()
 	[ -s "$1" ]
 }
 
+# Read the keyboard mode for the requested client session.
 client_mode()
 {
 	tmux=$1
@@ -60,6 +64,7 @@ client_mode()
 	fi
 }
 
+# Wait for the requested client keyboard mode.
 wait_for_client_mode()
 {
 	tmux=$1

@@ -120,62 +120,66 @@ static const struct tty_kitty_key tty_kitty_keys[] = {
 	{ 57454, KEYC_ISO_LEVEL5_SHIFT }
 };
 
+/* Parse an unsigned field, keeping its default when empty. */
 static int
-tty_kitty_parse_number(const char *s, u_int *value, int empty)
+tty_kitty_parse_number(const char *s, u_int *value)
 {
-	char		*end;
-	unsigned long	 number;
+	const char	*errstr;
+	long long	 number;
 
-	if (*s == '\0') {
-		if (!empty)
-			return (-1);
+	if (*s == '\0')
 		return (0);
-	}
 	if (!isdigit((u_char)*s))
 		return (-1);
-	number = strtoul(s, &end, 10);
-	if (*end != '\0' || number > UINT_MAX)
+	number = strtonum(s, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
 		return (-1);
 	*value = number;
 	return (0);
 }
 
+/* Parse colon-separated fields and retain the first two values. */
 static int
-tty_kitty_parse_list(char *s, u_int *first, u_int *second, int empty,
-    u_int maximum)
+tty_kitty_parse_list(char *s, u_int *first, u_int *second, u_int maximum)
 {
 	char	*copy, *item;
 	u_int	 n = 0, value;
-	int	 result = 0;
 
 	copy = s;
 	while ((item = strsep(&copy, ":")) != NULL) {
 		if (maximum != 0 && n == maximum)
 			return (-1);
 		value = 0;
-		if (tty_kitty_parse_number(item, &value, empty) != 0) {
-			result = -1;
-			break;
-		}
+		if (tty_kitty_parse_number(item, &value) != 0)
+			return (-1);
 		if (n == 0 && *item != '\0')
 			*first = value;
 		else if (n == 1 && *item != '\0')
 			*second = value;
 		n++;
 	}
-	return (result);
+	return (0);
 }
 
+/* Find the final byte of a Kitty key sequence. */
 static int
 tty_kitty_find_end(const char *buf, size_t len, size_t *end)
 {
 	size_t	i;
 
 	for (i = 2; i < len; i++) {
-		if (buf[i] == 'u' || buf[i] == '~' || buf[i] == 'A' ||
-		    buf[i] == 'B' || buf[i] == 'C' || buf[i] == 'D' ||
-		    buf[i] == 'E' || buf[i] == 'F' || buf[i] == 'H' ||
-		    buf[i] == 'P' || buf[i] == 'Q' || buf[i] == 'S') {
+		if (buf[i] == 'u' ||
+		    buf[i] == '~' ||
+		    buf[i] == 'A' ||
+		    buf[i] == 'B' ||
+		    buf[i] == 'C' ||
+		    buf[i] == 'D' ||
+		    buf[i] == 'E' ||
+		    buf[i] == 'F' ||
+		    buf[i] == 'H' ||
+		    buf[i] == 'P' ||
+		    buf[i] == 'Q' ||
+		    buf[i] == 'S') {
 			*end = i;
 			return (0);
 		}
@@ -185,6 +189,7 @@ tty_kitty_find_end(const char *buf, size_t len, size_t *end)
 	return (1);
 }
 
+/* Map a Kitty function key to its tmux key code. */
 static key_code
 tty_kitty_function(u_int number, char final)
 {
@@ -250,6 +255,7 @@ tty_kitty_function(u_int number, char final)
 	return (KEYC_UNKNOWN);
 }
 
+/* Parse a keyboard query reply and apply it once accepted. */
 int
 tty_keys_kitty_query(struct tty *tty, const char *buf, size_t len,
     size_t *size, int apply)
@@ -297,6 +303,7 @@ tty_keys_kitty_query(struct tty *tty, const char *buf, size_t len,
 	return (0);
 }
 
+/* Match the terminal keyboard mode to the active screen. */
 void
 tty_update_kitty(struct tty *tty, struct screen *s)
 {
@@ -325,12 +332,13 @@ tty_update_kitty(struct tty *tty, struct screen *s)
 	tty->kitty_keys = flags;
 }
 
+/* Decode a Kitty key, discarding releases and unsupported keys. */
 int
 tty_keys_kitty(struct tty *tty, const char *buf, size_t len, size_t *size,
     key_code *key)
 {
 	struct client	*c = tty->client;
-	struct utf8_data ud;
+	struct utf8_data	 ud;
 	utf8_char	 uc;
 	size_t		 end;
 	char		 tmp[128], *copy, *field, final;
@@ -374,19 +382,21 @@ tty_keys_kitty(struct tty *tty, const char *buf, size_t len, size_t *size,
 					return (-1);
 				number = 1;
 			} else if (tty_kitty_parse_list(field, &number, &value,
-			    1, 3) != 0)
+			    3) != 0) {
 				return (-1);
+			}
 		} else if (fields == 1) {
-			if (tty_kitty_parse_list(field, &modifiers, &event, 1,
-			    2) != 0)
+			if (tty_kitty_parse_list(field, &modifiers, &event,
+			    2) != 0) {
 				return (-1);
-		} else if (tty_kitty_parse_list(field, &value, &value, 1, 0) != 0)
+			}
+		} else if (tty_kitty_parse_list(field, &value, &value, 0) != 0)
 			return (-1);
 		fields++;
 	}
 	if (fields == 0 || number == 0 || modifiers == 0)
 		return (-1);
-	if (event == 0 || event == 3 || event > 3)
+	if (event == 0 || event >= 3)
 		return (-2);
 
 	modifiers--;
@@ -401,9 +411,9 @@ tty_keys_kitty(struct tty *tty, const char *buf, size_t len, size_t *size,
 		if (number <= 0x7f)
 			nkey = number;
 		else if (utf8_fromwc(number, &ud) != UTF8_DONE ||
-		    utf8_from_data(&ud, &uc) != UTF8_DONE)
+		    utf8_from_data(&ud, &uc) != UTF8_DONE) {
 			return (-2);
-		else
+		} else
 			nkey = uc;
 	} else if (nkey == KEYC_UNKNOWN)
 		return (-1);

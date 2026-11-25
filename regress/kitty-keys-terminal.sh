@@ -25,6 +25,7 @@ TMUX="$TEST_TMUX -LtestKrt$$ -f$CONF"
 
 printf '%s\n' 'set -g extended-keys on' >"$CONF"
 
+# Stop the test server and remove its temporary directory.
 cleanup()
 {
 	$TMUX kill-server 2>/dev/null
@@ -55,6 +56,7 @@ done
 [ "$($TMUX list-clients -F '#{client_key_mode}')" = 'Kitty 1' ] || exit 1
 
 # kitty encodes the key, tmux parses it and encodes it again for the pane.
+# Check a key encoded by the real Kitty terminal.
 try_key()
 {
 	key=$1

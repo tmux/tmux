@@ -491,12 +491,8 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 
 	log_debug("%s: key in %llx", __func__, key);
 
-	/*
-	 * Remember whether Meta was set and write its ESC prefix only once
-	 * the key below it is known to be encodable, so a key that turns
-	 * out to fail does not leave a stray ESC in the pane.
-	 */
-	meta = !!(key & KEYC_META);
+	/* Defer the Meta prefix until the key can be encoded. */
+	meta = (key & KEYC_META) != 0;
 
 	/*
 	 * There's no way to report modifiers for unicode keys in standard mode
@@ -584,6 +580,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	struct input_key_entry	*ike = NULL;
 	key_code		 newkey;
 	struct utf8_data	 ud;
+	int			 result;
 
 	/* Send keys are like any other key here. */
 	key &= ~KEYC_SENT;
@@ -693,8 +690,10 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return (0);
 	}
 	if ((key & (KEYC_SUPER|KEYC_HYPER)) ||
-	    (s->kitty_keys.flags & KITTY_KEY_SUPPORTED))
-		return (input_key_vt10x(bev, key));
+	    (s->kitty_keys.flags & KITTY_KEY_SUPPORTED)) {
+		result = input_key_vt10x(bev, key);
+		return (result);
+	}
 
 	/*
 	 * No builtin key sequence; construct an extended key sequence

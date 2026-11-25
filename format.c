@@ -1686,7 +1686,8 @@ format_cb_client_key_mode(struct format_tree *ft)
 		xasprintf(&s, "%s (Kitty)", mode);
 		return (s);
 	}
-	return (xstrdup(mode));
+	s = xstrdup(mode);
+	return (s);
 }
 
 /* Callback for client_key_table. */

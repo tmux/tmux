@@ -145,12 +145,14 @@ static const struct input_kitty_key input_kitty_keys[] = {
 	{ KEYC_ISO_LEVEL5_SHIFT, 57454, 'u' }
 };
 
+/* Clear the active screen keyboard mode and saved flags. */
 void
 input_kitty_reset(struct screen *s)
 {
 	memset(&s->kitty_keys, 0, sizeof s->kitty_keys);
 }
 
+/* Save the main screen keyboard state and start the alternate screen. */
 void
 input_kitty_alternate_on(struct screen *s)
 {
@@ -158,6 +160,7 @@ input_kitty_alternate_on(struct screen *s)
 	input_kitty_reset(s);
 }
 
+/* Restore the main screen keyboard state. */
 void
 input_kitty_alternate_off(struct screen *s)
 {
@@ -165,6 +168,7 @@ input_kitty_alternate_off(struct screen *s)
 	memset(&s->saved_kitty_keys, 0, sizeof s->saved_kitty_keys);
 }
 
+/* Apply a keyboard mode change from the application. */
 void
 input_kitty_set(struct screen *s, u_int flags, int mode)
 {
@@ -177,6 +181,7 @@ input_kitty_set(struct screen *s, u_int flags, int mode)
 		s->kitty_keys.flags = flags;
 }
 
+/* Save the current flags and enable the requested enhancements. */
 void
 input_kitty_push(struct screen *s, u_int flags)
 {
@@ -185,6 +190,7 @@ input_kitty_push(struct screen *s, u_int flags)
 	s->kitty_keys.flags = flags & KITTY_KEY_SUPPORTED;
 }
 
+/* Restore saved flags, or clear them when the stack is exhausted. */
 void
 input_kitty_pop(struct screen *s, u_int count)
 {
@@ -197,6 +203,7 @@ input_kitty_pop(struct screen *s, u_int count)
 	s->kitty_keys.have_saved = 0;
 }
 
+/* Convert tmux modifiers to the Kitty wire value. */
 static u_int
 input_kitty_modifiers(key_code key)
 {
@@ -215,6 +222,7 @@ input_kitty_modifiers(key_code key)
 	return (modifiers);
 }
 
+/* Find the Kitty encoding for a function key. */
 static const struct input_kitty_key *
 input_kitty_lookup(key_code key)
 {
@@ -229,13 +237,14 @@ input_kitty_lookup(key_code key)
 	return (NULL);
 }
 
+/* Encode a key using the enhancements requested by the application. */
 int
 input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 {
 	const struct input_kitty_key	*ikk;
-	struct utf8_data		 ud;
+	struct utf8_data			 ud;
 	wchar_t				 wc;
-	key_code			 modifiers, onlykey;
+	key_code				 modifiers, onlykey;
 	u_int				 flags, number, modifier;
 	char				 tmp[64];
 	size_t				 size;
@@ -246,57 +255,52 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 	if ((key & KEYC_MASK_KEY) == KEYC_BTAB)
 		key = C0_HT|(key & ~KEYC_MASK_KEY)|KEYC_SHIFT;
 
-	modifiers = key & (KEYC_SHIFT|KEYC_META|KEYC_CTRL|KEYC_SUPER|KEYC_HYPER);
+	modifiers = key &
+	    (KEYC_SHIFT|KEYC_META|KEYC_CTRL|KEYC_SUPER|KEYC_HYPER);
 	ikk = input_kitty_lookup(key);
 	if (ikk != NULL) {
 		if ((flags & KITTY_KEY_REPORT_ALL) == 0) {
-			/*
-			 * Enter, Tab and Backspace stay in legacy form only
-			 * when unmodified, so a plain Enter still works after
-			 * a crash, but a modified one is disambiguated.
-			 */
-			if ((ikk->key == C0_CR || ikk->key == C0_HT ||
-			    ikk->key == KEYC_BSPACE) && modifiers == 0)
+			/* Keep unmodified keys usable after a crash. */
+			if (modifiers == 0 &&
+			    (ikk->key == C0_CR || ikk->key == C0_HT ||
+			     ikk->key == KEYC_BSPACE)) {
 				return (-1);
+			}
 
-			/*
-			 * A modified F3 in legacy form ("\033[1;mR") is
-			 * indistinguishable from a cursor position report,
-			 * so it must always be disambiguated too.
-			 */
+			/* Distinguish modified F3 from cursor reports. */
 			if (ikk->final != 'u' &&
 			    (modifiers & (KEYC_SUPER|KEYC_HYPER)) == 0 &&
-			    (ikk->key != KEYC_F3 || modifiers == 0))
+			    (ikk->key != KEYC_F3 || modifiers == 0)) {
 				return (-1);
+			}
 		}
 		number = ikk->number;
 		modifier = input_kitty_modifiers(key);
-		if (ikk->final == 'u') {
-			if (modifier == 1)
-				size = xsnprintf(tmp, sizeof tmp, "\033[%uu", number);
-			else
-				size = xsnprintf(tmp, sizeof tmp, "\033[%u;%uu",
-				    number, modifier);
-		} else if (ikk->final == '~') {
-			if (modifier == 1)
-				size = xsnprintf(tmp, sizeof tmp, "\033[%u~", number);
-			else
-				size = xsnprintf(tmp, sizeof tmp, "\033[%u;%u~",
-				    number, modifier);
+		if (ikk->final == 'u' || ikk->final == '~') {
+			if (modifier == 1) {
+				size = xsnprintf(tmp, sizeof tmp, "\033[%u%c",
+				    number, ikk->final);
+			} else {
+				size = xsnprintf(tmp, sizeof tmp,
+				    "\033[%u;%u%c", number, modifier,
+				    ikk->final);
+			}
 		} else {
-			if (modifier == 1)
+			if (modifier == 1) {
 				size = xsnprintf(tmp, sizeof tmp, "\033[%c",
 				    ikk->final);
-			else
+			} else {
 				size = xsnprintf(tmp, sizeof tmp, "\033[1;%u%c",
 				    modifier, ikk->final);
+			}
 		}
 		goto write;
 	}
 
 	if ((flags & KITTY_KEY_REPORT_ALL) == 0 &&
-	    (modifiers & (KEYC_META|KEYC_CTRL|KEYC_SUPER|KEYC_HYPER)) == 0)
+	    (modifiers & (KEYC_META|KEYC_CTRL|KEYC_SUPER|KEYC_HYPER)) == 0) {
 		return (-1);
+	}
 
 	onlykey = key & KEYC_MASK_KEY;
 	if (KEYC_IS_UNICODE(key)) {
@@ -316,9 +320,10 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 	modifier = input_kitty_modifiers(key);
 	if (modifier == 1)
 		size = xsnprintf(tmp, sizeof tmp, "\033[%uu", number);
-	else
+	else {
 		size = xsnprintf(tmp, sizeof tmp, "\033[%u;%uu", number,
 		    modifier);
+	}
 
 write:
 	log_debug("%s: %.*s", __func__, (int)size, tmp);
