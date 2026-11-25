@@ -658,17 +658,48 @@ window_copy_set_line_info(struct window_copy_mode_data *data, u_int y,
 	line->flags |= flags;
 }
 
-/* Map a visible cell boundary back to its source position. */
+/* Check whether a source boundary agrees with a backing row's mapping. */
+static int
+window_copy_line_mapping_matches(const struct window_copy_line *line,
+    const struct window_copy_fold_ctx *fold, u_int backing_x)
+{
+	u_int	 source_col;
+
+	if (line->wrapped_line == UINT_MAX)
+		return (1);
+	if (line->wrapped_line != fold->wrapped_y)
+		return (0);
+	source_col = fold->wrapped_x + fold->source_x;
+	if (source_col < line->source_col || backing_x < line->backing_col)
+		return (0);
+	return (source_col - line->source_col ==
+	    backing_x - line->backing_col);
+}
+
+/* Keep each visible backing row in one source mapping. */
 static void
 window_copy_map_line(struct window_copy_mode_data *data,
-    struct window_copy_fold_ctx *fold, struct screen *dst)
+    struct window_copy_fold_ctx *fold, struct screen_write_ctx *ctx)
 {
+	struct screen		*dst = ctx->s;
 	struct window_copy_line	*line;
 	u_int			 y = screen_hsize(dst) + dst->cy;
 
 	line = window_copy_get_line_info(data, y);
 	if (line == NULL)
 		return;
+
+	/* Split a new prompt from a prefix with a different source mapping. */
+	if (fold->hiding &&
+	    dst->cx != 0 &&
+	    !window_copy_line_mapping_matches(line, fold, dst->cx)) {
+		screen_write_carriagereturn(ctx);
+		screen_write_linefeed(ctx, 0, 8);
+		y = screen_hsize(dst) + dst->cy;
+		window_copy_grow_line_info(data,
+		    screen_hsize(dst) + screen_size_y(dst));
+		line = &data->lines[y];
+	}
 
 	/* Use one column space for all rows of a wrapped source line. */
 	line->source_line = fold->source_y;
@@ -936,6 +967,47 @@ window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
 		}
 	}
 	return (changed);
+}
+
+/* Record prompt markers without replacing a visible command's mapping. */
+static void
+window_copy_fold_start_prompt(struct window_copy_mode_data *data,
+    struct window_copy_fold_ctx *fold, struct grid_line *sgl,
+    struct screen_write_ctx *ctx)
+{
+	struct screen		*dst = ctx->s;
+	struct grid_line	*dgl;
+	struct osc133_data	*od = &sgl->osc133_data;
+	u_int			 dy, flags;
+
+	flags = sgl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_SECOND_PROMPT);
+	if (fold->source_x != od->prompt_col || flags == 0)
+		return;
+
+	/* A may follow hidden output after a visible command prefix. */
+	if ((flags & GRID_LINE_START_PROMPT) && fold->hiding)
+		window_copy_map_line(data, fold, ctx);
+	dy = screen_hsize(dst) + dst->cy;
+	dgl = grid_get_line(dst->grid, dy);
+
+	/* A starts a new prompt and ends the preceding output region. */
+	if (flags & GRID_LINE_START_PROMPT) {
+		dgl->flags |= GRID_LINE_START_PROMPT;
+		dgl->osc133_data.prompt_col = dst->cx;
+		fold->prompt_dy = dy;
+		fold->output_line = UINT_MAX;
+		fold->output_flag = 0;
+		fold->collapsed = 0;
+		fold->command = 0;
+		fold->hiding = 0;
+		fold->tree = 0;
+		fold->in_output = 0;
+		fold->output_empty = 0;
+	}
+	if (flags & GRID_LINE_SECOND_PROMPT) {
+		dgl->flags |= GRID_LINE_SECOND_PROMPT;
+		dgl->osc133_data.prompt_col = dst->cx;
+	}
 }
 
 /* Record an output start and attach its control to the prompt. */
@@ -1228,7 +1300,7 @@ window_copy_write_fold_cell(struct window_copy_mode_data *data,
 		screen_write_carriagereturn(ctx);
 		window_copy_grow_line_info(data,
 		    screen_hsize(dst) + screen_size_y(dst));
-		window_copy_map_line(data, fold, dst);
+		window_copy_map_line(data, fold, ctx);
 	}
 	y = screen_hsize(dst) + dst->cy;
 	if (fold->keep_line)
@@ -1377,13 +1449,13 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			/* Wrapped backing rows may outnumber source rows. */
 			window_copy_grow_line_info(data,
 			    screen_hsize(dst) + screen_size_y(dst));
-			dy = dst->grid->hsize + dst->cy;
 			was_hiding = fold.hiding;
 			fold.source_x = x;
 			if (!fold.hiding)
-				window_copy_map_line(data, &fold, dst);
+				window_copy_map_line(data, &fold, &ctx);
 
 			/* Process markers on hidden rows too. */
+			dy = screen_hsize(dst) + dst->cy;
 			dgl = grid_get_line(dst->grid, dy);
 			window_copy_fold_initial_control(data, &fold, dy);
 			window_copy_fold_start_output(data, &fold, sgl, dgl,
@@ -1392,37 +1464,22 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			    dst->cx);
 
 			/* Process C and D before A at the same column. */
-			if (x == osc133->prompt_col) {
-				if (sgl->flags & GRID_LINE_START_PROMPT) {
-					/* A starts a new prompt. */
-					dgl->flags |= GRID_LINE_START_PROMPT;
-					dgl->osc133_data.prompt_col = dst->cx;
-					fold.prompt_dy = dy;
-					fold.output_line = UINT_MAX;
-					fold.output_flag = 0;
-					fold.collapsed = 0;
-					fold.command = 0;
-					fold.hiding = 0;
-					fold.tree = 0;
-					fold.in_output = 0;
-					fold.output_empty = 0;
-				}
-				if (sgl->flags & GRID_LINE_SECOND_PROMPT) {
-					dgl->flags |= GRID_LINE_SECOND_PROMPT;
-					dgl->osc133_data.prompt_col = dst->cx;
-				}
-			}
+			window_copy_fold_start_prompt(data, &fold, sgl, &ctx);
 			if ((sgl->flags & GRID_LINE_START_COMMAND) &&
 			    x == osc133->cmd_col) {
+				dy = screen_hsize(dst) + dst->cy;
+				dgl = grid_get_line(dst->grid, dy);
 				dgl->flags |= GRID_LINE_START_COMMAND;
 				dgl->osc133_data.cmd_col = dst->cx;
 				fold.command = 1;
 			}
 			/* A may expose cells after a folded region. */
 			if (was_hiding && !fold.hiding)
-				window_copy_map_line(data, &fold, dst);
-			if (x == end)
+				window_copy_map_line(data, &fold, &ctx);
+			if (x == end) {
+				dy = screen_hsize(dst) + dst->cy;
 				break;
+			}
 			grid_get_cell(sgd, x, y, &gc);
 			if (gc.flags & GRID_FLAG_TAB)
 				fold.tab_end = x + gc.data.width;
