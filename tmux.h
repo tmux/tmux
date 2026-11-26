@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1502 2026/11/26 12:35:47 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1503 2026/11/26 13:38:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -530,6 +530,7 @@ enum tty_code_code {
 	TTYC_ENESC,
 	TTYC_ENFCS,
 	TTYC_ENMG,
+	TTYC_ESGR,
 	TTYC_FSL,
 	TTYC_HLS,
 	TTYC_HOME,
@@ -846,11 +847,22 @@ struct colour_palette {
 
 /* All underscore attributes. */
 #define GRID_ATTR_ALL_UNDERSCORE \
-	(GRID_ATTR_UNDERSCORE|	 \
+	(GRID_ATTR_UNDERSCORE| \
 	 GRID_ATTR_UNDERSCORE_2| \
 	 GRID_ATTR_UNDERSCORE_3| \
 	 GRID_ATTR_UNDERSCORE_4| \
 	 GRID_ATTR_UNDERSCORE_5)
+
+/* Grid attributes with separate resets. */
+#define GRID_ATTR_SEPARATE_RESET \
+	(GRID_ATTR_BRIGHT| \
+	 GRID_ATTR_DIM| \
+	 GRID_ATTR_ALL_UNDERSCORE| \
+	 GRID_ATTR_BLINK| \
+	 GRID_ATTR_REVERSE| \
+	 GRID_ATTR_HIDDEN| \
+	 GRID_ATTR_ITALICS| \
+	 GRID_ATTR_STRIKETHROUGH)
 
 /* Grid flags. */
 #define GRID_FLAG_FG256 0x1
@@ -1807,6 +1819,8 @@ struct tty_term {
 	char			*name;
 	struct tty		*tty;
 	int			 applied_features;
+	enum tty_code_code	 italics;
+	u_int			 separate_reset;
 
 	char			 acs[UCHAR_MAX + 1][2];
 	struct tty_code		*codes;

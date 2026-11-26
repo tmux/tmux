@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.56 2026/11/23 08:44:19 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.57 2026/11/26 13:38:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -128,6 +128,17 @@ static const struct tty_feature tty_feature_256 = {
 	"256",
 	tty_feature_256_capabilities,
 	TERM_256COLOURS
+};
+
+/* Terminal supports the separate resets from ECMA-48 third edition. */
+static const char *const tty_feature_ecmasgr_capabilities[] = {
+	"Esgr",
+	NULL
+};
+static const struct tty_feature tty_feature_ecmasgr = {
+	"ecmasgr",
+	tty_feature_ecmasgr_capabilities,
+	0
 };
 
 /* Terminal supports overline. */
@@ -409,10 +420,11 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
-	&tty_feature_hyperlinks,
 	&tty_feature_cstyle,
+	&tty_feature_ecmasgr,
 	&tty_feature_extkeys,
 	&tty_feature_focus,
+	&tty_feature_hyperlinks,
 	&tty_feature_ignorefkeys,
 	&tty_feature_imagescroll,
 	&tty_feature_kittygraphics,
@@ -420,6 +432,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_mouse,
 	&tty_feature_osc7,
 	&tty_feature_overline,
+	&tty_feature_programstatus,
 	&tty_feature_progressbar,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
@@ -428,8 +441,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_sync,
 	&tty_feature_title,
 	&tty_feature_usstyle,
-	&tty_feature_utf8,
-	&tty_feature_programstatus
+	&tty_feature_utf8
 };
 
 /* Parse features for client. */
@@ -598,7 +610,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 		const char	*features;
 	} table[] = {
 #define TTY_FEATURES_BASE_MODERN_XTERM \
-	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
+	"256,RGB,bpaste,clipboard,ecmasgr,mouse,strikethrough,title"
 		{ .name = "mintty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
 			      "appesc,"

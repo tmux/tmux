@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.504 2026/11/24 20:28:33 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.505 2026/11/26 13:38:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -40,7 +40,6 @@ static void	tty_start_start_timer(struct tty *);
 static int	tty_block_maybe(struct tty *, int);
 static void	tty_clipboard_query_callback(int, short, void *);
 static void	tty_send_size_query(struct tty *, int);
-static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
 static void	tty_force_cursor_colour(struct tty *, int);
 static void	tty_cursor_pane(struct tty *, const struct tty_ctx *, u_int,
@@ -776,21 +775,6 @@ tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 			tty->cx = tty->cy = UINT_MAX;
 	} else
 		tty->cx += width;
-}
-
-static void
-tty_set_italics(struct tty *tty)
-{
-	const char	*s;
-
-	if (tty_term_has(tty->term, TTYC_SITM)) {
-		s = options_get_string(global_options, "default-terminal");
-		if (strcmp(s, "screen") != 0 && strncmp(s, "screen-", 7) != 0) {
-			tty_putcode(tty, TTYC_SITM);
-			return;
-		}
-	}
-	tty_putcode(tty, TTYC_SMSO);
 }
 
 void
@@ -2459,13 +2443,59 @@ tty_check_ncv(struct tty *tty, struct grid_cell *gc)
 		gc->attr &= ~GRID_ATTR_ITALICS;
 }
 
+/* Append an SGR parameter. */
+static char *
+tty_attributes_append(char *s, u_int n)
+{
+	*s++ = '0' + n / 10;
+	*s++ = '0' + n % 10;
+	*s++ = ';';
+	return (s);
+}
+
+/* Turn off attributes with an SGR sequence. */
+static void
+tty_attributes_off(struct tty *tty, u_int removed)
+{
+	char	buf[32], *s = buf;
+
+	*s++ = '\033';
+	*s++ = '[';
+
+	if (removed & (GRID_ATTR_BRIGHT|GRID_ATTR_DIM)) {
+		s = tty_attributes_append(s, 22);
+		removed |= GRID_ATTR_BRIGHT|GRID_ATTR_DIM;
+	}
+	if (removed & GRID_ATTR_ALL_UNDERSCORE) {
+		s = tty_attributes_append(s, 24);
+		removed |= GRID_ATTR_ALL_UNDERSCORE;
+	}
+
+	if (removed & GRID_ATTR_ITALICS)
+		s = tty_attributes_append(s, 23);
+	if (removed & GRID_ATTR_BLINK)
+		s = tty_attributes_append(s, 25);
+	if (removed & GRID_ATTR_REVERSE)
+		s = tty_attributes_append(s, 27);
+	if (removed & GRID_ATTR_HIDDEN)
+		s = tty_attributes_append(s, 28);
+	if (removed & GRID_ATTR_STRIKETHROUGH)
+		s = tty_attributes_append(s, 29);
+
+	s[-1] = 'm';
+	tty_add(tty, buf, s - buf);
+	tty->cell.attr &= ~removed;
+}
+
 void
 tty_attributes(struct tty *tty, const struct grid_cell *gc,
     const struct tty_style_ctx *style_ctx)
 {
+	struct tty_term		*term = tty->term;
 	struct grid_cell	*tc = &tty->cell, gc2;
 	struct colour_palette	*palette;
-	int			 c, changed;
+	int			 c, changed, reset = term->separate_reset;
+	u_int			 removed;
 
 	/* Use default style if not given. */
 	if (style_ctx == NULL)
@@ -2543,18 +2573,18 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	tty_check_us(tty, palette, &gc2);
 	tty_check_ncv(tty, &gc2);
 
-	/*
-	 * If any bits are being cleared or the underline colour is now default,
-	 * reset everything.
-	 */
-	if ((tc->attr & ~gc2.attr) || (tc->us != gc2.us && gc2.us == 0))
+	/* Use a full reset when a separate reset wouldn't work. */
+	removed = tc->attr & ~gc2.attr;
+	if ((removed & ~reset) || (tc->us != gc2.us && gc2.us == 0))
 		tty_reset(tty);
 
-	/*
-	 * Set the colours. This may call tty_reset() (so it comes next) and
-	 * may add to (NOT remove) the desired attributes.
-	 */
+	/* Set the colours, which may also reset the attributes. */
 	tty_colours(tty, &gc2);
+
+	/* Clear any remaining attributes that are no longer needed. */
+	removed &= tc->attr;
+	if (removed != 0)
+		tty_attributes_off(tty, removed);
 
 	/* Filter out attribute bits already set. */
 	changed = gc2.attr & ~tc->attr;
@@ -2566,7 +2596,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	if (changed & GRID_ATTR_DIM)
 		tty_putcode(tty, TTYC_DIM);
 	if (changed & GRID_ATTR_ITALICS)
-		tty_set_italics(tty);
+		tty_putcode(tty, term->italics);
 	if (changed & GRID_ATTR_ALL_UNDERSCORE) {
 		if (changed & GRID_ATTR_UNDERSCORE)
 			tty_putcode(tty, TTYC_SMUL);
