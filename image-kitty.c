@@ -22,6 +22,9 @@
 #include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_LIBZ
+#include <zlib.h>
+#endif
 
 #include "tmux.h"
 
@@ -443,6 +446,7 @@ kitty_upload(struct tty *tty, struct kitty_image_cache *entry)
 	struct image		*im = image_find(entry->image_id);
 	struct image_geom	*ig = image_get_geometry(im);
 	char			 s[128], e[4097];
+	const char		*compression = "";
 	u_char			*p, *row, *p0;
 	size_t			 offset, size, total, limit, stride;
 	u_int			 x, y, w, h;
@@ -450,6 +454,11 @@ kitty_upload(struct tty *tty, struct kitty_image_cache *entry)
 	uint64_t		 width = (uint64_t)ig->sx * cw;
 	uint64_t		 height = (uint64_t)ig->sy * ch;
 	int			 elen;
+#ifdef HAVE_LIBZ
+	u_char			*compressed;
+	uLongf			 csize;
+	int			 status;
+#endif
 
 	/* Check the output size and allow for a one-pixel border. */
 	limit = options_get_number(global_options, "image-size-limit");
@@ -480,6 +489,25 @@ kitty_upload(struct tty *tty, struct kitty_image_cache *entry)
 	memcpy(p, p + stride, stride);
 	memcpy(p + (h - 1) * stride, p + (h - 2) * stride, stride);
 
+#ifdef HAVE_LIBZ
+	/* Compress only after a successful receiver probe. */
+	if ((tty->flags & TTY_KITTYGRAPHICS_ZLIB) && total <= ULONG_MAX) {
+		csize = compressBound(total);
+		if (csize >= total && csize <= SIZE_MAX) {
+			compressed = xmalloc(csize);
+			status = compress2(compressed, &csize, p, total,
+			    Z_BEST_SPEED);
+			if (status == Z_OK && csize < total) {
+				free(p);
+				p = compressed;
+				total = csize;
+				compression = "o=z,";
+			} else
+				free(compressed);
+		}
+	}
+#endif
+
 	entry->upload = 0;
 	do
 		entry->kitty_id = ++ko->next_id;
@@ -495,8 +523,9 @@ kitty_upload(struct tty *tty, struct kitty_image_cache *entry)
 			fatalx("base64 encode failed");
 		if (offset == 0) {
 			xsnprintf(s, sizeof s,
-			    "\033_Ga=t,f=32,s=%u,v=%u,i=%u,q=2,m=%d;",
-			    w, h, entry->kitty_id, offset + size < total);
+			    "\033_Ga=t,f=32,%ss=%u,v=%u,i=%u,q=2,m=%d;",
+			    compression, w, h, entry->kitty_id,
+			    offset + size < total);
 		} else {
 			if (offset + size < total)
 				xsnprintf(s, sizeof s, "\033_Gm=1;");

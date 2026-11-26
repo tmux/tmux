@@ -166,7 +166,7 @@ for name, report in reports:
                 if delivery == "invalid":
                     # A near match must fall back to ordinary key parsing.
                     if name == "kitty-graphics":
-                        wire = b"\033_Gi=32;OK\033\\"
+                        wire = b"\033_Gi=33;OK\033\\"
                     else:
                         wire = b"\033[?2026;5$y"
                 if delivery == "unanswered":
