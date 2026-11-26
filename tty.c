@@ -21,6 +21,7 @@
 
 #include <netinet/in.h>
 
+#include <ctype.h>
 #include <curses.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -445,7 +446,6 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
 	tty->mouse_drag_release = NULL;
-	tty->pointer = NULL;
 }
 
 void
@@ -526,6 +526,9 @@ tty_stop_tty(struct tty *tty)
 	if (!(tty->flags & TTY_STARTED))
 		return;
 	tty->flags &= ~TTY_STARTED;
+
+	free(tty->pointer);
+	tty->pointer = NULL;
 
 	evtimer_del(&tty->start_timer);
 	evtimer_del(&tty->clipboard_timer);
@@ -836,11 +839,18 @@ tty_set_path(struct tty *tty, const char *title)
 void
 tty_set_pointer(struct tty *tty, const char *shape)
 {
-	if (!tty_term_has(tty->term, TTYC_SPT))
+	const char	*cp;
+
+	if (!tty_term_has(tty->term, TTYC_SPT) || *shape == '\0')
 		return;
+	for (cp = shape; *cp != '\0'; cp++) {
+		if (!isalnum((u_char)*cp) && *cp != '-' && *cp != '_')
+			return;
+	}
 	if (tty->pointer != NULL && strcmp(tty->pointer, shape) == 0)
 		return;
-	tty->pointer = shape;
+	free(tty->pointer);
+	tty->pointer = xstrdup(shape);
 	tty_putcode_s(tty, TTYC_SPT, shape);
 }
 

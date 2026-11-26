@@ -1560,6 +1560,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the marked line in copy mode."
 	},
 
+	{ .name = "copy-mode-pointer-shape",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "xterm",
+	  .text = "Format of the mouse pointer shape over a pane in copy "
+		  "mode."
+	},
+
 	{ .name = "copy-mode-position-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
@@ -1843,6 +1851,18 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_pane_scrollbars_position_list,
 	  .default_num = PANE_SCROLLBARS_RIGHT,
 	  .text = "Pane scrollbar position."
+	},
+
+	{ .name = "pointer-shape",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "#{?#{||:#{==:#{mouse_location},Border},"
+			     "#{==:#{mouse_location},SideStatusBorder}},"
+			 "#{?#{||:#{==:#{border_side},Left},"
+				 "#{==:#{border_side},Right}},"
+			     "sb_h_double_arrow,sb_v_double_arrow},"
+			 "left_ptr}",
+	  .text = "Format of the mouse pointer shape."
 	},
 
 	{ .name = "remain-on-exit",

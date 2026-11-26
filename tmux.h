@@ -1981,7 +1981,7 @@ struct tty {
 	int		 mouse_scrolling_flag;
 	int		 mouse_slider_mpos;
 	int              mouse_last_pane;
-	const char	*pointer;
+	char		*pointer;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
