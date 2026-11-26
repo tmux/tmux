@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.322 2026/11/26 15:59:01 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.323 2026/11/26 20:49:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2882,6 +2882,69 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	ctx->s->write_list[s->cy].data[s->cx + ci->used++] = gc->data.data[0];
 }
 
+/* Check for an unchanged single-column UTF-8 cell. */
+static int
+screen_write_should_skip_utf8(struct screen_write_ctx *ctx,
+    struct grid_line *gl, struct grid_cell_entry *gce,
+    const struct grid_cell *gc)
+{
+	const struct utf8_data	*ud = &gc->data;
+	struct grid_extd_entry	*gee;
+	utf8_char		 uc;
+	int			 flags = gc->flags;
+
+	if (ctx->wp == NULL ||
+	    (~ctx->flags & SCREEN_WRITE_INPUT) ||
+	    ctx->s->cx >= gl->cellused ||
+	    (flags & (GRID_FLAG_TAB|GRID_FLAG_PADDING|GRID_FLAG_SELECTED)) ||
+	    ud->width != 1 ||
+	    ud->size < 2 ||
+	    ud->size > 3 ||
+	    gce->offset >= gl->extdsize)
+		return (0);
+	utf8_from_data(ud, &uc);
+
+	gee = &gl->extddata[gce->offset];
+	if (gee->data != uc ||
+	    gee->attr != gc->attr ||
+	    gee->flags != gc->flags ||
+	    gee->fg != gc->fg ||
+	    gee->bg != gc->bg ||
+	    gee->us != gc->us ||
+	    gee->link != gc->link)
+		return (0);
+	return (1);
+}
+
+/* Check whether the cell already has the same contents and attributes. */
+static int
+screen_write_should_skip(struct screen_write_ctx *ctx, struct grid_line *gl,
+    const struct grid_cell *gc, int check_utf8)
+{
+	struct grid_cell_entry	*gce;
+	u_int			 cx = ctx->s->cx;
+
+	if (cx >= gl->cellsize)
+		return (grid_cells_equal(gc, &grid_default_cell));
+
+	gce = &gl->celldata[cx];
+	if (gce->flags & GRID_FLAG_EXTENDED) {
+		if (!check_utf8)
+			return (0);
+		return (screen_write_should_skip_utf8(ctx, gl, gce, gc));
+	}
+
+	if (gc->flags != gce->flags ||
+	    gc->attr != gce->data.attr ||
+	    gc->fg != gce->data.fg ||
+	    gc->bg != gce->data.bg ||
+	    gc->data.width != 1 ||
+	    gc->data.size != 1 ||
+	    gce->data.data != gc->data.data[0])
+		return (0);
+	return (1);
+}
+
 /* Write a cell, replacing any columns already written for its base. */
 static void
 screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
@@ -2892,13 +2955,12 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
 	struct grid_line	*gl;
-	struct grid_cell_entry	*gce;
 	struct grid_cell	 tmp_gc;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int			 width = ud->width, cx, xx, not_wrap, i, n, vis;
 	u_int			 ins_width = width;
-	int			 selected, skip = 1, redraw = 0;
+	int			 selected, skip = 1, redraw = 0, wrapped = 0;
 	int			 yoff = 0, xoff = 0;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
@@ -2927,6 +2989,7 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 		screen_write_linefeed(ctx, 1, 8);
 		screen_write_set_cursor(ctx, 0, -1);
 		screen_write_collect_flush(ctx, 0, __func__);
+		wrapped = 1;
 	}
 
 	/* Sanity check cursor position. */
@@ -2968,29 +3031,12 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 		skip = 0;
 	}
 
-	/* If no change, do not draw. */
+	/* Check if this cell has not changed and should be skipped. */
 	if (skip) {
-		if (s->cx >= gl->cellsize)
-			skip = grid_cells_equal(gc, &grid_default_cell);
-		else {
-			gce = &gl->celldata[s->cx];
-			if (gce->flags & GRID_FLAG_EXTENDED)
-				skip = 0;
-			else if (gc->flags != gce->flags)
-				skip = 0;
-			else if (gc->attr != gce->data.attr)
-				skip = 0;
-			else if (gc->fg != gce->data.fg)
-				skip = 0;
-			else if (gc->bg != gce->data.bg)
-				skip = 0;
-			else if (gc->data.width != 1)
-				skip = 0;
-			else if (gc->data.size != 1)
-				skip = 0;
-			else if (gce->data.data != gc->data.data[0])
-				skip = 0;
-		}
+		if (old_width == 0 && !wrapped)
+			skip = screen_write_should_skip(ctx, gl, gc, 1);
+		else
+			skip = screen_write_should_skip(ctx, gl, gc, 0);
 	}
 
 	/* Update the selected flag and set the cell. */
