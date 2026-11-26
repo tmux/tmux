@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.451 2026/11/25 09:03:59 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.452 2026/11/26 08:00:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -593,8 +593,10 @@ window_copy_common_init(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data;
 	struct options			*oo = wp->window->options;
 	struct screen			*base = &wp->base;
+	struct screen			*s;
 
 	wme->data = data = xcalloc(1, sizeof *data);
+	s = &data->screen;
 
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
@@ -621,8 +623,8 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->jumpchar = NULL;
 	data->line_numbers = 1;
 
-	screen_init(&data->screen, screen_size_x(base), screen_size_y(base), 0);
-	screen_set_default_cursor(&data->screen, global_w_options);
+	screen_init(s, screen_size_x(base), screen_size_y(base), 0);
+	screen_set_copy_cursor(s, oo);
 	data->modekeys = options_get_number(oo, "mode-keys");
 
 	evtimer_set(&data->dragtimer, window_copy_scroll_timer, wme);

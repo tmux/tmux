@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.95 2026/11/16 14:00:11 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.96 2026/11/26 08:00:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1400,11 +1400,13 @@ options_push_changes(const char *name)
 				w->active->flags |= PANE_CHANGED;
 		}
 	}
-	if (strcmp(name, "cursor-colour") == 0) {
+	if (strcmp(name, "cursor-colour") == 0 ||
+	    strcmp(name, "copy-mode-cursor-colour") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			window_pane_default_cursor(wp);
 	}
-	if (strcmp(name, "cursor-style") == 0) {
+	if (strcmp(name, "cursor-style") == 0 ||
+	    strcmp(name, "copy-mode-cursor-style") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			window_pane_default_cursor(wp);
 	}

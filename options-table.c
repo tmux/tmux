@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.258 2026/11/24 22:05:40 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.259 2026/11/26 08:00:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -66,6 +66,10 @@ static const char *options_table_visual_bell_list[] = {
 static const char *options_table_cursor_style_list[] = {
 	"default", "blinking-block", "block", "blinking-underline", "underline",
 	"blinking-bar", "bar", NULL
+};
+static const char *options_table_copy_cursor_style_list[] = {
+	"inherit", "default", "blinking-block", "block", "blinking-underline",
+	"underline", "blinking-bar", "bar", NULL
 };
 static const char *options_table_pane_scrollbars_list[] = {
 	"off", "modal", "on", "auto-hide", NULL
@@ -335,6 +339,7 @@ const struct options_name_map options_other_names[] = {
 	{ "display-panes-active-color", "display-panes-active-colour" },
 	{ "clock-mode-color", "clock-mode-colour" },
 	{ "cursor-color", "cursor-colour" },
+	{ "copy-mode-cursor-color", "copy-mode-cursor-colour" },
 	{ "prompt-cursor-color", "prompt-cursor-colour" },
 	{ "prompt-command-cursor-color", "prompt-command-cursor-colour" },
 	{ "pane-colors", "pane-colours" },
@@ -1471,6 +1476,22 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 1000,
 	  .unit = "milliseconds",
 	  .text = "Time for which 'display-panes' should show pane numbers."
+	},
+
+	{ .name = "copy-mode-cursor-colour",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "",
+	  .text = "Colour of the cursor in copy mode."
+	},
+
+	{ .name = "copy-mode-cursor-style",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_copy_cursor_style_list,
+	  .default_num = 0,
+	  .text = "Style of the cursor in copy mode."
 	},
 
 	{ .name = "copy-mode-match-style",

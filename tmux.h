@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1499 2026/11/25 09:03:59 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1500 2026/11/26 08:00:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3793,6 +3793,7 @@ void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
 void	 screen_reset_hyperlinks(struct screen *);
 void	 screen_set_default_cursor(struct screen *, struct options *);
+void	 screen_set_copy_cursor(struct screen *, struct options *);
 void	 screen_set_cursor_style(u_int, enum screen_cursor_style *, int *);
 void	 screen_set_cursor_colour(struct screen *, int);
 int	 screen_set_title(struct screen *, const char *, int);

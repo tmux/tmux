@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.398 2026/11/23 11:58:10 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.399 2026/11/26 08:00:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2667,7 +2667,14 @@ window_pane_update_used_data(struct window_pane *wp,
 void
 window_pane_default_cursor(struct window_pane *wp)
 {
-	screen_set_default_cursor(wp->screen, wp->options);
+	struct window	*w = wp->window;
+	struct screen	*s = wp->screen;
+
+	if (window_pane_mode(wp) != WINDOW_PANE_COPY_MODE &&
+	    window_pane_mode(wp) != WINDOW_PANE_VIEW_MODE)
+		screen_set_default_cursor(s, wp->options);
+	else
+		screen_set_copy_cursor(s, w->options);
 }
 
 int
