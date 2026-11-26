@@ -118,6 +118,7 @@ struct kitty_upload_geom {
 /* Scaled pixels uploaded to one terminal; pixel buffers are temporary. */
 struct kitty_upload_cache {
 	struct kitty_upload_geom	geom;
+	size_t				size;       /* terminal pixel bytes */
 	u_int				kitty_id;   /* zero until uploaded */
 	u_int				references; /* cached views */
 	u_int				next_placement;
@@ -163,6 +164,8 @@ struct kitty_placement_cache {
 struct kitty_output {
 	TAILQ_HEAD(, kitty_image_cache)	images;
 	TAILQ_HEAD(, kitty_upload_cache)	uploads;
+	u_int				count; /* cached views */
+	uint64_t			size;  /* uploaded pixel bytes */
 	u_int				next_id;
 	int				changed;
 };
@@ -406,6 +409,7 @@ kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 		free(entry);
 		return (NULL);
 	}
+	ko->count++;
 
 insert:
 	/* Insert the entry in image and placement drawing order. */
@@ -575,21 +579,40 @@ kitty_scroll(struct tty *tty, u_int x, u_int y, u_int w, u_int h, int n)
 	}
 }
 
-/* Free a cached Kitty image. */
+/* Delete uploaded pixels and stop accounting for terminal storage. */
+static void
+kitty_delete_upload(struct tty *tty, struct kitty_upload_cache *upload,
+    int send)
+{
+	struct kitty_output	*ko = tty->image_data;
+
+	if (send && upload->kitty_id != 0)
+		kitty_delete(tty, upload->kitty_id);
+	ko->size -= upload->size;
+	upload->size = 0;
+	upload->kitty_id = 0;
+}
+
+/* Free a cached Kitty image and release its upload reference. */
 static void
 kitty_free_entry(struct tty *tty, struct kitty_image_cache *entry, int send)
 {
 	struct kitty_placement_cache	*kpl, *next;
+	struct kitty_output		*ko = tty->image_data;
+	struct kitty_upload_cache	*upload = entry->upload;
 
 	TAILQ_FOREACH_SAFE(kpl, &entry->placements, entry, next) {
-		if (send)
-			kitty_free_placement(tty, entry, kpl);
-		else {
-			TAILQ_REMOVE(&entry->placements, kpl, entry);
-			free(kpl);
-		}
+		if (send && upload->references > 1)
+			kitty_delete_placement(tty, entry, kpl);
+		TAILQ_REMOVE(&entry->placements, kpl, entry);
+		free(kpl);
 	}
-	entry->upload->references--;
+	if (--upload->references == 0) {
+		kitty_delete_upload(tty, upload, send);
+		TAILQ_REMOVE(&ko->uploads, upload, entry);
+		free(upload);
+	}
+	ko->count--;
 	free(entry);
 }
 
@@ -599,18 +622,16 @@ kitty_free_output_state(struct tty *tty, int send)
 {
 	struct kitty_output		*ko = tty->image_data;
 	struct kitty_image_cache	*entry, *next;
-	struct kitty_upload_cache	*upload, *next_upload;
+	struct kitty_upload_cache	*upload;
 
 	if (ko != NULL) {
+		TAILQ_FOREACH(upload, &ko->uploads, entry) {
+			if (send && upload->kitty_id != 0)
+				kitty_delete(tty, upload->kitty_id);
+		}
 		TAILQ_FOREACH_SAFE(entry, &ko->images, entry, next) {
 			TAILQ_REMOVE(&ko->images, entry, entry);
 			kitty_free_entry(tty, entry, 0);
-		}
-		TAILQ_FOREACH_SAFE(upload, &ko->uploads, entry, next_upload) {
-			TAILQ_REMOVE(&ko->uploads, upload, entry);
-			if (send && upload->kitty_id != 0)
-				kitty_delete(tty, upload->kitty_id);
-			free(upload);
 		}
 		free(ko);
 		tty->image_data = NULL;
@@ -623,15 +644,44 @@ kitty_free_stale_images(struct tty *tty)
 {
 	struct kitty_output		*ko = tty->image_data;
 	struct kitty_image_cache	*entry, *next;
+	struct kitty_placement_cache	*kpl;
 
 	if (ko != NULL) {
 		TAILQ_FOREACH_SAFE(entry, &ko->images, entry, next) {
-			if (image_find(entry->image_id) == NULL) {
+			if (image_find(entry->source_id) == NULL) {
 				TAILQ_REMOVE(&ko->images, entry, entry);
 				kitty_free_entry(tty, entry, 1);
 				ko->changed = 1;
+			} else if (image_find(entry->image_id) == NULL &&
+			    !TAILQ_EMPTY(&entry->placements)) {
+				while (!TAILQ_EMPTY(&entry->placements)) {
+					kpl = TAILQ_FIRST(&entry->placements);
+					kitty_free_placement(tty, entry, kpl);
+				}
+				ko->changed = 1;
 			}
 		}
+	}
+}
+
+/* Bound retained views and uploads using the existing image limits. */
+static void
+kitty_trim_cache(struct tty *tty)
+{
+	struct kitty_output		*ko = tty->image_data;
+	struct kitty_image_cache	*entry, *next;
+	u_int				 count;
+	uint64_t			 size;
+
+	count = options_get_number(global_options, "image-total-count-limit");
+	size = options_get_number(global_options, "image-total-size-limit");
+	TAILQ_FOREACH_SAFE(entry, &ko->images, entry, next) {
+		if (ko->count <= count && ko->size <= size)
+			break;
+		if (!TAILQ_EMPTY(&entry->placements))
+			continue;
+		TAILQ_REMOVE(&ko->images, entry, entry);
+		kitty_free_entry(tty, entry, 1);
 	}
 }
 
@@ -707,6 +757,9 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 	memcpy(p, p + stride, stride);
 	memcpy(p + (h - 1) * stride, p + (h - 2) * stride, stride);
 
+	upload->size = total;
+	ko->size += total;
+
 #ifdef HAVE_LIBZ
 	/* Compress only after a successful receiver probe. */
 	if ((tty->term->flags & TERM_KITTYGRAPHICS_ZLIB) &&
@@ -763,9 +816,9 @@ void
 kitty_redraw_finish(struct tty *tty)
 {
 	struct kitty_output		*ko = tty->image_data;
-	struct kitty_image_cache	*entry, *other, *next_entry;
+	struct kitty_image_cache	*entry, *other;
 	struct kitty_placement_cache	*kpl, *next;
-	struct kitty_upload_cache	*upload, *next_upload;
+	struct kitty_upload_cache	*upload;
 	u_int				id;
 	int				 changed;
 
@@ -773,20 +826,17 @@ kitty_redraw_finish(struct tty *tty)
 		return;
 	kitty_free_stale_images(tty);
 
-	if (!ko->changed)
+	if (!ko->changed) {
+		kitty_trim_cache(tty);
 		return;
+	}
 	ko->changed = 0;
 
 	/* Delete placements marked during the redraw. */
-	TAILQ_FOREACH_SAFE(entry, &ko->images, entry, next_entry) {
+	TAILQ_FOREACH(entry, &ko->images, entry) {
 		TAILQ_FOREACH_SAFE(kpl, &entry->placements, entry, next) {
 			if (kpl->pending_delete)
 				kitty_free_placement(tty, entry, kpl);
-		}
-		if (TAILQ_EMPTY(&entry->placements)) {
-			TAILQ_REMOVE(&ko->images, entry, entry);
-			kitty_free_entry(tty, entry, 1);
-			continue;
 		}
 		entry->replace = 0;
 	}
@@ -795,9 +845,13 @@ kitty_redraw_finish(struct tty *tty)
 	do {
 		changed = 0;
 		TAILQ_FOREACH(entry, &ko->images, entry) {
+			if (TAILQ_EMPTY(&entry->placements))
+				continue;
 			id = entry->upload->kitty_id;
 			other = entry;
 			while ((other = TAILQ_NEXT(other, entry)) != NULL) {
+				if (TAILQ_EMPTY(&other->placements))
+					continue;
 				if (entry->replace && other->replace)
 					continue;
 				if (!kitty_images_overlap(entry, other))
@@ -823,9 +877,7 @@ kitty_redraw_finish(struct tty *tty)
 		TAILQ_FOREACH(kpl, &entry->placements, entry)
 			kitty_delete_placement(tty, entry, kpl);
 		if (upload->references == 1) {
-			if (upload->kitty_id != 0)
-				kitty_delete(tty, upload->kitty_id);
-			upload->kitty_id = 0;
+			kitty_delete_upload(tty, upload, 1);
 			continue;
 		}
 		entry->upload = xcalloc(1, sizeof *upload);
@@ -835,18 +887,10 @@ kitty_redraw_finish(struct tty *tty)
 		TAILQ_INSERT_TAIL(&ko->uploads, entry->upload, entry);
 	}
 
-	/* Release uploads no longer referenced by a visible view. */
-	TAILQ_FOREACH_SAFE(upload, &ko->uploads, entry, next_upload) {
-		if (upload->references != 0)
-			continue;
-		if (upload->kitty_id != 0)
-			kitty_delete(tty, upload->kitty_id);
-		TAILQ_REMOVE(&ko->uploads, upload, entry);
-		free(upload);
-	}
-
 	/* Upload images in drawing order and send new placements. */
 	TAILQ_FOREACH(entry, &ko->images, entry) {
+		if (TAILQ_EMPTY(&entry->placements))
+			continue;
 		if (entry->upload->kitty_id == 0 &&
 		    !kitty_upload(tty, entry->upload)) {
 			continue;
@@ -856,6 +900,7 @@ kitty_redraw_finish(struct tty *tty)
 				kitty_send_placement(tty, entry, kpl);
 		}
 	}
+	kitty_trim_cache(tty);
 }
 
 /* Draw an image rectangle using the Kitty graphics protocol. */

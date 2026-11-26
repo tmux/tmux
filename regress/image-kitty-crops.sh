@@ -49,7 +49,8 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(expected(0, 0))
     assert terminal.uploads == 1
-    width, height, _ = next(iter(terminal.images.values()))
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
     assert (width, height) == (18, 34), (width, height)
     uploads = terminal.uploads
 
@@ -60,7 +61,8 @@ with image_test(sys.argv[1]) as test:
         terminal.check(expected(x, y))
         assert terminal.uploads == uploads + 1, (x, y, terminal.uploads)
     uploads = terminal.uploads
-    width, height, _ = next(iter(terminal.images.values()))
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
     assert (width, height) == (34, 130), (width, height)
 
     # A smaller source rectangle at the same scale uses the same upload.
@@ -116,7 +118,8 @@ with image_test(sys.argv[1]) as test:
     for (client, cw, ch), terminal in zip(clients, terminals):
         terminal.feed(client.data)
         terminal.check(expected(0, 0, w=2 * cw, h=2 * ch, cw=cw, ch=ch))
-        width, height, _ = next(iter(terminal.images.values()))
+        image = next(iter(terminal.placements))[0]
+        width, height, _ = terminal.images[image]
         assert (width, height) == (2 * cw + 2, 2 * ch + 2)
     test.emit(b'\033[H' + crop(8, 16))
     for (client, cw, ch), terminal in zip(clients, terminals):
@@ -143,7 +146,8 @@ with image_test(sys.argv[1]) as test:
                 expected_pixels[px, py] = tuple(pixels[offset:offset + 3])
         terminal.check(expected_pixels)
         assert terminal.uploads == min(step + 1, 2)
-    width, height, _ = next(iter(terminal.images.values()))
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
     assert (width, height) == (28, 64)
 
 
@@ -155,13 +159,15 @@ with image_test(sys.argv[1]) as test:
     test.emit(source(4, 4) + kitty('a=p,i=7,p=1,w=2,h=2,c=1,r=1,C=1'))
     terminal.feed(client.data)
     terminal.check({(x, y): colour(0, 0) for y in range(16) for x in range(8)})
-    width, height, _ = next(iter(terminal.images.values()))
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
     assert (width, height) == (10, 18)
     test.emit(b'\033[H' +
         kitty('a=p,i=7,p=1,x=1,y=1,w=2,h=2,c=1,r=1,C=1'))
     terminal.feed(client.data)
     terminal.check({(x, y): colour(1, 1) for y in range(16) for x in range(8)})
-    width, height, _ = next(iter(terminal.images.values()))
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
     assert (width, height) == (10, 18)
     assert terminal.uploads == 2
 PY
