@@ -2880,6 +2880,8 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	}
 
 #ifdef ENABLE_IMAGES
+	if (gd->images != NULL)
+		check = 0;
 	image_damage_screen(ctx, s->cx, s->cy, ci->used, 1);
 #endif
 
