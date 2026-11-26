@@ -3058,6 +3058,8 @@ screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
 
 #ifdef ENABLE_IMAGES
 	/* Mark images as damaged. */
+	if (gd->images != NULL)
+		skip = 0;
 	image_damage_screen(ctx, s->cx, s->cy, width, 1);
 #endif
 
