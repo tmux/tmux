@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1505 2026/11/26 15:18:00 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1506 2026/11/26 15:59:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1119,6 +1119,13 @@ struct progress_bar {
 	int			progress;
 };
 
+/* Pending scroll type. */
+enum screen_scroll_type {
+	SCREEN_SCROLL_UP,
+	SCREEN_SCROLL_DL,
+	SCREEN_SCROLL_IL
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -1129,7 +1136,6 @@ struct screen {
 	u_int				 ntitles;
 
 	struct grid			*grid;	  /* grid data */
-
 	u_int				 cx;	  /* cursor x */
 	u_int				 cy;	  /* cursor y */
 
@@ -1156,10 +1162,14 @@ struct screen {
 	struct screen_write_cline	*write_list;
 	u_int				 write_start;
 	u_int				 write_end;
-	u_int				 write_scrolled;
+
 	u_int				 write_rupper;
 	u_int				 write_rlower;
 	u_int				 write_bg;
+
+	enum screen_scroll_type		 scroll_type;
+	u_int				 scroll_lines;
+	u_int				 scroll_y;
 
 	struct hyperlinks		*hyperlinks;
 	struct progress_bar		 progress_bar;

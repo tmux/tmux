@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.112 2026/11/26 08:00:21 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.113 2026/11/26 15:59:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -95,7 +95,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->sel = NULL;
 
 	s->write_list = NULL;
-	s->write_start = s->write_end = s->write_scrolled = 0;
+	s->write_start = s->write_end = s->scroll_lines = 0;
 	s->hyperlinks = NULL;
 
 	screen_reinit(s);

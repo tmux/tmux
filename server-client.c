@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.541 2026/11/23 08:44:19 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.542 2026/11/26 15:59:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2323,7 +2323,7 @@ server_client_reset_state(struct client *c)
 			cursor = 0;
 			if ((s->mode & MODE_SYNC) ||
 			    s->write_start != s->write_end ||
-			    s->write_scrolled != 0)
+			    s->scroll_lines != 0)
 				pending = 1;
 
 			tty_window_offset(tty, &ox, &oy, &sx, &sy);
