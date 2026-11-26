@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.295 2026/11/26 18:00:46 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.296 2026/11/26 19:54:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -867,7 +867,7 @@ input_clear_params(struct input_ctx *ictx)
 		if (ictx->param_list[i].type == INPUT_STRING)
 			free(ictx->param_list[i].str);
 	}
-
+	ictx->param_list_len = 0;
 }
 
 /* Destroy input parser. */

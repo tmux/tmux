@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1205 2026/11/26 08:00:21 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1206 2026/11/26 19:54:42 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -5270,6 +5270,8 @@ Allows setting the system clipboard.
 Allows setting the cursor colour.
 .It cstyle
 Allows setting the cursor style.
+.It ecmasgr
+Supports the separate attribute resets from ECMA-48 third edition.
 .It extkeys
 Supports extended keys.
 .It focus
@@ -9157,6 +9159,9 @@ Disable and enable focus reporting.
 These are set automatically if the
 .Em XT
 capability is present.
+.It Em \&Esgr
+Indicates that the terminal supports the separate attribute resets from
+ECMA-48 third edition.
 .It Em \&Hls
 Set or clear a hyperlink annotation.
 .It Em \&Iscrl
