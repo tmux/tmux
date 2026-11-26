@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.505 2026/11/26 13:38:39 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.506 2026/11/26 14:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -970,11 +970,53 @@ tty_emulate_repeat(struct tty *tty, enum tty_code_code code,
 	}
 }
 
+static int
+tty_try_repeat(struct tty *tty, u_char c, u_int n)
+{
+	u_int	m = n, right = tty->sx;
+
+	if (n < 6 ||
+	    (tty->cell.attr & GRID_ATTR_CHARSET) ||
+	    !tty_term_has(tty->term, TTYC_REP))
+		return (0);
+
+	if ((tty->term->flags & TERM_NOAM) &&
+	    tty->cy == tty->sy - 1 &&
+	    tty->cx + n == tty->sx)
+		return (0);
+
+	if (tty_use_margin(tty) && tty->rright < right)
+		right = tty->rright + 1;
+	if (tty->cx >= right || n > right - tty->cx)
+		return (0);
+
+	if (n == right - tty->cx)
+		m--;
+	tty_putcode_ii(tty, TTYC_REP, c, m);
+	tty->cx += m;
+	if (m != n)
+		tty_putc(tty, c);
+	return (1);
+}
+
 void
 tty_repeat_space(struct tty *tty, u_int n)
 {
 	static char s[500];
 
+	switch (n) {
+	case 0:
+		return;
+	case 1:
+		tty_putc(tty, ' ');
+		return;
+	case 2:
+		tty_putn(tty, "  ", 2, 2);
+		return;
+	}
+
+	if (tty_try_repeat(tty, ' ', n))
+		return;
 	if (*s != ' ')
 		memset(s, ' ', sizeof s);
 
@@ -1276,12 +1318,7 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 	/* Couldn't use an escape sequence, use spaces. */
 	if (px != 0 || !wrapped)
 		tty_cursor(tty, px, py);
-	if (nx == 1)
-		tty_putc(tty, ' ');
-	else if (nx == 2)
-		tty_putn(tty, "  ", 2, 2);
-	else
-		tty_repeat_space(tty, nx);
+	tty_repeat_space(tty, nx);
 }
 
 /* Clear a line, adjusting to visible part of pane. */
