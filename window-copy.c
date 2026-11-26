@@ -671,30 +671,17 @@ window_copy_line_mapping_matches(const struct window_copy_line *line,
 	    backing_x - line->backing_col);
 }
 
-/* Keep each visible backing row in one source mapping. */
+/* Record a backing row's source mapping. */
 static void
 window_copy_map_line(struct window_copy_mode_data *data,
-    struct window_copy_fold_ctx *fold, struct screen_write_ctx *ctx)
+    const struct window_copy_fold_ctx *fold, const struct screen *dst)
 {
-	struct screen		*dst = ctx->s;
 	struct window_copy_line	*line;
 	u_int			 y = screen_hsize(dst) + dst->cy;
 
 	line = window_copy_get_line_info(data, y);
 	if (line == NULL)
 		return;
-
-	/* Split rows with different source mappings. */
-	if (fold->hiding &&
-	    dst->cx != 0 &&
-	    !window_copy_line_mapping_matches(line, fold, dst->cx)) {
-		screen_write_carriagereturn(ctx);
-		screen_write_linefeed(ctx, 0, 8);
-		y = screen_hsize(dst) + dst->cy;
-		window_copy_grow_line_info(data,
-		    screen_hsize(dst) + screen_size_y(dst));
-		line = &data->lines[y];
-	}
 
 	/* Count columns from the first wrapped source row. */
 	line->source_line = fold->source_y;
@@ -966,6 +953,7 @@ window_copy_fold_start_prompt(struct window_copy_mode_data *data,
 {
 	struct screen		*dst = ctx->s;
 	struct grid_line	*dgl;
+	struct window_copy_line	*line;
 	struct osc133_data	*od = &sgl->osc133_data;
 	u_int			 dy, flags;
 
@@ -973,10 +961,22 @@ window_copy_fold_start_prompt(struct window_copy_mode_data *data,
 	if (fold->source_x != od->prompt_col || flags == 0)
 		return;
 
-	/* Keep a visible command prefix separate from the next prompt. */
-	if ((flags & GRID_LINE_START_PROMPT) && fold->hiding)
-		window_copy_map_line(data, fold, ctx);
 	dy = screen_hsize(dst) + dst->cy;
+
+	/* Keep a visible command prefix separate from the next prompt. */
+	if ((flags & GRID_LINE_START_PROMPT) && fold->hiding) {
+		line = window_copy_get_line_info(data, dy);
+		if (line != NULL &&
+		    dst->cx != 0 &&
+		    !window_copy_line_mapping_matches(line, fold, dst->cx)) {
+			screen_write_carriagereturn(ctx);
+			screen_write_linefeed(ctx, 0, 8);
+			dy = screen_hsize(dst) + dst->cy;
+			window_copy_grow_line_info(data,
+			    screen_hsize(dst) + screen_size_y(dst));
+		}
+		window_copy_map_line(data, fold, dst);
+	}
 	dgl = grid_get_line(dst->grid, dy);
 
 	if (flags & GRID_LINE_START_PROMPT) {
@@ -1272,7 +1272,7 @@ window_copy_write_fold_cell(struct window_copy_mode_data *data,
 		screen_write_carriagereturn(ctx);
 		window_copy_grow_line_info(data,
 		    screen_hsize(dst) + screen_size_y(dst));
-		window_copy_map_line(data, fold, ctx);
+		window_copy_map_line(data, fold, dst);
 	}
 	y = screen_hsize(dst) + dst->cy;
 	if (fold->keep_line)
@@ -1423,7 +1423,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			was_hiding = fold.hiding;
 			fold.source_x = x;
 			if (!fold.hiding)
-				window_copy_map_line(data, &fold, &ctx);
+				window_copy_map_line(data, &fold, dst);
 
 			/* Process markers even in hidden output. */
 			dy = screen_hsize(dst) + dst->cy;
@@ -1445,7 +1445,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				fold.command = 1;
 			}
 			if (was_hiding && !fold.hiding)
-				window_copy_map_line(data, &fold, &ctx);
+				window_copy_map_line(data, &fold, dst);
 			if (x == end) {
 				dy = screen_hsize(dst) + dst->cy;
 				break;
