@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.96 2026/11/26 08:00:21 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.97 2026/11/26 10:19:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -887,6 +887,14 @@ options_match_get(struct options *oo, const char *s, char **key, int only,
 }
 
 const char *
+options_entry_string(struct options_entry *o)
+{
+	if (!OPTIONS_IS_STRING(o))
+		fatalx("option %s is not a string", o->name);
+	return (o->value.string);
+}
+
+const char *
 options_get_string(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
@@ -894,9 +902,7 @@ options_get_string(struct options *oo, const char *name)
 	o = options_get(oo, name);
 	if (o == NULL)
 		fatalx("missing option %s", name);
-	if (!OPTIONS_IS_STRING(o))
-		fatalx("option %s is not a string", name);
-	return (o->value.string);
+	return (options_entry_string(o));
 }
 
 long long

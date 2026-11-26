@@ -1,4 +1,4 @@
-/* $OpenBSD: hooks.c,v 1.17 2026/10/15 08:21:11 nicm Exp $ */
+/* $OpenBSD: hooks.c,v 1.18 2026/11/26 10:19:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,7 +42,6 @@ struct hooks_data {
 	const char		*name;
 	struct cmd_find_state	 fs;
 	struct format_tree	*formats;
-	struct options		*oo;
 	struct client		*client;
 	int			 expand;
 };
@@ -79,9 +78,9 @@ hooks_insert_one(struct cmdq_item *item, struct hooks_data *hd,
 
 /* Parse a hook command. */
 static struct cmd_parse_result *
-hooks_parse(struct hooks_data *hd, struct cmd_find_state *fs,
-    const char *value)
+hooks_parse(struct hooks_data *hd, const char *value)
 {
+	struct cmd_find_state	*fs = &hd->fs;
 	struct cmd_parse_result	*pr;
 	struct format_tree	*ft;
 	char			*expanded;
@@ -100,14 +99,35 @@ hooks_parse(struct hooks_data *hd, struct cmd_find_state *fs,
 	return (pr);
 }
 
+/* Find the option holding a hook's commands. */
+static struct options_entry *
+hooks_find(const char *name, struct options *oo, struct cmd_find_state *fs)
+{
+	struct options_entry	*o;
+
+	if (!cmd_find_valid_state(fs))
+		cmd_find_from_nothing(fs, 0);
+
+	if (oo != NULL)
+		return (options_get_only(oo, name));
+	if (fs->s == NULL)
+		oo = global_s_options;
+	else
+		oo = fs->s->options;
+	o = options_get(oo, name);
+	if (o == NULL && fs->wp != NULL)
+		o = options_get(fs->wp->options, name);
+	if (o == NULL && fs->wl != NULL)
+		o = options_get(fs->wl->window->options, name);
+	return (o);
+}
+
 /* Insert commands for a hook. */
 static void
-hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
+hooks_insert(struct cmdq_item *item, struct hooks_data *hd,
+    struct options_entry *o)
 {
-	struct cmd_find_state		 fs;
-	struct options			*oo;
 	struct cmdq_state		*state;
-	struct options_entry		*o;
 	struct options_array_item	*a;
 	struct cmd_list			*cmdlist;
 	const char			*value;
@@ -115,30 +135,6 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 
 	log_debug("%s: inserting hook %s", __func__, hd->name);
 
-	cmd_find_clear_state(&fs, 0);
-	if (cmd_find_empty_state(&hd->fs) || !cmd_find_valid_state(&hd->fs))
-		cmd_find_from_nothing(&fs, 0);
-	else
-		cmd_find_copy_state(&fs, &hd->fs);
-
-	if (hd->oo != NULL) {
-		oo = hd->oo;
-		o = options_get_only(oo, hd->name);
-	} else {
-		if (fs.s == NULL)
-			oo = global_s_options;
-		else
-			oo = fs.s->options;
-		o = options_get(oo, hd->name);
-		if (o == NULL && fs.wp != NULL) {
-			oo = fs.wp->options;
-			o = options_get(oo, hd->name);
-		}
-		if (o == NULL && fs.wl != NULL) {
-			oo = fs.wl->window->options;
-			o = options_get(oo, hd->name);
-		}
-	}
 	if (o == NULL) {
 		log_debug("%s: hook %s not found", __func__, hd->name);
 		return;
@@ -146,16 +142,15 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 	options_hook_fired(o);
 
 	if (item == NULL)
-		state = cmdq_new_state(&fs, NULL, CMDQ_STATE_NOHOOKS);
+		state = cmdq_new_state(&hd->fs, NULL, CMDQ_STATE_NOHOOKS);
 	else {
-		state = cmdq_new_state(&fs, cmdq_get_event(item),
+		state = cmdq_new_state(&hd->fs, cmdq_get_event(item),
 		    CMDQ_STATE_NOHOOKS);
 	}
 	cmdq_add_formats(state, hd->formats);
 
 	if (*hd->name == '@') {
-		value = options_get_string(oo, hd->name);
-		pr = hooks_parse(hd, &fs, value);
+		pr = hooks_parse(hd, options_entry_string(o));
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
 			log_debug("%s: can't parse hook %s: %s", __func__,
@@ -172,7 +167,7 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 		while (a != NULL) {
 			if (hd->expand) {
 				value = options_array_item_value(a)->string;
-				pr = hooks_parse(hd, &fs, value);
+				pr = hooks_parse(hd, value);
 				switch (pr->status) {
 				case CMD_PARSE_ERROR:
 					if (pr->error != NULL) {
@@ -207,9 +202,21 @@ hooks_insert_event(struct cmdq_item *item, const char *name,
 	struct hooks_data	 hd;
 	struct format_tree	*ft;
 	struct client		*c;
+	struct options_entry	*o;
 
 	if (item != NULL && (cmdq_get_flags(item) & CMDQ_STATE_NOHOOKS))
 		return;
+
+	cmd_find_clear_state(&hd.fs, 0);
+	event_payload_get_target(ep, &hd.fs);
+
+	o = hooks_find(name, oo, &hd.fs);
+	if (o == NULL)
+		return;
+	if (*name != '@' && options_array_first(o) == NULL) {
+		options_hook_fired(o);
+		return;
+	}
 
 	c = event_payload_get_client(ep, "client");
 	ft = format_create(c, item, FORMAT_NONE, FORMAT_NOJOBS);
@@ -217,16 +224,12 @@ hooks_insert_event(struct cmdq_item *item, const char *name,
 	format_add(ft, "hook", "%s", name);
 	format_log_debug(ft, __func__);
 
-	memset(&hd, 0, sizeof hd);
 	hd.name = name;
-	cmd_find_clear_state(&hd.fs, 0);
-	event_payload_get_target(ep, &hd.fs);
 	hd.formats = ft;
-	hd.oo = oo;
 	hd.client = c;
 	hd.expand = expand;
 
-	hooks_insert(item, &hd);
+	hooks_insert(item, &hd, o);
 	format_free(ft);
 }
 
@@ -311,6 +314,7 @@ hooks_run(struct cmdq_item *item, const char *name)
 {
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct hooks_data	 hd = { 0 };
+	struct options_entry	*o;
 
 	hd.name = name;
 	cmd_find_copy_state(&hd.fs, target);
@@ -320,7 +324,8 @@ hooks_run(struct cmdq_item *item, const char *name)
 	format_add(hd.formats, "hook", "%s", name);
 	format_log_debug(hd.formats, __func__);
 
-	hooks_insert(item, &hd);
+	o = hooks_find(name, NULL, &hd.fs);
+	hooks_insert(item, &hd, o);
 	format_free(hd.formats);
 }
 
