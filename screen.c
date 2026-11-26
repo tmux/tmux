@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.111 2026/11/25 09:03:59 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.112 2026/11/26 08:00:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -189,6 +189,30 @@ screen_set_default_cursor(struct screen *s, struct options *oo)
 	c = options_get_number(oo, "cursor-style");
 	s->default_mode = 0;
 	screen_set_cursor_style(c, &s->default_cstyle, &s->default_mode);
+}
+
+/* Set copy mode cursor style and colour from options. */
+void
+screen_set_copy_cursor(struct screen *s, struct options *oo)
+{
+	struct grid_cell	gc;
+	const char	*colour;
+	int		 c;
+
+	screen_set_default_cursor(s, global_w_options);
+
+	colour = options_get_string(oo, "copy-mode-cursor-colour");
+	if (*colour != '\0') {
+		style_apply(&gc, oo, "copy-mode-cursor-colour", NULL);
+		s->default_ccolour = gc.fg;
+	}
+
+	c = options_get_number(oo, "copy-mode-cursor-style");
+	if (c == 0)
+		return;
+
+	s->default_mode = 0;
+	screen_set_cursor_style(c - 1, &s->default_cstyle, &s->default_mode);
 }
 
 /* Set screen cursor style and mode. */
