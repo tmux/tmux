@@ -1198,6 +1198,24 @@ AC_MSG_CHECKING(lock-command)
 AC_MSG_RESULT($DEFAULT_LOCK_CMD)
 AC_SUBST(DEFAULT_LOCK_CMD)
 
+# Check for LTO support.
+lto=no
+if test "x$enable_optimizations" = xyes &&
+   test "x$GCC" = xyes &&
+   test "x$enable_fuzzing" != xyes; then
+	AC_MSG_CHECKING([for LTO support])
+	lto_cflags="$CFLAGS"
+	for lto_flag in -flto=auto -flto; do
+		CFLAGS="$lto_flag -Werror $lto_cflags"
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([], [])], [lto=$lto_flag])
+		test "x$lto" != xno && break
+	done
+	CFLAGS="$lto_cflags"
+	AC_MSG_RESULT([$lto])
+fi
+AM_CONDITIONAL(IS_LTO, test "x$lto" != xno)
+AM_CONDITIONAL(IS_LTO_AUTO, test "x$lto" = x-flto=auto)
+
 # Print a summary.
 AC_MSG_NOTICE([])
 if test "x$enable_asan" = xyes; then
