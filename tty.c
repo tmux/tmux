@@ -150,11 +150,13 @@ tty_resize(struct tty *tty)
 		} else
 			ypixel = ws.ws_ypixel / sy;
 
+#ifdef ENABLE_IMAGES
 		if ((xpixel == 0 || ypixel == 0) &&
 		    (tty->flags & TTY_STARTED) &&
 		    !(tty->flags & (TTY_WINSZQUERY|TTY_WINSZPIXELS)) &&
 		    (tty->term->flags & TERM_VT100LIKE))
 			tty_send_size_query(tty, 0);
+#endif
 	} else {
 		sx = 80;
 		sy = 24;
