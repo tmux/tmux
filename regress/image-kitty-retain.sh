@@ -130,4 +130,32 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(full)
     assert len(terminal.images) == 1
+
+
+# Refresh must enforce reduced budgets even when every upload is hidden.
+for option, remaining in [('image-total-size-limit', 0),
+                          ('image-total-count-limit', 1)]:
+    with image_test(sys.argv[1]) as test:
+        client = test.attach(kitty_graphics=True)
+        terminal = KittyTerminal()
+
+        def cache_state():
+            """Read output and report cached uploads and visible placements."""
+            terminal.feed(client.data)
+            client.data.clear()
+            state = len(terminal.images), len(terminal.placements)
+            return state
+
+        test.emit(picture + b'\033[1;9H' +
+            picture.replace(b'i=7', b'i=8'))
+        terminal.feed(client.data)
+        assert len(terminal.images) == 2
+        client.clear()
+        test.run('new-window', 'stty raw -echo; exec cat')
+        test.wait(lambda: cache_state() == (2, 0))
+
+        test.run('set-option', '-s', option, '1')
+        test.run('refresh-client', '-t', client.name)
+        test.wait(lambda: cache_state() == (remaining, 0))
+        assert terminal.uploads == 2
 PY

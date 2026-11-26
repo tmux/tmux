@@ -575,8 +575,10 @@ kitty_redraw_finish(struct tty *tty)
 		return;
 	kitty_free_stale_images(tty);
 
-	if (!ko->changed)
+	if (!ko->changed) {
+		kitty_trim_cache(tty);
 		return;
+	}
 	ko->changed = 0;
 
 	/* Delete placements marked during the redraw. */
