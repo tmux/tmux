@@ -45,6 +45,9 @@
 
 #define KITTY_CHUNK_SIZE 3072
 
+/* Kitty and Ghostty limit uploaded images to 10000 pixels per side. */
+#define KITTY_MAX_DIMENSION 10000
+
 /* State attached to an input parser. */
 struct kitty_state {
 	char				 action;
@@ -256,8 +259,8 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 		    ig->src_h;
 		if (x % ig->src_w == 0 &&
 		    y % ig->src_h == 0 &&
-		    width <= UINT_MAX - 2 &&
-		    height <= UINT_MAX - 2 &&
+		    width <= KITTY_MAX_DIMENSION - 2 &&
+		    height <= KITTY_MAX_DIMENSION - 2 &&
 		    (width + 2) * (height + 2) <= limit / 4) {
 			/* Expand the source for a second compatible view. */
 			if (ig->src_w == sg->src_w && ig->src_h == sg->src_h)
