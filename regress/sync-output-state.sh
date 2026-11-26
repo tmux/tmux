@@ -319,5 +319,37 @@ emit '\033[8;3HZ\033[?2026l'
 check_screen scroll-client
 check_screen redraw-client second
 
+# Use DL and IL at the top and inside the region, with an edit outside
+# the affected lines before the command and an edit inside them after it.
+for scroll_row in 1 3; do
+	if [ "$scroll_row" = 1 ]; then
+		before=8
+	else
+		before=2
+	fi
+	for scroll in M L; do
+		scroll_test=scroll-$scroll-$scroll_row
+		reset_screen
+		check_screen "$scroll_test-reset" second
+		$OUTER pipe-pane -O -t outer:0.0 "cat >'$DIR/$scroll_test'" ||
+		    exit 1
+		emit "\\033[?2026h\\033[$before;1Hedge"
+		emit "\\033[1;7r\\033[$scroll_row;1H\\033[$scroll"
+		emit '\033[r\033[4;10HX\033[?2026l'
+		check_screen "$scroll_test-client"
+		check_screen "$scroll_test-redraw" second
+		wait_until grep -Fq -e "$(printf '\033[%s' "$scroll")" \
+		    -e "$(printf '\033[1%s' "$scroll")" "$DIR/$scroll_test" ||
+		    fail "$scroll_test: client did not use the scroll command"
+		$OUTER pipe-pane -t outer:0.0 || exit 1
+	done
+done
+
+# An edit made before scrolling has to move with the line.
+reset_screen
+emit '\033[?2026h\033[1;7r\033[3;1HX\033[H\033[M\033[r\033[?2026l'
+check_screen scroll-after-edit
+check_screen scroll-after-edit-redraw second
+
 echo "$1 state checks passed"
 exit 0
