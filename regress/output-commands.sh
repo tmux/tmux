@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -237,8 +239,8 @@ $TMUX send-keys -t :clear.0 -X copy-selection || exit 1
 $TMUX send-keys -t :clear.0 -X cancel || exit 1
 
 # Do not infer output from a D which belongs to the first surviving prompt.
-$TMUX new-window -d -n prefix "printf 'prefix\\n\\033]133;A\\007p\\$ \\033]133;B\\007echo\\033]133;C\\007one\\033]133;D;0\\007'; exec sleep 100" || exit 1
-sleep 1
+$TMUX new-window -d -n prefix "printf 'prefix\\n\\033]133;A\\007p\\$ \\033]133;B\\007echo\\033]133;C\\007one\\033]133;D;0\\007'; printf '\\033]2;prefix-ready\\007'; exec sleep 100" || exit 1
+wait_for_output prefix-ready $TMUX display-message -t :prefix -p '#{pane_title}' || exit 1
 $TMUX copy-mode -t :prefix || exit 1
 $TMUX send-keys -t :prefix.0 -X cursor-up || exit 1
 $TMUX send-keys -t :prefix.0 C-o || exit 1

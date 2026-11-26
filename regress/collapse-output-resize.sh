@@ -117,14 +117,20 @@ done
 # Refresh must keep a mixture of collapsed and expanded commands.
 for refresh in refresh-now refresh-on; do
 	start_cmd refresh 80 12 \
-		"printf '$commands_seq'; sleep 1; printf LIVE; sleep 1; printf LIVE; $INPUT_HOLD"
+		"printf '$commands_seq'; printf '\033]2;refresh-ready\007'; $TMUX wait-for output-20; printf LIVE; $TMUX wait-for output-100; printf LIVE; $INPUT_HOLD"
+	wait_for_output refresh-ready $TMUX display -t refresh: -p \
+		'#{pane_title}' || exit 1
 	$TMUX copy-mode -t refresh: -c || exit 1
 	$TMUX send -t refresh: -X search-backward-text second || exit 1
 	$TMUX send -t refresh: -X expand-output || exit 1
+	live=
 	for width in 20 100; do
 		$TMUX resize-window -t refresh: -x "$width" || exit 1
+		$TMUX wait-for -S "output-$width" || exit 1
+		live=${live}LIVE
+		wait_for_text "$live" $TMUX capture-pane -t refresh: -p || exit 1
 		$TMUX send -t refresh: -X "$refresh" || exit 1
-		sleep 1
+		wait_for_text "$live" $TMUX capture-pane -t refresh: -Mp || exit 1
 		$TMUX send -t refresh: -X history-top || exit 1
 		$TMUX capture-pane -t refresh: -Mp >"$TMP" || exit 1
 		grep -q FFFFF "$TMP" && fail "$refresh expanded the first command"

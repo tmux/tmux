@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -11,8 +13,8 @@ trap '$TMUX kill-server 2>/dev/null' 0
 trap 'exit 1' 1 2 3 15
 
 $TMUX new-session -d -x20 -y10 \
-	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007FIRST-OUTPUT\r\n\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007012345678901234567890123456789\r\nlast\r\n\033]133;D;7\007\033]133;A\007P2> \033]133;B\007'; exec sleep 100" || exit 1
-sleep 1
+	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007FIRST-OUTPUT\r\n\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007012345678901234567890123456789\r\nlast\r\n\033]133;D;7\007\033]133;A\007P2> \033]133;B\007'; printf '\033]2;fold-ready\007'; exec sleep 100" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 
 expected=$(printf '012345678901234567890123456789\nlast')
 for keys in emacs vi; do
@@ -46,8 +48,8 @@ done
 
 # A prompt after an output end on the same source line moves left when folded.
 $TMUX new-window -n shared \
-	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007head\r\ntail\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND-OUTPUT\r\n\033]133;D;0\007\033]133;A\007P2> \033]133;B\007'; exec sleep 100" || exit 1
-sleep 1
+	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007head\r\ntail\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND-OUTPUT\r\n\033]133;D;0\007\033]133;A\007P2> \033]133;B\007'; printf '\033]2;fold-ready\007'; exec sleep 100" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 for keys in emacs vi; do
 	$TMUX set -g mode-keys "$keys" || exit 1
 	$TMUX copy-mode -c || exit 1
@@ -63,8 +65,8 @@ done
 
 # An output start before the next prompt on the same row anchors the old fold.
 $TMUX new-window -n inline \
-	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007FIRST\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND\033]133;D;0\007\r\n\033]133;A\007P2> \033]133;B\007'; exec sleep 100" || exit 1
-sleep 1
+	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007FIRST\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND\033]133;D;0\007\r\n\033]133;A\007P2> \033]133;B\007'; printf '\033]2;fold-ready\007'; exec sleep 100" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 for keys in emacs vi; do
 	$TMUX set -w -t :inline mode-keys "$keys" || exit 1
 	for prompt in P0 P1 P2; do
@@ -93,14 +95,14 @@ done
 
 # Manual controls use anchors before the next prompt on a shared source row.
 $TMUX new-window -n separator \
-	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;D;0\007SEPARATOR\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND\033]133;D;0\007\r\n\033]133;A\007P2> \033]133;B\007'; exec sleep 100" || exit 1
-sleep 1
+	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;D;0\007SEPARATOR\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND\033]133;D;0\007\r\n\033]133;A\007P2> \033]133;B\007'; printf '\033]2;fold-ready\007'; exec sleep 100" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 $TMUX new-window -n silent \
-	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007FIRST\033]133;D;0\007\033]133;A\007P1> \033]133;B\007silent\r\n\033]133;D;0\007SEPARATOR\033]133;A\007P2> \033]133;B\007'; exec sleep 100" || exit 1
-sleep 1
+	"printf '\033]133;A\007P0> \033]133;B\007first\r\n\033]133;C\007FIRST\033]133;D;0\007\033]133;A\007P1> \033]133;B\007silent\r\n\033]133;D;0\007SEPARATOR\033]133;A\007P2> \033]133;B\007'; printf '\033]2;fold-ready\007'; exec sleep 100" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 $TMUX new-window -n inline-start \
-	"printf '\033]133;A\007P0> \033]133;B\007first\033]133;C\007FIRST\r\n\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND\033]133;D;0\007\r\n\033]133;A\007P2> \033]133;B\007'; exec sleep 100" || exit 1
-sleep 1
+	"printf '\033]133;A\007P0> \033]133;B\007first\033]133;C\007FIRST\r\n\033]133;D;0\007\033]133;A\007P1> \033]133;B\007second\r\n\033]133;C\007SECOND\033]133;D;0\007\r\n\033]133;A\007P2> \033]133;B\007'; printf '\033]2;fold-ready\007'; exec sleep 100" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 for region in first separator silent inline-start; do
 	prompt='P0>'
 	neighbor=SECOND

@@ -21,13 +21,13 @@ wait_for_clients 1 $TMUX || exit 1
 number_matches()
 {
 	$OUTER capture-pane -p >"$TMP" || return 1
-	grep -q '^12002 .*NEXT>' "$TMP"
+	grep -q "$1" "$TMP"
 }
 
 for mode in default absolute hybrid; do
 	$TMUX set -g copy-mode-line-numbers "$mode" || exit 1
 	$TMUX copy-mode -t "$target" -c || exit 1
-	wait_until number_matches || fail "$mode source line number"
+	wait_until number_matches '^12002 .*NEXT>' || fail "$mode source line number"
 	$TMUX send -t "$target" -X cancel || exit 1
 done
 
@@ -71,6 +71,7 @@ $TMUX resize-window -t "$target" -x 20 || exit 1
 $TMUX respawn-pane -t "$target" -k \
 	"printf '\033]133;A\007p> \033]133;B\007first\r\n\033]133;C\007'; printf '%060d' 0 | tr 0 A; printf '\033]133;D;0\007\r\n\033]133;A\007NEXT> \033]133;B\007\033]2;reflow-ready\007'; $INPUT_HOLD" || exit 1
 wait_for_output reflow-ready $TMUX display -t "$target" -p '#{pane_title}' || exit 1
+joined=$(printf '%060d' 0 | tr 0 A)
 for mode in default absolute hybrid; do
 	$TMUX resize-window -t "$target" -x 20 || exit 1
 	$TMUX set -g copy-mode-line-numbers "$mode" || exit 1
@@ -78,9 +79,8 @@ for mode in default absolute hybrid; do
 	$TMUX send -t "$target" -X history-top || exit 1
 	$TMUX send -t "$target" -X search-forward-text AAAAA || exit 1
 	$TMUX resize-window -t "$target" -x 80 || exit 1
-	sleep 0.3
-	$OUTER capture-pane -p >"$TMP" || exit 1
-	grep -q '^  2 .*AAAAA' "$TMP" || fail "$mode joined source line number"
+	wait_until number_matches "^  2 .*$joined" || \
+		fail "$mode joined source line number"
 	$TMUX send -t "$target" -X cancel || exit 1
 done
 

@@ -35,7 +35,6 @@ struct window_copy_fold;
 #define WINDOW_COPY_LINE_INITIAL 0x4
 #define WINDOW_COPY_LINE_EXPANDABLE 0x8
 
-/* Independent collapse bits for C, D and the initial region. */
 #define WINDOW_COPY_FOLD_OUTPUT 0x1
 #define WINDOW_COPY_FOLD_SEPARATOR 0x2
 #define WINDOW_COPY_FOLD_INITIAL 0x4
@@ -864,9 +863,8 @@ window_copy_scan_fold_line(struct window_copy_fold_scan *scan,
 		}
 		pending &= ~flag;
 		if (mode == WINDOW_COPY_FOLD_SCAN_TO_PROMPT &&
-		    flag == GRID_LINE_START_PROMPT) {
+		    flag == GRID_LINE_START_PROMPT)
 			break;
-		}
 		switch (flag) {
 		case GRID_LINE_START_PROMPT:
 			scan->fold.prompt = y;
@@ -919,17 +917,15 @@ window_copy_any_fold_collapsed(struct window_copy_mode_data *data)
 	/* Check the initial fold only if rows precede the first prompt. */
 	if (y != 0 &&
 	    y != UINT_MAX &&
-	    (data->source_flags[0] & WINDOW_COPY_FOLD_INITIAL)) {
+	    (data->source_flags[0] & WINDOW_COPY_FOLD_INITIAL))
 		return (1);
-	}
 
 	/* Leading markers belong to the initial fold, not separate commands. */
 	for (; y < gd->hsize + gd->sy; y++) {
 		gl = grid_get_line(gd, y);
 		if (window_copy_scan_fold_line(&scan, gl, y,
-		    WINDOW_COPY_FOLD_SCAN_LINE) & data->source_flags[y]) {
+		    WINDOW_COPY_FOLD_SCAN_LINE) & data->source_flags[y])
 			return (1);
-		}
 	}
 	return (0);
 }
@@ -952,19 +948,18 @@ window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
 	if (y != 0 &&
 	    y != UINT_MAX &&
 	    window_copy_set_fold_collapsed(data, 0, WINDOW_COPY_FOLD_INITIAL,
-	    collapsed)) {
+	    collapsed))
 		changed = 1;
-	}
 
 	/* Separate command folds start at the first primary prompt. */
 	for (; y < gd->hsize + gd->sy; y++) {
 		gl = grid_get_line(gd, y);
 		flags = window_copy_scan_fold_line(&scan, gl, y,
 		    WINDOW_COPY_FOLD_SCAN_LINE);
-		if (flags != 0 &&
-		    window_copy_set_fold_collapsed(data, y, flags, collapsed)) {
+		if (flags == 0)
+			continue;
+		if (window_copy_set_fold_collapsed(data, y, flags, collapsed))
 			changed = 1;
-		}
 	}
 	return (changed);
 }
@@ -1019,9 +1014,8 @@ window_copy_fold_start_output(struct window_copy_mode_data *data,
 	struct osc133_data	*osc133 = &sgl->osc133_data;
 
 	if ((~sgl->flags & GRID_LINE_START_OUTPUT) ||
-	    fold->source_x != osc133->out_start_col) {
+	    fold->source_x != osc133->out_start_col)
 		return;
-	}
 
 	/* C starts the collapsible output region. */
 	dgl->flags |= GRID_LINE_START_OUTPUT;
@@ -1057,9 +1051,8 @@ window_copy_fold_end_output(struct window_copy_mode_data *data,
 	struct osc133_data	*osc133 = &sgl->osc133_data;
 
 	if ((~sgl->flags & GRID_LINE_END_OUTPUT) ||
-	    fold->source_x != osc133->out_end_col) {
+	    fold->source_x != osc133->out_end_col)
 		return;
-	}
 
 	/* Fold text after D until the next A. */
 	dgl->flags |= GRID_LINE_END_OUTPUT;
@@ -1067,7 +1060,8 @@ window_copy_fold_end_output(struct window_copy_mode_data *data,
 		dgl->flags |= GRID_LINE_END_OUTPUT_STATUS;
 	dgl->osc133_data.out_end_col = col;
 	dgl->osc133_data.exit_status = osc133->exit_status;
-	if (fold->in_output && fold->output_empty &&
+	if (fold->in_output &&
+	    fold->output_empty &&
 	    fold->prompt_dy != UINT_MAX) {
 		/* No output to hide, no +/-. */
 		window_copy_set_line_control(data, fold->prompt_dy,
@@ -1111,10 +1105,10 @@ window_copy_fold_cell(struct window_copy_mode_data *data,
 		return;
 	}
 	/* No fold or unset line indices means no prompt control to update. */
-	if (!fold->tree || fold->output_line == UINT_MAX ||
-	    fold->prompt_dy == UINT_MAX) {
+	if (!fold->tree ||
+	    fold->output_line == UINT_MAX ||
+	    fold->prompt_dy == UINT_MAX)
 		return;
-	}
 	/* Enable this fold's +/- control for the separator text after D. */
 	window_copy_set_line_control(data, fold->prompt_dy, fold->output_line,
 	    fold->output_flag, 1);
@@ -1130,10 +1124,10 @@ window_copy_fold_hidden_line(struct window_copy_mode_data *data,
 	u_int			 x;
 
 	/* Keep markers and the initial control row in the normal scan. */
-	if (!fold->hiding || (gl->flags & GRID_LINE_OSC133_FLAGS) ||
-	    (fold->initial && fold->source_y == 0)) {
+	if (!fold->hiding ||
+	    (gl->flags & GRID_LINE_OSC133_FLAGS) ||
+	    (fold->initial && fold->source_y == 0))
 		return (0);
-	}
 	if (fold->in_output && !fold->output_empty)
 		return (1);
 
@@ -1162,15 +1156,14 @@ window_copy_fold_linefeed(struct screen_write_ctx *ctx,
 {
 	/* Wrapped text continues, while image rows keep their boundaries. */
 	if (fold->source_y + 1 == total ||
-	    ((gl->flags & GRID_LINE_WRAPPED) && !fold->keep_line)) {
+	    ((gl->flags & GRID_LINE_WRAPPED) && !fold->keep_line))
 		return;
-	}
 
 	/* Keep a hard break after visible command text or initial controls. */
-	if (fold->hiding && ctx->s->cx == 0 &&
-	    (!fold->initial || fold->source_y != 0)) {
+	if (fold->hiding &&
+	    ctx->s->cx == 0 &&
+	    (!fold->initial || fold->source_y != 0))
 		return;
-	}
 	screen_write_carriagereturn(ctx);
 	screen_write_linefeed(ctx, gl->flags & GRID_LINE_WRAPPED, 8);
 }
@@ -1194,11 +1187,12 @@ window_copy_fold_empty_line(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold, struct grid_line *gl, u_int y)
 {
 	/* Require a visible empty fold row without prompt or output markers. */
-	if (fold->hiding || !fold->tree || gl->cellused != 0 ||
+	if (fold->hiding ||
+	    !fold->tree ||
+	    gl->cellused != 0 ||
 	    (gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_START_OUTPUT|
-	    GRID_LINE_END_OUTPUT))) {
+	    GRID_LINE_END_OUTPUT)))
 		return;
-	}
 	window_copy_set_line_info(data, y, fold->source_y, fold->output_line,
 	    fold->output_flag, WINDOW_COPY_LINE_MEMBER);
 }
@@ -1260,9 +1254,8 @@ window_copy_fold_line_length(struct grid_line *gl)
 	u_int			 length = gl->cellused;
 
 	if ((gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_SECOND_PROMPT)) &&
-	    od->prompt_col > length) {
+	    od->prompt_col > length)
 		length = od->prompt_col;
-	}
 	if ((gl->flags & GRID_LINE_START_COMMAND) && od->cmd_col > length)
 		length = od->cmd_col;
 	if ((gl->flags & GRID_LINE_START_OUTPUT) && od->out_start_col > length)
@@ -1438,7 +1431,8 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		}
 
 		/* Image rows must not join the preceding wrapped text. */
-		if (!fold.hiding && dst->cx != 0 &&
+		if (!fold.hiding &&
+		    dst->cx != 0 &&
 		    (dst->cx == sx || fold.keep_line)) {
 			screen_write_linefeed(&ctx, 1, 8);
 			screen_write_carriagereturn(&ctx);
@@ -1484,9 +1478,9 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			if (gc.flags & GRID_FLAG_TAB)
 				fold.tab_end = x + gc.data.width;
 			if ((gc.flags & GRID_FLAG_PADDING) &&
-			    x >= fold.tab_end && !fold.keep_line) {
+			    x >= fold.tab_end &&
+			    !fold.keep_line)
 				continue;
-			}
 
 			/* Only stored cells or images make output nonempty. */
 			content = x < sgl->cellused &&
@@ -1777,10 +1771,8 @@ window_copy_init(struct window_mode_entry *wme,
 	data->cx = cx;
 	if (data->fold_view) {
 		restored = window_copy_restore_cursor(wme, cx, cy);
-		if (!restored &&
-		    window_copy_find_fold(wme, cx, cy, &fold)) {
+		if (!restored && window_copy_find_fold(wme, cx, cy, &fold))
 			restored = window_copy_restore_command_end(wme, &fold);
-		}
 		if (!restored)
 			restored = window_copy_restore_before(wme, cy);
 	}
@@ -2844,14 +2836,12 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 		/* Expand at C even when the next prompt shares its row. */
 		if (all)
 			changed = window_copy_set_all_folds_collapsed(data, 0);
-		else {
-			if (window_copy_in_initial_output(gd, sx, sy)) {
-				changed = window_copy_set_fold_collapsed(data,
-				    0, WINDOW_COPY_FOLD_INITIAL, 0);
-			} else {
-				changed = window_copy_set_fold_collapsed(data,
-				    sy, WINDOW_COPY_FOLD_OUTPUT, 0);
-			}
+		else if (window_copy_in_initial_output(gd, sx, sy)) {
+			changed = window_copy_set_fold_collapsed(data, 0,
+			    WINDOW_COPY_FOLD_INITIAL, 0);
+		} else {
+			changed = window_copy_set_fold_collapsed(data, sy,
+			    WINDOW_COPY_FOLD_OUTPUT, 0);
 		}
 		if (changed) {
 			window_copy_clear_selection(wme);
@@ -2860,9 +2850,8 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 		}
 	}
 	if (!window_copy_find_backing_position(wme, sx, sy, &bsx, &bsy) ||
-	    !window_copy_find_backing_position(wme, ex, ey, &bex, &bey)) {
+	    !window_copy_find_backing_position(wme, ex, ey, &bex, &bey))
 		return (WINDOW_COPY_CMD_NOTHING);
-	}
 
 	window_copy_clear_selection(wme);
 	data->lineflag = LINE_SEL_NONE;
@@ -4572,14 +4561,12 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 			/* Visit C and D in order as reflow advances. */
 			index = i;
 			if (gl->osc133_data.out_end_col <
-			    gl->osc133_data.out_start_col) {
+			    gl->osc133_data.out_start_col)
 				index = 1 - i;
-			}
 			flag = markers[index];
 			if ((~data->source_flags[y] & fold_flags[index]) ||
-			    (~gl->flags & flag)) {
+			    (~gl->flags & flag))
 				continue;
-			}
 			if (flag == GRID_LINE_START_OUTPUT)
 				col = gl->osc133_data.out_start_col;
 			else
@@ -4590,9 +4577,8 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 				rgl = grid_get_line(rgd, reflow_y);
 				if (reflow_row == wy &&
 				    ((~rgl->flags & GRID_LINE_WRAPPED) ||
-				    wx + col < reflow_col + rgl->cellused)) {
+				    wx + col < reflow_col + rgl->cellused))
 					break;
-				}
 				if (rgl->flags & GRID_LINE_WRAPPED)
 					reflow_col += rgl->cellused;
 				else {
@@ -4612,9 +4598,8 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 					col = new_gl->osc133_data.out_start_col;
 				else
 					col = new_gl->osc133_data.out_end_col;
-				if ((new_gl->flags & flag) && col == x) {
+				if ((new_gl->flags & flag) && col == x)
 					flags[new_y] |= fold_flags[index];
-				}
 			}
 		}
 
@@ -4631,9 +4616,7 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 
 	/* Keep the initial fold if both sources retain leading output. */
 	first_prompt = window_copy_first_prompt(old);
-	if (collected == 0 &&
-	    first_prompt != 0 &&
-	    first_prompt != UINT_MAX) {
+	if (collected == 0 && first_prompt != 0 && first_prompt != UINT_MAX) {
 		first_prompt = window_copy_first_prompt(gd);
 		if (first_prompt != 0 && first_prompt != UINT_MAX) {
 			flags[0] |= data->source_flags[0] &
@@ -4979,9 +4962,8 @@ window_copy_find_fold(struct window_mode_entry *wme, u_int target_x,
 		/* Stop before a prompt beyond the target position. */
 		if ((gl->flags & GRID_LINE_START_PROMPT) &&
 		    (y > target_y ||
-		    (y == target_y && gl->osc133_data.prompt_col > target_x))) {
+		    (y == target_y && gl->osc133_data.prompt_col > target_x)))
 			mode = WINDOW_COPY_FOLD_SCAN_TO_PROMPT;
-		}
 		window_copy_scan_fold_line(&scan, gl, y, mode);
 		if (mode == WINDOW_COPY_FOLD_SCAN_TO_PROMPT)
 			break;
@@ -5113,9 +5095,8 @@ window_copy_find_backing_position(struct window_mode_entry *wme, u_int source_x,
 		/* A source row may span several backing rows after wrapping. */
 		gl = grid_get_line(data->backing->grid, y);
 		if (x > gl->cellused ||
-		    (x == gl->cellused && (gl->flags & GRID_LINE_WRAPPED))) {
+		    (x == gl->cellused && (gl->flags & GRID_LINE_WRAPPED)))
 			continue;
-		}
 		*backing_x = x;
 		*backing_y = y;
 		return (1);
@@ -5212,10 +5193,10 @@ window_copy_restore_before(struct window_mode_entry *wme, u_int source_y)
 		gl = grid_get_line(gd, y);
 
 		/* Skip unmapped rows, later source rows and empty rows. */
-		if (line == NULL || line->source_line > source_y ||
-		    gl->cellused == 0) {
+		if (line == NULL ||
+		    line->source_line > source_y ||
+		    gl->cellused == 0)
 			continue;
-		}
 		last = y;
 	}
 	/* No suitable backing row remains at or before the source position. */
@@ -5281,9 +5262,8 @@ window_copy_apply_fold_request(struct window_mode_entry *wme,
 		changed = window_copy_set_fold_collapsed(data, 0,
 		    WINDOW_COPY_FOLD_INITIAL, wanted);
 	} else if (found) {
-		if (request->action == WINDOW_COPY_FOLD_TOGGLE) {
+		if (request->action == WINDOW_COPY_FOLD_TOGGLE)
 			wanted = !(data->source_flags[fold.line] & fold.flag);
-		}
 		changed = window_copy_set_fold_collapsed(data, fold.line,
 		    fold.flag, wanted);
 	}
@@ -5300,9 +5280,8 @@ window_copy_apply_fold_request(struct window_mode_entry *wme,
 
 	/* Keep the source cell unless the request prefers the command end. */
 	if (!request->command_end &&
-	    window_copy_restore_cursor(wme, source_x, source_y)) {
+	    window_copy_restore_cursor(wme, source_x, source_y))
 		return (1);
-	}
 	/* Fall back to the initial output's first row or the command end. */
 	if (initial && window_copy_restore_before(wme, 0))
 		return (1);
@@ -5371,9 +5350,8 @@ window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 		/* Require a mouse event inside this pane's gutter. */
 		if (cs->m == NULL ||
 		    cmd_mouse_at(cs->wme->wp, cs->m, &x, &y, 0) != 0 ||
-		    x >= window_copy_left_margin(cs->wme)) {
+		    x >= window_copy_left_margin(cs->wme))
 			return (WINDOW_COPY_CMD_NOTHING);
-		}
 		/* Convert the clicked screen row to a backing row. */
 		target = screen_hsize(data->backing) + y - data->oy;
 		line = window_copy_get_line_info(data, target);
@@ -5394,9 +5372,8 @@ window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 			/* Require text or separator cells to hide. */
 			if (line->output_line >= data->source_line_count ||
 			    ((line->flags & WINDOW_COPY_LINE_CONTROL) &&
-			    (~line->flags & WINDOW_COPY_LINE_EXPANDABLE))) {
+			    (~line->flags & WINDOW_COPY_LINE_EXPANDABLE)))
 				return (WINDOW_COPY_CMD_NOTHING);
-			}
 
 			/* Locate the gutter's recorded output anchor. */
 			request.target = line->output_line;
@@ -5406,18 +5383,16 @@ window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 			else
 				request.column = gl->osc133_data.out_end_col;
 			if (!window_copy_find_fold(cs->wme, request.column,
-			    request.target, &target_fold)) {
+			    request.target, &target_fold))
 				return (WINDOW_COPY_CMD_NOTHING);
-			}
 			window_copy_get_cursor_source(cs->wme, &x, &current);
 			current_found = window_copy_find_fold(cs->wme,
 			    x, current, &current_fold);
 
 			/* Keep the cursor if it is already in this command. */
 			if (current_found &&
-			    current_fold.prompt == target_fold.prompt) {
+			    current_fold.prompt == target_fold.prompt)
 				request.command_end = 0;
-			}
 		}
 	}
 	/* Apply the request and redraw only if fold state changed. */
@@ -6141,15 +6116,15 @@ window_copy_mouse_in_gutter(struct window_mode_entry *wme,
 	u_int	 x, y;
 
 	/* Require a valid non-wheel mouse event invoking toggle-output. */
-	if (m == NULL || !m->valid || MOUSE_WHEEL(m->b) ||
-	    strcmp(command, "toggle-output") != 0) {
+	if (m == NULL ||
+	    !m->valid ||
+	    MOUSE_WHEEL(m->b) ||
+	    strcmp(command, "toggle-output") != 0)
 		return (0);
-	}
 	/* The event must be inside this pane and left of the text area. */
 	if (cmd_mouse_at(wme->wp, m, &x, &y, 0) != 0 ||
-	    x >= window_copy_left_margin(wme)) {
+	    x >= window_copy_left_margin(wme))
 		return (0);
-	}
 	return (1);
 }
 
@@ -6172,10 +6147,11 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 		return;
 	command = args_string(args, 0);
 
-	if (m != NULL && m->valid && !MOUSE_WHEEL(m->b) &&
-	    !window_copy_mouse_in_gutter(wme, m, command)) {
+	if (m != NULL &&
+	    m->valid &&
+	    !MOUSE_WHEEL(m->b) &&
+	    !window_copy_mouse_in_gutter(wme, m, command))
 		window_copy_move_mouse(m);
-	}
 
 	cs.wme = wme;
 	cs.args = args;
@@ -7698,10 +7674,10 @@ window_copy_line_number_width(struct window_mode_entry *wme)
 		return (0);
 
 	lines = screen_hsize(data->backing) + screen_size_y(data->backing) + 1;
-	if (data->fold_view && mode != WINDOW_COPY_LINE_NUMBERS_RELATIVE &&
-	    lines < data->source_line_count) {
+	if (data->fold_view &&
+	    mode != WINDOW_COPY_LINE_NUMBERS_RELATIVE &&
+	    lines < data->source_line_count)
 		lines = data->source_line_count;
-	}
 	digits = 1;
 	while (lines >= 10) {
 		lines /= 10;
@@ -7862,9 +7838,8 @@ window_copy_gutter_control(struct window_copy_mode_data *data,
 	if (next == NULL ||
 	    (~next->flags & WINDOW_COPY_LINE_MEMBER) ||
 	    next->output_line != line->output_line ||
-	    next->output_flag != line->output_flag) {
+	    next->output_flag != line->output_flag)
 		return ('m'); /* ACS lower-left corner */
-	}
 	return ('x'); /* ACS vertical line */
 }
 
@@ -7915,10 +7890,10 @@ window_copy_write_gutter(struct window_mode_entry *wme,
 		screen_write_putc(ctx, &control_gc, control);
 	}
 	/* Show a command's exit status only on its fold control row. */
-	if (line == NULL || (~line->flags & WINDOW_COPY_LINE_CONTROL) ||
-	    status_width == 0) {
+	if (line == NULL ||
+	    (~line->flags & WINDOW_COPY_LINE_CONTROL) ||
+	    status_width == 0)
 		return;
-	}
 	status = window_copy_expand_exit_status(wme, line);
 	screen_write_cursormove(ctx, line_width, py, 0);
 	format_draw(ctx, gc, status_width, status, NULL, 0);

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -7,8 +9,8 @@ TERM=screen
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 
 $TMUX kill-server 2>/dev/null
-$TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007p\\$ \\033]133;B\\007echo hi\\n\\033]133;C\\007hello\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007\"; exec sleep 100'" || exit 1
-sleep 1
+$TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007p\\$ \\033]133;B\\007echo hi\\n\\033]133;C\\007hello\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007\"; printf \"\\033]2;fold-ready\\007\"; exec sleep 100'" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 
 $TMUX copy-mode -c || exit 1
 $TMUX send-keys -X search-backward hello || exit 1
@@ -29,8 +31,8 @@ selected=$($TMUX show-buffer)
 $TMUX send-keys -X cancel || exit 1
 
 $TMUX kill-server
-$TMUX new-session -d -x80 -y20 "sh -c 'printf \"first\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007\"; exec sleep 100'" || exit 1
-sleep 1
+$TMUX new-session -d -x80 -y20 "sh -c 'printf \"first\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007\"; printf \"\\033]2;fold-ready\\007\"; exec sleep 100'" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 
 $TMUX copy-mode -c || exit 1
 $TMUX send-keys -X search-backward separator || exit 1
@@ -43,8 +45,8 @@ shown=$($TMUX display-message -p '#{copy_cursor_line}')
 $TMUX send-keys -X cancel || exit 1
 
 $TMUX kill-server
-$TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007P> \\033]133;B\\007for i in 1 2 3; do\\n\\033]133;A;k=s\\007> \\033]133;B\\007echo \\\$i\\n\\033]133;P;k=s\\007> \\033]133;B\\007done\\n\\033]133;C\\007RESULT\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007P> \\033]133;B\\007\"; exec sleep 100'" || exit 1
-sleep 1
+$TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007P> \\033]133;B\\007for i in 1 2 3; do\\n\\033]133;A;k=s\\007> \\033]133;B\\007echo \\\$i\\n\\033]133;P;k=s\\007> \\033]133;B\\007done\\n\\033]133;C\\007RESULT\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007P> \\033]133;B\\007\"; printf \"\\033]2;fold-ready\\007\"; exec sleep 100'" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 
 $TMUX copy-mode -c || exit 1
 $TMUX send-keys -X search-backward RESULT || exit 1
@@ -63,8 +65,8 @@ cursor=$($TMUX display-message -p '#{copy_cursor_line}')
 $TMUX send-keys -X cancel || exit 1
 
 $TMUX kill-server
-$TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007P0> \\033]133;B\\007\\r\\n\\033]133;D;0\\007empty-separator\\n\\033]133;A\\007P1> \\033]133;B\\007\"; exec sleep 100'" || exit 1
-sleep 1
+$TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007P0> \\033]133;B\\007\\r\\n\\033]133;D;0\\007empty-separator\\n\\033]133;A\\007P1> \\033]133;B\\007\"; printf \"\\033]2;fold-ready\\007\"; exec sleep 100'" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 
 $TMUX copy-mode -c || exit 1
 collapsed=$($TMUX capture-pane -Mp)
@@ -83,7 +85,7 @@ $TMUX send-keys -X cancel || exit 1
 # Shrinking the window must keep the collapsed lines in view.
 $TMUX copy-mode -c || exit 1
 $TMUX resize-window -y8 || exit 1
-sleep 1
+wait_for_text P1 $TMUX capture-pane -Mp || exit 1
 resized=$($TMUX capture-pane -Mp)
 case "$resized" in
 *P0\>*P1\>*) ;;
@@ -95,8 +97,8 @@ $TMUX send-keys -X cancel || exit 1
 
 # The cursor must stay on the screen when it is below the folded output.
 $TMUX kill-server
-$TMUX new-session -d -x80 -y12 "sh -c 'i=0; while [ \$i -lt 3 ]; do printf \"\\033]133;A\\007p\\$ \\033]133;B\\007cmd\\r\\n\\033]133;C\\007one\\r\\ntwo\\r\\nthree\\r\\nfour\\r\\n\\033]133;D;0\\007\"; i=\$((i + 1)); done; printf \"\\033]133;A\\007p\\$ \"; j=0; while [ \$j -lt 8 ]; do printf \"live\\r\\n\"; j=\$((j + 1)); done; exec sleep 100'" || exit 1
-sleep 1
+$TMUX new-session -d -x80 -y12 "sh -c 'i=0; while [ \$i -lt 3 ]; do printf \"\\033]133;A\\007p\\$ \\033]133;B\\007cmd\\r\\n\\033]133;C\\007one\\r\\ntwo\\r\\nthree\\r\\nfour\\r\\n\\033]133;D;0\\007\"; i=\$((i + 1)); done; printf \"\\033]133;A\\007p\\$ \"; j=0; while [ \$j -lt 8 ]; do printf \"live\\r\\n\"; j=\$((j + 1)); done; printf \"\\033]2;fold-ready\\007\"; exec sleep 100'" || exit 1
+wait_for_output fold-ready $TMUX display-message -p '#{pane_title}' || exit 1
 
 $TMUX copy-mode -c || exit 1
 cursor=$($TMUX display-message -p '#{copy_cursor_y}')

@@ -43,16 +43,17 @@ $TMUX2 set -g status off || exit 1
 $TMUX2 set -g copy-mode-position-format '#[align=left]POS' || exit 1
 $TMUX2 list-keys -Tcopy-mode O | grep -Fq 'fold-view-toggle' || exit 1
 $TMUX2 list-keys -Tcopy-mode-vi O | grep -Fq 'fold-view-toggle' || exit 1
+wait_for_text 'p$ three' $TMUX2 capture-pane -p || exit 1
 
 $TMUX new-session -d -x80 -y10 || exit 1
 $TMUX set -g status off || exit 1
 $TMUX send -l "$TMUX2 attach" || exit 1
 $TMUX send Enter || exit 1
-sleep 1
+wait_for_clients 1 $TMUX2 || exit 1
 
 $TMUX2 copy-mode -U || exit 1
 $TMUX2 send -X history-top || exit 1
-sleep 1
+wait_for_text '!  p$ silent' $TMUX capture-pane -p || exit 1
 capture
 check_grep "!- p\$ two"
 check_grep "!  p\$ silent"
@@ -62,25 +63,25 @@ check_grep "POS"
 # Rebuilding with collapsed output must not expand copy-mode formats before
 # the viewport has been restored for the shorter backing grid.
 $TMUX2 send -X collapse-output -a || exit 1
-sleep 1
+wait_for_text '!+ p$ two' $TMUX capture-pane -p || exit 1
 capture
 check_grep "!+ p\$ two"
 check_grep "!  p\$ silent"
 check_no_grep "!+ p\$ silent"
 $TMUX2 send -X line-numbers-on || exit 1
-sleep 1
+wait_for_text '  3 !+ p$ two' $TMUX capture-pane -p || exit 1
 capture
 check_grep "  3 !+ p\$ two"
 $TMUX2 send -X fold-view-toggle || exit 1
 [ "$($TMUX2 display -p '#{copy_fold_view}')" = 0 ] || exit 1
-sleep 1
+wait_for_text '  2 p$ two' $TMUX capture-pane -p || exit 1
 capture
 check_grep "out2"
 check_no_grep "!+ p\$ two"
 check_grep "  2 p\$ two"
 $TMUX2 send -X fold-view-toggle || exit 1
 [ "$($TMUX2 display -p '#{copy_fold_view}')" = 1 ] || exit 1
-sleep 1
+wait_for_text '  3 !- p$ two' $TMUX capture-pane -p || exit 1
 capture
 check_grep "  3 !- p\$ two"
 
@@ -90,7 +91,7 @@ $TMUX2 set -p copy-mode-exit-status-format \
 	'#[align=right]#{?exit_status,!#{exit_status}, }' || exit 1
 $TMUX2 copy-mode -c || exit 1
 $TMUX2 send -X history-top || exit 1
-sleep 1
+wait_for_text '!123+ p$ two' $TMUX capture-pane -p || exit 1
 capture
 check_grep "!123+ p\$ two"
 
