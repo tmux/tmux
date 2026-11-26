@@ -373,12 +373,17 @@ struct window_copy_fold_ctx {
 	int	 keep_line;	/* keep this row on one backing row */
 };
 
-/* Source mapping and gutter data for a backing row. */
+/*
+ * Mapping and gutter data for a backing row. source_line is the source row
+ * at the recorded boundary; wrapped_line is its first wrapped source row.
+ * Backing column x maps to source_col + x - backing_col cells from
+ * wrapped_line. Unmapped rows use UINT_MAX for source_line and wrapped_line.
+ */
 struct window_copy_line {
-	u_int	 source_line;		/* source row; UINT_MAX if unmapped */
-	u_int	 wrapped_line;		/* wrap start row, or UINT_MAX */
-	u_int	 source_col;		/* column across wrapped source rows */
-	u_int	 backing_col;		/* backing column at same boundary */
+	u_int	 source_line;
+	u_int	 wrapped_line;
+	u_int	 source_col;
+	u_int	 backing_col;
 	u_int	 output_line;		/* source fold flag row, or UINT_MAX */
 	int	 output_flag;		/* WINDOW_COPY_FOLD_* */
 	int	 flags;			/* WINDOW_COPY_LINE_* */
@@ -386,18 +391,14 @@ struct window_copy_line {
 };
 
 /*
- * Copy mode's visible screen (the "screen" field) is filled from one of two
- * sources: the original contents of the pane (used when we actually enter via
- * the "copy-mode" command, to copy the contents of the current pane), or else
- * a series of lines containing the output from an output-writing tmux command
- * (such as any of the "show-*" or "list-*" commands).
+ * The mode owns its screens. screen is the viewport drawn from backing.
+ * backing holds a pane snapshot or generated view-mode text.
  *
- * In either case, the full content of the copy-mode grid is pointed at by the
- * "backing" field, and is copied into "screen" as needed (that is, when
- * scrolling occurs). When copy-mode is backed by a pane, backing points
- * directly at that pane's screen structure (&wp->base); when backed by a list
- * of output-lines from a command, it points at a newly-allocated screen
- * structure (which is deallocated when the mode ends).
+ * In a fold view, source holds the unfolded snapshot and backing is rebuilt
+ * from it; source is NULL otherwise. lines maps backing rows to source
+ * positions and source_flags holds collapse flags indexed by source row.
+ *
+ * Source and backing row numbers include history; screen rows do not.
  */
 struct window_copy_mode_data {
 	struct screen	 screen;
@@ -4490,11 +4491,12 @@ window_copy_cmd_search_forward_incremental_regex(
 
 /* Preserve collapse flags on surviving source markers. */
 static int *
-window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
+window_copy_clone_fold_flags(struct window_mode_entry *wme,
+    struct screen *new_source)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*old = data->source->grid;
-	struct grid			*gd = src->grid, *rgd;
+	struct grid			*gd = new_source->grid, *rgd;
 	struct grid_line		*gl, *new_gl, *rgl;
 	struct screen			*resized;
 	const u_int			 markers[] = {
@@ -4504,11 +4506,12 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 		WINDOW_COPY_FOLD_OUTPUT, WINDOW_COPY_FOLD_SEPARATOR
 	};
 	int				*flags;
-	u_int				 y, x, new_y, wx = 0, wy = 0;
+	u_int				 old_y, old_col, old_line = 0;
+	u_int				 old_offset = 0, marker_offset, end;
 	u_int				 reflow_y = 0, reflow_col = 0;
-	u_int				 reflow_row = 0;
-	u_int				 col, flag, collected, first_prompt;
-	u_int				 i, index;
+	u_int				 reflow_line = 0, reflow_offset = 0;
+	u_int				 new_y, new_col, flag, collected;
+	u_int				 first_prompt, i, index;
 	u_int				 total = gd->hsize + gd->sy;
 
 	flags = xcalloc(total, sizeof *flags);
@@ -4518,11 +4521,12 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 	collected = wme->swp->base.grid->scroll_collected -
 	    data->sync_collected;
 
-	/* Locate old markers after reflow. */
-	resized = window_copy_clone_screen(data->source, src, NULL, NULL, 0);
+	/* Match logical line numbers and cell offsets across reflow. */
+	resized = window_copy_clone_screen(data->source, new_source, NULL,
+	    NULL, 0);
 	rgd = resized->grid;
-	for (y = 0; y < data->source_line_count; y++) {
-		gl = grid_get_line(old, y);
+	for (old_y = 0; old_y < data->source_line_count; old_y++) {
+		gl = grid_get_line(old, old_y);
 		for (i = 0; i < nitems(markers); i++) {
 			/* Visit C and D in column order. */
 			index = i;
@@ -4530,49 +4534,51 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 			    gl->osc133_data.out_start_col)
 				index = 1 - i;
 			flag = markers[index];
-			if ((~data->source_flags[y] & fold_flags[index]) ||
+			if ((~data->source_flags[old_y] & fold_flags[index]) ||
 			    (~gl->flags & flag))
 				continue;
 			if (flag == GRID_LINE_START_OUTPUT)
-				col = gl->osc133_data.out_start_col;
+				old_col = gl->osc133_data.out_start_col;
 			else
-				col = gl->osc133_data.out_end_col;
+				old_col = gl->osc133_data.out_end_col;
+			marker_offset = old_offset + old_col;
 
 			/* Find the marker in the reflowed copy. */
 			while (reflow_y + 1 < rgd->hsize + rgd->sy) {
 				rgl = grid_get_line(rgd, reflow_y);
-				if (reflow_row == wy &&
+				end = reflow_offset + rgl->cellused;
+				if (reflow_line == old_line &&
 				    ((~rgl->flags & GRID_LINE_WRAPPED) ||
-				    wx + col < reflow_col + rgl->cellused))
+				    marker_offset < end))
 					break;
 				if (rgl->flags & GRID_LINE_WRAPPED)
-					reflow_col += rgl->cellused;
+					reflow_offset += rgl->cellused;
 				else {
-					reflow_col = 0;
-					reflow_row++;
+					reflow_offset = 0;
+					reflow_line++;
 				}
 				reflow_y++;
 			}
-			x = wx + col - reflow_col;
-			new_y = reflow_y;
+			reflow_col = marker_offset - reflow_offset;
 
-			if (new_y >= collected && new_y - collected < total) {
-				new_y -= collected;
-				new_gl = grid_get_line(gd, new_y);
-				if (flag == GRID_LINE_START_OUTPUT)
-					col = new_gl->osc133_data.out_start_col;
-				else
-					col = new_gl->osc133_data.out_end_col;
-				if ((new_gl->flags & flag) && col == x)
-					flags[new_y] |= fold_flags[index];
-			}
+			if (reflow_y < collected ||
+			    reflow_y - collected >= total)
+				continue;
+			new_y = reflow_y - collected;
+			new_gl = grid_get_line(gd, new_y);
+			if (flag == GRID_LINE_START_OUTPUT)
+				new_col = new_gl->osc133_data.out_start_col;
+			else
+				new_col = new_gl->osc133_data.out_end_col;
+			if ((new_gl->flags & flag) && new_col == reflow_col)
+				flags[new_y] |= fold_flags[index];
 		}
 
 		if (gl->flags & GRID_LINE_WRAPPED)
-			wx += gl->cellused;
+			old_offset += gl->cellused;
 		else {
-			wx = 0;
-			wy++;
+			old_offset = 0;
+			old_line++;
 		}
 	}
 	screen_free(resized);
