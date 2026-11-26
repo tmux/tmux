@@ -34,9 +34,13 @@ def rectangle(colour, x=0, y=0, w=24, h=32):
 
 
 def image_id(terminal, colour):
-    """Find the current terminal upload for a solid colour."""
-    return next(id for id, (_, _, data) in terminal.images.items()
-        if tuple(data[:3]) == colour)
+    """Find the upload displaying a crop of this colour."""
+    for (id, _), fields in terminal.placements.items():
+        width, _, data = terminal.images[id]
+        offset = (int(fields[b'y']) * width + int(fields[b'x'])) * 4
+        if tuple(data[offset:offset + 3]) == colour:
+            return id
+    raise AssertionError(('missing placed colour', colour))
 
 
 with image_test(sys.argv[1]) as test:
