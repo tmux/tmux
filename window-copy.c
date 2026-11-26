@@ -330,7 +330,7 @@ struct window_copy_fold_request {
 struct window_copy_fold {
 	u_int	 prompt;	/* primary prompt row or UINT_MAX */
 	u_int	 line;		/* anchor row or UINT_MAX */
-	u_char	 flag;		/* WINDOW_COPY_FOLD_* collapse bit */
+	int	 flag;		/* WINDOW_COPY_FOLD_* */
 };
 
 /* Marker scan state. */
@@ -362,7 +362,7 @@ struct window_copy_fold_ctx {
 	u_int	 wrapped_x;	/* cells in preceding rows of this line */
 	u_int	 prompt_dy;	/* backing prompt row, or UINT_MAX */
 	u_int	 output_line;	/* source flag row, or UINT_MAX */
-	u_char	 output_flag;	/* WINDOW_COPY_FOLD_* */
+	int	 output_flag;	/* WINDOW_COPY_FOLD_* */
 	int	 collapsed;
 	int	 command;	/* B seen since the last A or D */
 	int	 hiding;
@@ -380,10 +380,9 @@ struct window_copy_line {
 	u_int	 source_col;		/* column across wrapped source rows */
 	u_int	 backing_col;		/* backing column at same boundary */
 	u_int	 output_line;		/* source fold flag row, or UINT_MAX */
-	u_char	 output_flag;		/* WINDOW_COPY_FOLD_* */
-	u_char	 flags;			/* WINDOW_COPY_LINE_* */
-	u_char	 exit_status;
-	u_char	 exit_status_present;
+	int	 output_flag;		/* WINDOW_COPY_FOLD_* */
+	int	 flags;			/* WINDOW_COPY_LINE_* */
+	int	 exit_status;		/* -1 if absent */
 };
 
 /*
@@ -408,7 +407,7 @@ struct window_copy_mode_data {
 	struct input_ctx *ictx;
 
 	struct screen	*source;	/* unfolded copy of the pane */
-	u_char		*source_flags;	/* WINDOW_COPY_FOLD_* */
+	int		*source_flags;	/* WINDOW_COPY_FOLD_* */
 	u_int		 source_line_count;
 	struct window_copy_line	*lines;	/* backing row metadata */
 	u_int		 line_count;	/* allocated backing metadata rows */
@@ -623,6 +622,7 @@ window_copy_grow_line_info(struct window_copy_mode_data *data, u_int count)
 		data->lines[y].source_line = UINT_MAX;
 		data->lines[y].wrapped_line = UINT_MAX;
 		data->lines[y].output_line = UINT_MAX;
+		data->lines[y].exit_status = -1;
 	}
 	data->line_count = new_count;
 }
@@ -639,7 +639,7 @@ window_copy_get_line_info(struct window_copy_mode_data *data, u_int y)
 /* Set the source and fold for a backing row. */
 static void
 window_copy_set_line_info(struct window_copy_mode_data *data, u_int y,
-    u_int source_line, u_int output_line, u_char output_flag, u_char flags)
+    u_int source_line, u_int output_line, int output_flag, int flags)
 {
 	struct window_copy_line	*line;
 
@@ -707,7 +707,7 @@ window_copy_map_line(struct window_copy_mode_data *data,
 /* Set a fold control on a backing row. */
 static void
 window_copy_set_line_control(struct window_copy_mode_data *data, u_int y,
-    u_int output_line, u_char output_flag, int expandable)
+    u_int output_line, int output_flag, int expandable)
 {
 	struct window_copy_line	*line;
 
@@ -726,7 +726,7 @@ window_copy_set_line_control(struct window_copy_mode_data *data, u_int y,
 /* Set the exit status on a fold control. */
 static void
 window_copy_set_line_exit_status(struct window_copy_mode_data *data, u_int y,
-    u_char exit_status)
+    int exit_status)
 {
 	struct window_copy_line	*line;
 
@@ -734,7 +734,6 @@ window_copy_set_line_exit_status(struct window_copy_mode_data *data, u_int y,
 	if (line == NULL)
 		return;
 	line->exit_status = exit_status;
-	line->exit_status_present = 1;
 }
 
 /* Expand the exit status format. */
@@ -747,8 +746,8 @@ window_copy_expand_exit_status(struct window_mode_entry *wme,
 	char			*expanded;
 
 	ft = format_create_defaults(NULL, NULL, NULL, NULL, wme->wp);
-	if (line->exit_status_present)
-		format_add(ft, "exit_status", "%hhu", line->exit_status);
+	if (line->exit_status != -1)
+		format_add(ft, "exit_status", "%d", line->exit_status);
 	else
 		format_add(ft, "exit_status", "%s", "");
 	value = options_get_string(wme->wp->options,
@@ -787,9 +786,9 @@ window_copy_update_exit_status_width(struct window_mode_entry *wme)
 /* Set collapse flags; return whether they changed. */
 static int
 window_copy_set_fold_collapsed(struct window_copy_mode_data *data, u_int y,
-    u_char flags, int collapsed)
+    int flags, int collapsed)
 {
-	u_char	 old = data->source_flags[y];
+	int	 old = data->source_flags[y];
 
 	if (collapsed)
 		data->source_flags[y] |= flags;
@@ -828,7 +827,7 @@ window_copy_in_initial_output(struct grid *gd, u_int x, u_int y)
 }
 
 /* Scan markers in column order. */
-static u_char
+static int
 window_copy_scan_fold_line(struct window_copy_fold_scan *scan,
     struct grid_line *gl, u_int y, enum window_copy_fold_scan_mode mode)
 {
@@ -841,7 +840,7 @@ window_copy_scan_fold_line(struct window_copy_fold_scan *scan,
 		od->out_start_col, od->out_end_col, od->prompt_col, od->cmd_col
 	};
 	u_int			 pending, flag, col, i;
-	u_char			 anchors = 0;
+	int			 anchors = 0;
 
 	pending = gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_START_COMMAND|
 	    GRID_LINE_START_OUTPUT|GRID_LINE_END_OUTPUT);
@@ -936,8 +935,7 @@ window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
 		.fold = { .prompt = UINT_MAX, .line = UINT_MAX }
 	};
 	u_int				 y;
-	u_char				 flags;
-	int				 changed = 0;
+	int				 flags, changed = 0;
 
 	y = window_copy_first_prompt(gd);
 	if (y != 0 &&
@@ -4491,7 +4489,7 @@ window_copy_cmd_search_forward_incremental_regex(
 }
 
 /* Preserve collapse flags on surviving source markers. */
-static u_char *
+static int *
 window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 {
 	struct window_copy_mode_data	*data = wme->data;
@@ -4502,10 +4500,10 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 	const u_int			 markers[] = {
 		GRID_LINE_START_OUTPUT, GRID_LINE_END_OUTPUT
 	};
-	const u_char			 fold_flags[] = {
+	const int			 fold_flags[] = {
 		WINDOW_COPY_FOLD_OUTPUT, WINDOW_COPY_FOLD_SEPARATOR
 	};
-	u_char				*flags;
+	int				*flags;
 	u_int				 y, x, new_y, wx = 0, wy = 0;
 	u_int				 reflow_y = 0, reflow_col = 0;
 	u_int				 reflow_row = 0;
@@ -4604,7 +4602,7 @@ window_copy_do_refresh(struct window_mode_entry *wme, int follow)
 	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*source;
-	u_char				*flags;
+	int				*flags;
 	u_int				 oy_from_top;
 
 	if (data->oy > screen_hsize(data->backing))
@@ -7743,7 +7741,7 @@ window_copy_gutter_control(struct window_copy_mode_data *data,
 {
 	struct window_copy_line	*next;
 	u_int			 output = UINT_MAX;
-	u_char			 flag;
+	int			 flag;
 
 	if (line == NULL)
 		return (' ');
