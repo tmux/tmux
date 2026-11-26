@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.320 2026/11/23 13:52:43 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.321 2026/11/26 12:35:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2634,9 +2634,11 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	struct screen			*s = ctx->s;
 	struct screen_write_citem	*ci = ctx->item;
 	struct screen_write_cline	*cl = &s->write_list[s->cy];
+	struct grid			*gd = s->grid;
 	struct grid_cell		 gc;
 	u_int				 px, bx, ex, i;
 	u_int				 start = s->cx, end = start + ci->used;
+	int				 check;
 
 	if (ci->used == 0)
 		return;
@@ -2647,6 +2649,11 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	log_debug("%s: %u %.*s (at %u,%u)", __func__, ci->used,
 	    (int)ci->used, cl->data + ci->x, s->cx, s->cy);
 
+	check = 0;
+	if (ctx->wp != NULL &&
+	    (ctx->flags & SCREEN_WRITE_INPUT) &&
+	    !ci->wrapped)
+		check = 1;
 	for (i = 0; i < 2; i++) {
 		px = (i == 0 ? start : end);
 		if (px >= screen_size_x(s))
@@ -2654,6 +2661,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		grid_view_get_cell(s->grid, px, s->cy, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			continue;
+		check = 0;
 		for (bx = px; bx > 0; bx--) {
 			grid_view_get_cell(s->grid, bx - 1, s->cy, &gc);
 			if (~gc.flags & GRID_FLAG_PADDING) {
@@ -2671,9 +2679,11 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		}
 	}
 
-	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
-	    ci->used);
-	screen_write_collect_insert(ctx, ci, s->cy);
+	if (grid_view_set_cells(gd, &ci->x, s->cy, &ci->gc, cl->data + start,
+	    &ci->used, check))
+		screen_write_collect_insert(ctx, ci, s->cy);
+	else
+		screen_write_free_citem(ci);
 	screen_write_set_cursor(ctx, end, -1);
 }
 

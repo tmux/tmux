@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1501 2026/11/26 10:19:48 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1502 2026/11/26 12:35:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3627,8 +3627,8 @@ const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
 void	 grid_set_padding(struct grid *, u_int, u_int, int);
-void	 grid_set_cells(struct grid *, u_int, u_int, const struct grid_cell *,
-	     const char *, size_t);
+int	 grid_set_cells(struct grid *, u_int *, u_int, const struct grid_cell *,
+	     const char *, u_int *, int);
 struct grid_line *grid_get_line(struct grid *, u_int);
 void	 grid_adjust_lines(struct grid *, u_int);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int, u_int);
@@ -3674,8 +3674,8 @@ void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_view_set_cell(struct grid *, u_int, u_int,
 	     const struct grid_cell *);
 void	 grid_view_set_padding(struct grid *, u_int, u_int, int);
-void	 grid_view_set_cells(struct grid *, u_int, u_int,
-	     const struct grid_cell *, const char *, size_t);
+int	 grid_view_set_cells(struct grid *, u_int *, u_int,
+	     const struct grid_cell *, const char *, u_int *, int);
 void	 grid_view_clear_history(struct grid *, u_int);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int, u_int);
