@@ -1654,6 +1654,42 @@ format_cb_client_height(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for client_key_mode. */
+static void *
+format_cb_client_key_mode(struct format_tree *ft)
+{
+	struct client	*c = ft->c;
+	const char	*mode;
+	char		*s;
+	int		 kitty, eks;
+
+	if (c == NULL || (~c->tty.flags & TTY_STARTED))
+		return (NULL);
+
+	if (c->tty.flags & TTY_KKBPUSHED) {
+		xasprintf(&s, "Kitty %u", c->tty.kitty_keys);
+		return (s);
+	}
+
+	/* This mirrors the choice made in tty_update_features(). */
+	kitty = (c->tty.term->flags & TERM_KITTYKEYS) != 0;
+	eks = options_get_number(global_options, "extended-keys") != 0;
+	if (kitty)
+		eks = 0;
+	if (eks && tty_term_has(c->tty.term, TTYC_ENEKS))
+		mode = "Ext";
+	else
+		mode = "VT10x";
+
+	/* The terminal supports Kitty keys but they are not in use. */
+	if (kitty) {
+		xasprintf(&s, "%s (Kitty)", mode);
+		return (s);
+	}
+	s = xstrdup(mode);
+	return (s);
+}
+
 /* Callback for client_key_table. */
 static void *
 format_cb_client_key_table(struct format_tree *ft)
@@ -2588,17 +2624,30 @@ format_cb_pane_unseen_changes(struct format_tree *ft)
 static void *
 format_cb_pane_key_mode(struct format_tree *ft)
 {
-	if (ft->wp != NULL && ft->wp->screen != NULL) {
-		switch (ft->wp->screen->mode & EXTENDED_KEY_MODES) {
-		case MODE_KEYS_EXTENDED:
-			return (xstrdup("Ext 1"));
-		case MODE_KEYS_EXTENDED_2:
-			return (xstrdup("Ext 2"));
-		default:
-			return (xstrdup("VT10x"));
-		}
+	struct screen	*s;
+	const char	*mode;
+	char		*value;
+
+	if (ft->wp == NULL || ft->wp->screen == NULL)
+		return (NULL);
+	s = ft->wp->screen;
+	if (s->kitty_keys.flags != 0) {
+		xasprintf(&value, "Kitty %u", s->kitty_keys.flags);
+		return (value);
 	}
-	return (NULL);
+	switch (s->mode & EXTENDED_KEY_MODES) {
+	case MODE_KEYS_EXTENDED:
+		mode = "Ext 1";
+		break;
+	case MODE_KEYS_EXTENDED_2:
+		mode = "Ext 2";
+		break;
+	default:
+		mode = "VT10x";
+		break;
+	}
+	value = xstrdup(mode);
+	return (value);
 }
 
 /* Callback for pane_last. */
@@ -3787,6 +3836,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "client_height", FORMAT_TABLE_STRING,
 	  format_cb_client_height
+	},
+	{ "client_key_mode", FORMAT_TABLE_STRING,
+	  format_cb_client_key_mode
 	},
 	{ "client_key_table", FORMAT_TABLE_STRING,
 	  format_cb_client_key_table

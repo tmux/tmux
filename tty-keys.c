@@ -96,6 +96,7 @@ static const struct {
 	int	      (*fn)(struct tty *, const char *, size_t, size_t *, int);
 } tty_keys_replies[] = {
 	{ KEYC_REPORT_CLIPBOARD, tty_keys_clipboard },
+	{ KEYC_REPORT_KITTY, tty_keys_kitty_query },
 	{ KEYC_REPORT_PROGRAM_STATUS, tty_keys_program_status },
 	{ KEYC_REPORT_SYNC, tty_keys_sync },
 	{ KEYC_REPORT_DA, tty_keys_device_attributes },
@@ -693,6 +694,18 @@ tty_keys_reply(struct tty *tty, const char *buf, size_t len,
 		return (1);
 	}
 
+	switch (tty_keys_kitty(tty, buf, len, &kp->size, &kp->key)) {
+	case 0:		/* yes */
+		return (0);
+	case -1:	/* no, or not valid */
+		break;
+	case -2:	/* yes, but not representable by tmux */
+		kp->key = KEYC_UNKNOWN;
+		return (0);
+	case 1:		/* partial */
+		return (1);
+	}
+
 	return (tty_keys_extended_key(tty, buf, len, &kp->size, &kp->key));
 }
 
@@ -1051,6 +1064,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	utf8_char	 uc;
 
 	*size = 0;
+	if (tty->flags & TTY_KKBPUSHED)
+		return (-1);
 
 	/* First two bytes are always \033[. */
 	if (buf[0] != '\033')

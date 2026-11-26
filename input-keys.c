@@ -462,9 +462,10 @@ input_key_extended(struct bufferevent *bev, key_code key)
 	} else
 		key &= KEYC_MASK_KEY;
 
-	if (options_get_number(global_options, "extended-keys-format") == 1)
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_XTERM) {
 		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
-	else
+	} else
 		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
 
 	input_key_write(__func__, bev, tmp, strlen(tmp));
@@ -482,6 +483,7 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	struct utf8_data	 ud;
 	key_code		 onlykey;
 	const char		*p;
+	int			 meta;
 	static const char	*standard_map[2] = {
 		"1!9(0)=+;:'\",<.>/-8? 2",
 		"119900=+;;'',,..\x1f\x1f\x7f\x7f\0\0",
@@ -489,14 +491,16 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 
 	log_debug("%s: key in %llx", __func__, key);
 
-	if (key & KEYC_META)
-		input_key_write(__func__, bev, "\033", 1);
+	/* Defer the Meta prefix until the key can be encoded. */
+	meta = (key & KEYC_META) != 0;
 
 	/*
 	 * There's no way to report modifiers for unicode keys in standard mode
 	 * so lose the modifiers.
 	 */
 	if (KEYC_IS_UNICODE(key)) {
+		if (meta)
+			input_key_write(__func__, bev, "\033", 1);
 		utf8_to_data(key, &ud);
                 input_key_write(__func__, bev, ud.data, ud.size);
 		return (0);
@@ -533,6 +537,8 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 
 	log_debug("%s: key out %llx", __func__, key);
 
+	if (meta)
+		input_key_write(__func__, bev, "\033", 1);
 	ud.data[0] = key & 0x7f;
 	input_key_write(__func__, bev, &ud.data[0], 1);
 	return (0);
@@ -574,6 +580,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	struct input_key_entry	*ike = NULL;
 	key_code		 newkey;
 	struct utf8_data	 ud;
+	int			 result;
 
 	/* Send keys are like any other key here. */
 	key &= ~KEYC_SENT;
@@ -588,6 +595,10 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		input_key_write(__func__, bev, &ud.data[0], 1);
 		return (0);
 	}
+
+	/* Kitty keys take precedence if the application asked for them. */
+	if (input_key_kitty(s, bev, key) == 0)
+		return (0);
 
 	/* Is this backspace? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
@@ -677,6 +688,11 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	if (KEYC_IS_USER(key) || KEYC_IS_SPECIAL(key) || KEYC_IS_MOUSE(key)) {
 		log_debug("%s: ignoring key 0x%llx", __func__, key);
 		return (0);
+	}
+	if ((key & (KEYC_SUPER|KEYC_HYPER)) ||
+	    (s->kitty_keys.flags & KITTY_KEY_SUPPORTED)) {
+		result = input_key_vt10x(bev, key);
+		return (result);
 	}
 
 	/*

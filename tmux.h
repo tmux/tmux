@@ -145,6 +145,8 @@ struct winlink;
 #define VISUAL_BOTH 2
 
 /* Key modifier bits. */
+#define KEYC_SUPER           0x00010000000000ULL
+#define KEYC_HYPER           0x00020000000000ULL
 #define KEYC_META            0x00100000000000ULL
 #define KEYC_CTRL            0x00200000000000ULL
 #define KEYC_SHIFT           0x00400000000000ULL
@@ -422,6 +424,29 @@ enum {
 	KEYC_F10,
 	KEYC_F11,
 	KEYC_F12,
+	KEYC_F13,
+	KEYC_F14,
+	KEYC_F15,
+	KEYC_F16,
+	KEYC_F17,
+	KEYC_F18,
+	KEYC_F19,
+	KEYC_F20,
+	KEYC_F21,
+	KEYC_F22,
+	KEYC_F23,
+	KEYC_F24,
+	KEYC_F25,
+	KEYC_F26,
+	KEYC_F27,
+	KEYC_F28,
+	KEYC_F29,
+	KEYC_F30,
+	KEYC_F31,
+	KEYC_F32,
+	KEYC_F33,
+	KEYC_F34,
+	KEYC_F35,
 	KEYC_IC,
 	KEYC_DC,
 	KEYC_HOME,
@@ -453,6 +478,54 @@ enum {
 	KEYC_KP_ENTER,
 	KEYC_KP_ZERO,
 	KEYC_KP_PERIOD,
+	KEYC_KP_EQUAL,
+	KEYC_KP_SEPARATOR,
+	KEYC_KP_LEFT,
+	KEYC_KP_RIGHT,
+	KEYC_KP_UP,
+	KEYC_KP_DOWN,
+	KEYC_KP_PPAGE,
+	KEYC_KP_NPAGE,
+	KEYC_KP_HOME,
+	KEYC_KP_END,
+	KEYC_KP_IC,
+	KEYC_KP_DC,
+	KEYC_KP_BEGIN,
+
+	/* Other function keys. */
+	KEYC_CAPSLOCK,
+	KEYC_SCROLLLOCK,
+	KEYC_NUMLOCK,
+	KEYC_PRINTSCREEN,
+	KEYC_PAUSE,
+	KEYC_MENU,
+	KEYC_MEDIA_PLAY,
+	KEYC_MEDIA_PAUSE,
+	KEYC_MEDIA_PLAYPAUSE,
+	KEYC_MEDIA_REVERSE,
+	KEYC_MEDIA_STOP,
+	KEYC_MEDIA_FASTFORWARD,
+	KEYC_MEDIA_REWIND,
+	KEYC_MEDIA_NEXT,
+	KEYC_MEDIA_PREVIOUS,
+	KEYC_MEDIA_RECORD,
+	KEYC_VOLUME_DOWN,
+	KEYC_VOLUME_UP,
+	KEYC_VOLUME_MUTE,
+	KEYC_LEFT_SHIFT,
+	KEYC_LEFT_CTRL,
+	KEYC_LEFT_ALT,
+	KEYC_LEFT_SUPER,
+	KEYC_LEFT_HYPER,
+	KEYC_LEFT_META,
+	KEYC_RIGHT_SHIFT,
+	KEYC_RIGHT_CTRL,
+	KEYC_RIGHT_ALT,
+	KEYC_RIGHT_SUPER,
+	KEYC_RIGHT_HYPER,
+	KEYC_RIGHT_META,
+	KEYC_ISO_LEVEL3_SHIFT,
+	KEYC_ISO_LEVEL5_SHIFT,
 
 	/* Theme reporting. */
 	KEYC_REPORT_DARK_THEME,
@@ -460,6 +533,7 @@ enum {
 
 	/* Terminal replies, handled in tty-keys.c and never fired. */
 	KEYC_REPORT_CLIPBOARD,
+	KEYC_REPORT_KITTY,
 	KEYC_REPORT_SYNC,
 	KEYC_REPORT_KITTY_GRAPHICS,
 	KEYC_REPORT_DA,
@@ -765,6 +839,23 @@ enum tty_code_code {
 #define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 #define CURSOR_MODES (MODE_CURSOR|MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE)
 #define EXTENDED_KEY_MODES (MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2)
+
+/* Extended key output formats. */
+#define EXTENDED_KEYS_CSI_U 0
+#define EXTENDED_KEYS_XTERM 1
+#define EXTENDED_KEYS_KITTY 2
+
+/* Supported Kitty keyboard protocol flags. */
+#define KITTY_KEY_DISAMBIGUATE 0x1
+#define KITTY_KEY_REPORT_ALL 0x8
+#define KITTY_KEY_SUPPORTED (KITTY_KEY_DISAMBIGUATE|KITTY_KEY_REPORT_ALL)
+
+/* Actions in a Kitty keyboard mode request. */
+enum kitty_key_action {
+	KITTY_KEY_REPLACE = 1,
+	KITTY_KEY_ENABLE = 2,
+	KITTY_KEY_DISABLE = 3
+};
 
 /* Mouse protocol constants. */
 #define MOUSE_PARAM_MAX 0xff
@@ -1120,6 +1211,13 @@ struct progress_bar {
 	int			progress;
 };
 
+/* One saved keyboard mode per main or alternate screen. */
+struct kitty_key_state {
+	u_int	flags;		/* active enhancements */
+	u_int	saved_flags;	/* flags before the last push */
+	int	have_saved;	/* saved_flags is valid */
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -1144,6 +1242,8 @@ struct screen {
 
 	int				 mode;
 	int				 default_mode;
+	struct kitty_key_state		 kitty_keys;
+	struct kitty_key_state		 saved_kitty_keys;
 
 	u_int				 saved_cx;
 	u_int				 saved_cy;
@@ -1842,6 +1942,7 @@ struct tty_term {
 #define TERM_DIRECTCUP 0x400
 #define TERM_DIRECTRGB 0x800
 #define TERM_PROGRAMSTATUS 0x1000
+#define TERM_KITTYKEYS 0x2000
 	int			 flags;
 
 	LIST_ENTRY(tty_term)	 entry;
@@ -1933,14 +2034,18 @@ struct tty {
 #define TTY_GRACE 0x100000
 #define TTY_NOBACKOFF 0x200000
 #define TTY_HAVEPROGRAMSTATUS 0x400000
+#define TTY_HAVEKKB 0x800000
+#define TTY_KKBPUSHED 0x1000000
 #define TTY_ALL_REQUEST_FLAGS	\
 	(TTY_HAVEDA|		\
 	 TTY_HAVEDA2|		\
 	 TTY_HAVEXDA|		\
 	 TTY_HAVESYNC|		\
 	 TTY_HAVEKITTYGRAPHICS|	\
-	 TTY_HAVEPROGRAMSTATUS)
+	 TTY_HAVEPROGRAMSTATUS|	\
+	 TTY_HAVEKKB)
 	int		 flags;
+	u_int		 kitty_keys;	/* last requested keyboard flags */
 
 	struct tty_term	*term;
 
@@ -3093,6 +3198,7 @@ void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
 void	tty_repeat_requests(struct tty *, int);
+void	tty_extended_keys_changed(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
@@ -3109,6 +3215,7 @@ int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
 void	tty_update_features(struct tty *);
+void	tty_update_kitty(struct tty *, struct screen *);
 void	tty_set_selection(struct tty *, const char *, const char *, size_t);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
@@ -3185,6 +3292,12 @@ void		tty_keys_free(struct tty *);
 int		tty_keys_next(struct tty *);
 int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
 		     int *, int *);
+
+/* tty-kitty.c */
+int		tty_keys_kitty(struct tty *, const char *, size_t, size_t *,
+		     key_code *);
+int		tty_keys_kitty_query(struct tty *, const char *, size_t,
+		     size_t *, int);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);
@@ -3595,6 +3708,15 @@ int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
 int	 input_key(struct screen *, struct bufferevent *, key_code);
 int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 	     u_int, const char **, size_t *);
+
+/* input-kitty.c */
+void	 input_kitty_reset(struct screen *);
+void	 input_kitty_alternate_on(struct screen *);
+void	 input_kitty_alternate_off(struct screen *);
+void	 input_kitty_set(struct screen *, u_int, enum kitty_key_action);
+void	 input_kitty_push(struct screen *, u_int);
+void	 input_kitty_pop(struct screen *, u_int);
+int	 input_key_kitty(struct screen *, struct bufferevent *, key_code);
 
 /* colour.c */
 int	 colour_find_rgb(u_char, u_char, u_char);

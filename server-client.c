@@ -2279,6 +2279,7 @@ server_client_reset_state(struct client *c)
 		mode = s->mode;
 	log_debug("%s: client %s mode %s", __func__, c->name,
 	    screen_mode_to_string(mode));
+	tty_update_kitty(tty, s);
 
 	/* Reset region and margin. */
 	tty_region_off(tty);

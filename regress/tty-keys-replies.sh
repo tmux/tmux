@@ -62,6 +62,8 @@ def matches(name, value):
         return kind == "WezTerm 20240203-110809-5046fc22" and {
             "sixel", "overline", "sync", "usstyle"} <= features and \
             "margins" not in features
+    if name == "kitty-keys":
+        return "kittykeys" in features
     if name == "sync":
         return "sync" in features
     if name.startswith("kitty-graphics"):
@@ -79,6 +81,7 @@ reports = [
     ("XDA-kitty-nosync", b"\033P>|kitty(0.43.0)\033\\"),
     ("XDA-ghostty", b"\033P>|ghostty 1.2.0\033\\"),
     ("XDA-WezTerm", b"\033P>|WezTerm 20240203-110809-5046fc22\033\\"),
+    ("kitty-keys", b"\033[?0u"),
     ("sync", b"\033[?2026;2$y"),
     ("kitty-graphics", b"\033_Gi=31;OK\033\\"),
     ("kitty-graphics-disabled", b"\033_Gi=31;OK\033\\"),
@@ -120,6 +123,8 @@ for name, report in reports:
                     ";", "set-option", "-g", "@seen", "",
                     ";", "bind-key", "-n", "Escape", "set-option", "-gF",
                         "@seen", "#{@seen}E"]
+                if name == "kitty-keys":
+                    setup += [";", "set-option", "-s", "extended-keys", "on"]
                 if name == "pixels":
                     # Draw the window cell size without running a command
                     # after the reply, which could recalculate window sizes.
@@ -160,6 +165,8 @@ for name, report in reports:
                         assert query not in output, (context, "unexpected graphics query")
                     else:
                         assert query in output, (context, "missing graphics query")
+                if name == "kitty-keys":
+                    assert b"\033[?u" in output, (context, "missing keyboard query")
                 baseline = state()
                 assert not matches(name, baseline), (context, baseline)
                 wire = (b"\033" if prefixed else b"") + report
@@ -232,6 +239,9 @@ for name, report in reports:
                     if name == "XDA-kitty-nosync":
                         assert run("display-message", "-p", "#{I/f:sync}") == "0", (
                             context, "kitty enabled synchronized updates")
+                if name == "kitty-keys":
+                    assert run("list-clients", "-F", "#{client_key_mode}") == "Kitty 1", (
+                        context, "keyboard mode not enabled")
                 assert run("show-option", "-gv", "@seen") == (
                     "E" if prefixed else ""), (context, "Escape count")
                 cases += 1
