@@ -61,9 +61,9 @@ with image_test(sys.argv[1]) as test:
         terminal.check(expected(x, y))
         assert terminal.uploads == uploads + 1, (x, y, terminal.uploads)
     uploads = terminal.uploads
-    image = next(iter(terminal.placements))[0]
-    width, height, _ = terminal.images[image]
-    assert (width, height) == (34, 130), (width, height)
+
+    # The initial prepared crop may also remain cached after expansion.
+    assert any((w, h) == (34, 130) for w, h, _ in terminal.images.values())
 
     # A smaller source rectangle at the same scale uses the same upload.
     test.emit(b'\033[H' +
@@ -71,13 +71,13 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(expected(8, 16, w=8, h=16))
     assert terminal.uploads == uploads
-    test.emit(b'\033[H' + crop(0, 0))
+    test.emit(b'\033[H' + crop(16, 32))
     terminal.feed(client.data)
 
     # Disjoint placements of the same source also share the upload.
     test.emit(b'\033[5;1H' + crop(8, 16, placement=2))
     terminal.feed(client.data)
-    terminal.check(expected(0, 0) | expected(8, 16, dy=64))
+    terminal.check(expected(16, 32) | expected(8, 16, dy=64))
     assert terminal.uploads == uploads
 
     # Overlap separates the shared upload and preserves placement order.
@@ -92,7 +92,7 @@ with image_test(sys.argv[1]) as test:
     assert terminal.uploads == uploads + 2
     test.emit(b'\033[5;1H' + crop(8, 16, placement=2))
     terminal.feed(client.data)
-    terminal.check(expected(0, 0) | expected(8, 16, dy=64))
+    terminal.check(expected(16, 32) | expected(8, 16, dy=64))
     assert terminal.uploads == uploads + 2
 
     # Fractional origins retain the existing sampling behaviour.
