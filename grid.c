@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.170 2026/11/26 12:35:47 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.171 2026/11/26 14:57:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -265,33 +265,34 @@ grid_adjust_lines(struct grid *gd, u_int lines)
 	gd->linedata = xreallocarray(gd->linedata, lines, sizeof *gd->linedata);
 }
 
-/* Copy default into a cell. */
+/* Clear a cell, keeping its extended slot when possible. */
 static void
 grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg, int moved)
 {
 	struct grid_line	*gl = &gd->linedata[py];
 	struct grid_cell_entry	*gce = &gl->celldata[px];
 	struct grid_extd_entry	*gee;
-	u_int			 old_offset = gce->offset;
-	int			 had_extd = (gce->flags & GRID_FLAG_EXTENDED);
+	int			 already = 1;
+	utf8_char		 uc;
 
-	memcpy(gce, &grid_cleared_entry, sizeof *gce);
-	if (!moved && had_extd && old_offset < gl->extdsize) {
-		gce->flags |= GRID_FLAG_EXTENDED;
-		gce->offset = old_offset;
-		gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
-		if (bg != 8)
-			gee->bg = bg;
-	} else if (bg != 8) {
-		if (bg & (COLOUR_FLAG_RGB|COLOUR_FLAG_THEME)) {
-			grid_get_extended_cell(gl, gce, gce->flags);
-			gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
-			gee->bg = bg;
-		} else {
-			if (bg & COLOUR_FLAG_256)
-				gce->flags |= GRID_FLAG_BG256;
-			gce->data.bg = bg;
-		}
+	if (moved ||
+	    (~gce->flags & GRID_FLAG_EXTENDED) ||
+	    gce->offset >= gl->extdsize)
+		already = 0;
+	if (already || (bg & (COLOUR_FLAG_RGB|COLOUR_FLAG_THEME))) {
+		if (!already)
+			grid_get_extended_cell(gl, gce, GRID_FLAG_CLEARED);
+		else
+			gce->flags = GRID_FLAG_CLEARED|GRID_FLAG_EXTENDED;
+		uc = utf8_build_one(' ');
+
+		gee = grid_store_extended_cell(gl, gce, &grid_cleared_cell, uc);
+		gee->bg = bg;
+	} else {
+		memcpy(gce, &grid_cleared_entry, sizeof *gce);
+		if (bg & COLOUR_FLAG_256)
+			gce->flags |= GRID_FLAG_BG256;
+		gce->data.bg = bg;
 	}
 }
 
