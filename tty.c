@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.506 2026/11/26 14:17:29 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.507 2026/11/26 17:03:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2610,9 +2610,17 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	tty_check_us(tty, palette, &gc2);
 	tty_check_ncv(tty, &gc2);
 
-	/* Use a full reset when a separate reset wouldn't work. */
+	/* Use a full reset if required or to replace SGR 39 and 22. */
 	removed = tc->attr & ~gc2.attr;
 	if ((removed & ~reset) || (tc->us != gc2.us && gc2.us == 0))
+		tty_reset(tty);
+	else if ((removed & (GRID_ATTR_BRIGHT|GRID_ATTR_DIM)) &&
+	    !COLOUR_DEFAULT(tc->fg) &&
+	    COLOUR_DEFAULT(gc2.fg) &&
+	    COLOUR_DEFAULT(gc2.bg) &&
+	    COLOUR_DEFAULT(gc2.us) &&
+	    gc2.attr == 0 &&
+	    tc->link == 0)
 		tty_reset(tty);
 
 	/* Set the colours, which may also reset the attributes. */
