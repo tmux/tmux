@@ -477,8 +477,18 @@ tty_send_requests(struct tty *tty)
 		tty_puts(tty, "\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\");
 	else
 		tty->flags |= TTY_HAVEKITTYGRAPHICS;
+#ifdef HAVE_LIBZ
+	if (tty_term_flag(term, TTYC_XT) &&
+	    (~flags & TTY_HAVEKITTYGRAPHICS_ZLIB)) {
+		tty_puts(tty, "\033_Gi=32,s=1,v=1,a=q,t=d,f=24,o=z;"
+		    "eJxjYGAAAAADAAE=\033\\");
+	} else
+		tty->flags |= TTY_HAVEKITTYGRAPHICS_ZLIB;
 #else
-	tty->flags |= TTY_HAVEKITTYGRAPHICS;
+	tty->flags |= TTY_HAVEKITTYGRAPHICS_ZLIB;
+#endif
+#else
+	tty->flags |= (TTY_HAVEKITTYGRAPHICS|TTY_HAVEKITTYGRAPHICS_ZLIB);
 #endif
 
 	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");

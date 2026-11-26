@@ -1,6 +1,7 @@
 """Decode native Kitty uploads and placements independently of tmux's image code."""
 
 import base64
+import zlib
 from image_terminal import Terminal
 
 
@@ -38,10 +39,14 @@ class KittyTerminal(Terminal):
             self.loading.extend(base64.b64decode(payload, validate=True))
             if fields.get(b'm', b'0') == b'0':
                 width, height = int(self.upload[b's']), int(self.upload[b'v'])
-                assert len(self.loading) == width * height * 4
+                if self.upload.get(b'o') == b'z':
+                    pixels = zlib.decompress(self.loading)
+                else:
+                    pixels = bytes(self.loading)
+                assert len(pixels) == width * height * 4
                 image = int(self.upload[b'i'])
                 assert image not in self.images, image
-                self.images[image] = width, height, bytes(self.loading)
+                self.images[image] = width, height, pixels
                 self.uploads += 1
                 self.upload = None
         elif action == b'p':
