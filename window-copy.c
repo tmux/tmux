@@ -92,7 +92,7 @@ static void	window_copy_rebuild_backing(struct window_mode_entry *);
 static void	window_copy_create_fold_view(struct window_mode_entry *);
 static void	window_copy_destroy_fold_view(struct window_mode_entry *);
 static int	window_copy_apply_fold_request(struct window_mode_entry *,
-		    const struct window_copy_fold_request *);
+		    struct window_copy_fold_request *);
 static int	window_copy_find_fold(struct window_mode_entry *, u_int,
 		    u_int, struct window_copy_fold *);
 static void	window_copy_get_cursor_source(struct window_mode_entry *,
@@ -104,7 +104,7 @@ static void	window_copy_show_line(struct window_copy_mode_data *, u_int);
 static int	window_copy_restore_cursor(struct window_mode_entry *, u_int,
 		    u_int);
 static int	window_copy_restore_command_end(struct window_mode_entry *,
-		    const struct window_copy_fold *);
+		    struct window_copy_fold *);
 static int	window_copy_restore_before(struct window_mode_entry *, u_int);
 #ifdef ENABLE_IMAGES
 static void	window_copy_update_image_refresh(
@@ -655,8 +655,8 @@ window_copy_set_line_info(struct window_copy_mode_data *data, u_int y,
 
 /* Check a source position against a backing row's mapping. */
 static int
-window_copy_line_mapping_matches(const struct window_copy_line *line,
-    const struct window_copy_fold_ctx *fold, u_int backing_x)
+window_copy_line_mapping_matches(struct window_copy_line *line,
+    struct window_copy_fold_ctx *fold, u_int backing_x)
 {
 	u_int	 source_col;
 
@@ -674,7 +674,7 @@ window_copy_line_mapping_matches(const struct window_copy_line *line,
 /* Record a backing row's source mapping. */
 static void
 window_copy_map_line(struct window_copy_mode_data *data,
-    const struct window_copy_fold_ctx *fold, const struct screen *dst)
+    struct window_copy_fold_ctx *fold, const struct screen *dst)
 {
 	struct window_copy_line	*line;
 	u_int			 y = screen_hsize(dst) + dst->cy;
@@ -5114,7 +5114,7 @@ window_copy_restore_cursor(struct window_mode_entry *wme, u_int source_x,
 /* Restore the command end before its C or D marker. */
 static int
 window_copy_restore_command_end(struct window_mode_entry *wme,
-    const struct window_copy_fold *fold)
+    struct window_copy_fold *fold)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = window_copy_source_grid(data);
@@ -5174,7 +5174,7 @@ window_copy_restore_before(struct window_mode_entry *wme, u_int source_y)
 /* Change fold flags, rebuild and restore the cursor. */
 static int
 window_copy_apply_fold_request(struct window_mode_entry *wme,
-    const struct window_copy_fold_request *request)
+    struct window_copy_fold_request *request)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct window_copy_fold		 fold;
