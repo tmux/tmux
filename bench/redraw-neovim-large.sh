@@ -2,4 +2,4 @@
 set -e
 
 . "$(dirname "$0")/common.inc"
-bench_redraw 35 240 240 -s top-240x240
+bench_redraw 35 240 240 neovim-240x240

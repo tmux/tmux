@@ -77,40 +77,13 @@ default) ;;
 *) printf 'set -g history-limit %s\n' "${BENCH_HISTORY_LIMIT:-0}" >>"$DIR/config" ;;
 esac
 
-# Repeat fixed recordings, optionally synchronizing individual redraws.
-# Editors finish a redraw by showing the cursor; top starts one at home.
+# Repeat fixed recordings.
 bench_recordings()
 (
 	count=$1
 	shift
-	sync=0
-	if [ "$1" = -s ]; then
-		sync=1
-		shift
-	fi
 	for recording; do
-		gzip -dc "$BENCH_DIR/recordings/$recording.out.gz" >"$DIR/recording"
-		if [ "$sync" -eq 0 ]; then
-			cat "$DIR/recording"
-			continue
-		fi
-		case $recording in
-		top-*) boundary='[H' ;;
-		*) boundary='[?25h' ;;
-		esac
-		LC_ALL=C awk -v boundary="$boundary" '
-		BEGIN { RS = "\033"; ORS = ""; printf "\033[?2026h" }
-		NR == 1 { printf "%s", $0; next }
-		substr($0, 1, length(boundary)) == boundary {
-			if (boundary == "[H")
-				printf "\033[?2026l\033[?2026h\033%s", $0
-			else
-				printf "\033[?25h\033[?2026l\033[?2026h%s", substr($0, 6)
-			next
-		}
-		{ printf "\033%s", $0 }
-		END { printf "\033[?2026l" }
-		' "$DIR/recording"
+		gzip -dc "$BENCH_DIR/recordings/$recording.out.gz"
 	done >"$DIR/recordings"
 	LC_ALL=C awk -v count="$count" '
 	BEGIN { RS = "\0"; ORS = "" }
