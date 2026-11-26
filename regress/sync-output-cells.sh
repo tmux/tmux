@@ -108,22 +108,37 @@ for my $row (1 .. 3) {
 	print "\e[0m";
 }
 print "\e[5;1H\x{4e2d}\x{6587}\x{5b57}\x{7b26}tail";
+print "\e[4;3Hprefix-a-suffix\e[8;3HREPEATED COMPACT TEXT";
 my $rgb = "\e[38;2;200;100;50;48;2;20;30;40m";
+my $utf8 = "\x{00e9}\x{2500}";
+print "\e[6;3H$rgb$utf8\e[0m\e[9;3H\x{2588}";
 print "\e[11;1H$rgb", 'a' x 80, "\e[0m";
 mark('painted');
 
 # Draw four synchronized frames once the test is recording them.
 sub frames {
-	my ($name, $draw) = @_;
+	my ($name, $draw, $ordinary) = @_;
 	wait_for($name);
 	for my $c ('b', 'c', 'd', 'e') {
-		print "\e[?2026h";
+		print "\e[?2026h" unless $ordinary;
 		$draw->($c);
-		print "\e[0m\e[10;1H\e[?2026l";
+		print "\e[0m\e[10;1H";
+		print "\e[?2026l" unless $ordinary;
 	}
 	mark("$name-done");
 }
 my $link = "\e]8;id=l;https://example.com/a/longer/path\e\\";
+
+# Repeat the same text while changing a character or its colour.
+sub repeated {
+	print "\e[8;3HREPEATED COMPACT TEXT";
+	print "\e[11;2H$rgb", 'a' x 20, $_[0], 'a' x 39, "\e[0m";
+	print "\e[4;3Hprefix-$_[0]-suffix\e[0m!";
+	print "\e[6;3H$rgb$utf8$_[0]\e[0m";
+	print "\e[9;3H\e[31m\x{2588}\e[0m";
+}
+frames('ordinary-repeat', \&repeated, 1);
+frames('sync-repeat', \&repeated);
 
 # A temporary change must stay dirty when the original contents are restored.
 frames('restore', sub { print "\e[11;1H${rgb}Z\e[11;1Ha" });
@@ -184,6 +199,24 @@ $OUTER respawn-pane -k -t outer:0.0 \
 
 wait_for_file "$DIR/painted" "application did not paint"
 sleep 1
+
+unchanged_utf8=$(printf '\303\251|\342\224\200')
+for stage in ordinary-repeat sync-repeat; do
+	frames "$stage" 1000
+	if grep -Eq 'REPEATED COMPACT TEXT|prefix-|-suffix|a{16}' \
+	    "$DIR/$stage-stream"; then
+		fail "$stage redrew unchanged text"
+	fi
+	grep -Eq "$unchanged_utf8" "$DIR/$stage-stream" &&
+	    fail "$stage redrew unchanged UTF-8"
+	$INNER capture-pane -p -S 3 -E 3 -t inner:0.0 >"$DIR/actual" || exit 1
+	grep -Fxq '  prefix-e-suffix!' "$DIR/actual" ||
+	    fail "$stage cursor did not advance past the original run"
+	$INNER capture-pane -p -S 5 -E 5 -t inner:0.0 >"$DIR/actual" || exit 1
+	grep -Fxq "$(printf '  \303\251\342\224\200e')" "$DIR/actual" ||
+	    fail "$stage cursor did not advance past the UTF-8 cells"
+	check_screen "after $stage"
+done
 
 frames restore 500
 check_screen "after restored frames"
