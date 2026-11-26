@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.25 2026/11/22 15:19:13 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.26 2026/11/26 15:18:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -76,6 +76,7 @@ tty_draw_line_collect_empty(const struct grid_line *gl, u_int px, u_int end,
 	const struct grid_cell_entry	*gce;
 	const struct grid_extd_entry	*gee;
 	u_int				 i;
+	u_char				 flags;
 	int				 bg;
 
 	if (px >= end ||
@@ -84,26 +85,24 @@ tty_draw_line_collect_empty(const struct grid_line *gl, u_int px, u_int end,
 	    gc->flags & ~(GRID_FLAG_NOPALETTE|GRID_FLAG_CLEARED))
 		return (0);
 
+	flags = (gc->flags & GRID_FLAG_NOPALETTE);
 	for (i = px; i < end; i++) {
 		gce = &gl->celldata[i];
 		if (gce->flags & GRID_FLAG_EXTENDED) {
 			if (gce->offset >= gl->extdsize)
 				break;
 			gee = &gl->extddata[gce->offset];
-			if (gee->flags & ~GRID_FLAG_NOPALETTE ||
+			if (gee->flags != flags ||
 			    gee->attr != 0 ||
 			    gee->link != 0 ||
 			    gee->bg != gc->bg ||
-			    (gee->flags & GRID_FLAG_NOPALETTE) !=
-			    (gc->flags & GRID_FLAG_NOPALETTE) ||
-			    utf8_get_one(gee->data) != ' ')
+			    !utf8_is_one(gee->data, ' '))
 				break;
 		} else {
 			if (gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256|
 			    GRID_FLAG_NOPALETTE|GRID_FLAG_CLEARED) ||
 			    gce->data.attr != 0 ||
-			    (gce->flags & GRID_FLAG_NOPALETTE) !=
-			    (gc->flags & GRID_FLAG_NOPALETTE))
+			    (gce->flags & GRID_FLAG_NOPALETTE) != flags)
 				break;
 			bg = gce->data.bg;
 			if (gce->flags & GRID_FLAG_BG256)

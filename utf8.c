@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.81 2026/11/22 09:06:48 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.82 2026/11/26 15:18:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -522,6 +522,14 @@ u_int
 utf8_build_one(u_char ch)
 {
 	return (UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|ch);
+}
+
+/* Match a single-byte, single-width character. */
+int
+utf8_is_one(utf8_char uc, u_char ch)
+{
+	/* The middle two bytes are unused for a one-byte character. */
+	return ((uc & 0xff0000ff) == utf8_build_one(ch));
 }
 
 /* Get a single-byte, single-width character, or -1. */

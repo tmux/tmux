@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1504 2026/11/26 14:17:29 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1505 2026/11/26 15:18:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4269,6 +4269,7 @@ enum utf8_state	 utf8_fromwc(int wc, struct utf8_data *);
 int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
+int		 utf8_is_one(utf8_char, u_char);
 int		 utf8_get_one(utf8_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
 void		 utf8_to_data(utf8_char, struct utf8_data *);
