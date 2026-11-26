@@ -320,75 +320,70 @@ enum window_copy_fold_scan_mode {
 
 struct window_copy_fold_request {
 	enum window_copy_fold_action	 action;
-	int				 all;		/* all or one */
-	u_int				 target;	/* row or UINT_MAX */
-							/* for cursor's row */
+	int				 all;
+	u_int				 target;	/* cursor if UINT_MAX */
 	u_int				 column;	/* source column */
-	int				 command_end;	/* prefer placing */
-							/* cursor at cmd end */
+	int				 command_end;
 };
 
-/* Source coordinates and collapse bit identifying one command's fold. */
+/* Source position and collapse flag for a command. */
 struct window_copy_fold {
 	u_int	 prompt;	/* primary prompt row or UINT_MAX */
 	u_int	 line;		/* anchor row or UINT_MAX */
 	u_char	 flag;		/* WINDOW_COPY_FOLD_* collapse bit */
 };
 
-/* Temporary marker state while scanning source rows for fold anchors. */
+/* Marker scan state. */
 struct window_copy_fold_scan {
-	struct window_copy_fold	 fold;		/* current command's fold */
+	struct window_copy_fold	 fold;
 	int			 command;	/* B since the last A or D */
 	int			 output;	/* C since the last A or D */
 };
 
 #ifdef ENABLE_IMAGES
-/* Pending image run while rebuilding the backing from its source. */
+/* Pending image cells; rows include history. */
 struct window_copy_image_ctx {
-	struct screen	*source;	/* unfolded source screen */
-	struct screen	*backing;	/* backing being rebuilt */
-	u_int		 source_x;	/* first source column of the run */
-	u_int		 source_y;	/* source row including history */
-	u_int		 backing_x;	/* first backing column of the run */
-	u_int		 backing_y;	/* backing row including history */
-	u_int		 width;		/* cells in the run, or zero */
+	struct screen	*source;
+	struct screen	*backing;
+	u_int		 source_x;
+	u_int		 source_y;
+	u_int		 backing_x;
+	u_int		 backing_y;
+	u_int		 width;
 };
 #endif
 
-/*
- * Scan state while building the folded backing from the unfolded source.
- * Line indices include history; the int members are boolean state.
- */
+/* Fold state; rows include history. */
 struct window_copy_fold_ctx {
-	u_int	 source_y;	/* current row in the unfolded source */
-	u_int	 source_x;	/* current column in the unfolded source */
-	u_int	 tab_end;	/* first source column after the current tab */
+	u_int	 source_y;
+	u_int	 source_x;
+	u_int	 tab_end;	/* end of current tab */
 	u_int	 wrapped_y;	/* first source row of this wrapped line */
 	u_int	 wrapped_x;	/* cells in preceding rows of this line */
-	u_int	 prompt_dy;	/* prompt row in the backing, or UINT_MAX */
-	u_int	 output_line;	/* fold flag's source row, or UINT_MAX */
-	u_char	 output_flag;	/* WINDOW_COPY_FOLD_* bit for this anchor */
-	int	 collapsed;	/* current fold is collapsed */
+	u_int	 prompt_dy;	/* backing prompt row, or UINT_MAX */
+	u_int	 output_line;	/* source flag row, or UINT_MAX */
+	u_char	 output_flag;	/* WINDOW_COPY_FOLD_* */
+	int	 collapsed;
 	int	 command;	/* B seen since the last A or D */
-	int	 hiding;	/* omit the current cell from the backing */
-	int	 tree;		/* current region belongs to the gutter tree */
+	int	 hiding;
+	int	 tree;
 	int	 in_output;	/* C seen, but not D or the next A */
-	int	 output_empty;	/* C region has no non-padding cells yet */
+	int	 output_empty;	/* no non-padding cells after C */
 	int	 initial;	/* rows precede the first primary prompt */
-	int	 keep_line;	/* keep this source row on one backing row */
+	int	 keep_line;	/* keep this row on one backing row */
 };
 
-/* Source mapping and gutter metadata for one backing row. */
+/* Source mapping and gutter data for a backing row. */
 struct window_copy_line {
 	u_int	 source_line;		/* source row; UINT_MAX if unmapped */
 	u_int	 wrapped_line;		/* wrap start row, or UINT_MAX */
 	u_int	 source_col;		/* column across wrapped source rows */
 	u_int	 backing_col;		/* backing column at same boundary */
 	u_int	 output_line;		/* source fold flag row, or UINT_MAX */
-	u_char	 output_flag;		/* anchor's WINDOW_COPY_FOLD_* bit */
-	u_char	 flags;			/* WINDOW_COPY_LINE_* bits */
-	u_char	 exit_status;		/* command exit status, if present */
-	u_char	 exit_status_present;	/* an exit status was recorded */
+	u_char	 output_flag;		/* WINDOW_COPY_FOLD_* */
+	u_char	 flags;			/* WINDOW_COPY_LINE_* */
+	u_char	 exit_status;
+	u_char	 exit_status_present;
 };
 
 /*
@@ -413,9 +408,9 @@ struct window_copy_mode_data {
 	struct input_ctx *ictx;
 
 	struct screen	*source;	/* unfolded copy of the pane */
-	u_char		*source_flags;	/* flags per source line */
+	u_char		*source_flags;	/* WINDOW_COPY_FOLD_* */
 	u_int		 source_line_count;
-	struct window_copy_line	*lines;	/* source of each backing line */
+	struct window_copy_line	*lines;	/* backing row metadata */
 	u_int		 line_count;	/* allocated backing metadata rows */
 
 	u_int		 sync_added;	/* snapshot of backing grid counters */
@@ -609,7 +604,7 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	return (dst);
 }
 
-/* Grow backing metadata to cover rows added by wrapping. */
+/* Grow the backing row metadata. */
 static void
 window_copy_grow_line_info(struct window_copy_mode_data *data, u_int count)
 {
@@ -632,7 +627,7 @@ window_copy_grow_line_info(struct window_copy_mode_data *data, u_int count)
 	data->line_count = new_count;
 }
 
-/* Get the source mapping and fold metadata for a backing line. */
+/* Get the metadata for a backing row. */
 static struct window_copy_line *
 window_copy_get_line_info(struct window_copy_mode_data *data, u_int y)
 {
@@ -641,7 +636,7 @@ window_copy_get_line_info(struct window_copy_mode_data *data, u_int y)
 	return (&data->lines[y]);
 }
 
-/* Record a backing line's source, output region and fold flags. */
+/* Set the source and fold for a backing row. */
 static void
 window_copy_set_line_info(struct window_copy_mode_data *data, u_int y,
     u_int source_line, u_int output_line, u_char output_flag, u_char flags)
@@ -657,7 +652,7 @@ window_copy_set_line_info(struct window_copy_mode_data *data, u_int y,
 	line->flags |= flags;
 }
 
-/* Check whether a source boundary agrees with a backing row's mapping. */
+/* Check a source position against a backing row's mapping. */
 static int
 window_copy_line_mapping_matches(const struct window_copy_line *line,
     const struct window_copy_fold_ctx *fold, u_int backing_x)
@@ -688,7 +683,7 @@ window_copy_map_line(struct window_copy_mode_data *data,
 	if (line == NULL)
 		return;
 
-	/* Split a new prompt from a prefix with a different source mapping. */
+	/* Split rows with different source mappings. */
 	if (fold->hiding &&
 	    dst->cx != 0 &&
 	    !window_copy_line_mapping_matches(line, fold, dst->cx)) {
@@ -700,7 +695,7 @@ window_copy_map_line(struct window_copy_mode_data *data,
 		line = &data->lines[y];
 	}
 
-	/* Use one column space for all rows of a wrapped source line. */
+	/* Count columns from the first wrapped source row. */
 	line->source_line = fold->source_y;
 	line->wrapped_line = fold->wrapped_y;
 	line->source_col = fold->wrapped_x + fold->source_x;
@@ -709,7 +704,7 @@ window_copy_map_line(struct window_copy_mode_data *data,
 	line->output_flag = fold->output_flag;
 }
 
-/* Mark a backing line as a control for its output region. */
+/* Set a fold control on a backing row. */
 static void
 window_copy_set_line_control(struct window_copy_mode_data *data, u_int y,
     u_int output_line, u_char output_flag, int expandable)
@@ -728,7 +723,7 @@ window_copy_set_line_control(struct window_copy_mode_data *data, u_int y,
 		line->flags &= ~WINDOW_COPY_LINE_EXPANDABLE;
 }
 
-/* Record a command's exit status on its control line. */
+/* Set the exit status on a fold control. */
 static void
 window_copy_set_line_exit_status(struct window_copy_mode_data *data, u_int y,
     u_char exit_status)
@@ -742,7 +737,7 @@ window_copy_set_line_exit_status(struct window_copy_mode_data *data, u_int y,
 	line->exit_status_present = 1;
 }
 
-/* Expand the exit status format for a control line. */
+/* Expand the exit status format. */
 static char *
 window_copy_expand_exit_status(struct window_mode_entry *wme,
     struct window_copy_line *line)
@@ -763,7 +758,7 @@ window_copy_expand_exit_status(struct window_mode_entry *wme,
 	return (expanded);
 }
 
-/* Update the gutter width for formatted command exit statuses. */
+/* Size the exit status gutter. */
 static void
 window_copy_update_exit_status_width(struct window_mode_entry *wme)
 {
@@ -789,7 +784,7 @@ window_copy_update_exit_status_width(struct window_mode_entry *wme)
 	data->output_status_width = width;
 }
 
-/* Set a source fold's collapsed state; return whether it changed. */
+/* Set collapse flags; return whether they changed. */
 static int
 window_copy_set_fold_collapsed(struct window_copy_mode_data *data, u_int y,
     u_char flags, int collapsed)
@@ -803,7 +798,7 @@ window_copy_set_fold_collapsed(struct window_copy_mode_data *data, u_int y,
 	return (old != data->source_flags[y]);
 }
 
-/* Find the first primary prompt, if any. */
+/* Find the first primary prompt. */
 static u_int
 window_copy_first_prompt(struct grid *gd)
 {
@@ -816,7 +811,7 @@ window_copy_first_prompt(struct grid *gd)
 	return (UINT_MAX);
 }
 
-/* Check whether a source position belongs to the initial output fold. */
+/* Check whether a source position precedes the first prompt. */
 static int
 window_copy_in_initial_output(struct grid *gd, u_int x, u_int y)
 {
@@ -832,7 +827,7 @@ window_copy_in_initial_output(struct grid *gd, u_int x, u_int y)
 	return (x < gl->osc133_data.prompt_col);
 }
 
-/* Scan markers in column order, optionally stopping before the next prompt. */
+/* Scan markers in column order. */
 static u_char
 window_copy_scan_fold_line(struct window_copy_fold_scan *scan,
     struct grid_line *gl, u_int y, enum window_copy_fold_scan_mode mode)
@@ -851,7 +846,7 @@ window_copy_scan_fold_line(struct window_copy_fold_scan *scan,
 	pending = gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_START_COMMAND|
 	    GRID_LINE_START_OUTPUT|GRID_LINE_END_OUTPUT);
 	while (pending != 0) {
-		/* At equal columns, finish output before starting a prompt. */
+		/* At equal columns, process C and D before A and B. */
 		flag = 0;
 		col = UINT_MAX;
 		for (i = 0; i < nitems(marker_flags); i++) {
@@ -885,7 +880,7 @@ window_copy_scan_fold_line(struct window_copy_fold_scan *scan,
 			}
 			break;
 		case GRID_LINE_END_OUTPUT:
-			/* B without C uses D to anchor its separator fold. */
+			/* Use D as the anchor when there is no C. */
 			if (!scan->output &&
 			    scan->command &&
 			    scan->fold.prompt != UINT_MAX) {
@@ -914,13 +909,13 @@ window_copy_any_fold_collapsed(struct window_copy_mode_data *data)
 
 	y = window_copy_first_prompt(gd);
 
-	/* Check the initial fold only if rows precede the first prompt. */
+	/* Initial output uses the flag on source row zero. */
 	if (y != 0 &&
 	    y != UINT_MAX &&
 	    (data->source_flags[0] & WINDOW_COPY_FOLD_INITIAL))
 		return (1);
 
-	/* Leading markers belong to the initial fold, not separate commands. */
+	/* Leading markers belong to the initial fold. */
 	for (; y < gd->hsize + gd->sy; y++) {
 		gl = grid_get_line(gd, y);
 		if (window_copy_scan_fold_line(&scan, gl, y,
@@ -930,7 +925,7 @@ window_copy_any_fold_collapsed(struct window_copy_mode_data *data)
 	return (0);
 }
 
-/* Set every source fold's collapsed state; return whether any changed. */
+/* Set all collapse flags; return whether any changed. */
 static int
 window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
     int collapsed)
@@ -964,7 +959,7 @@ window_copy_set_all_folds_collapsed(struct window_copy_mode_data *data,
 	return (changed);
 }
 
-/* Record prompt markers without replacing a visible command's mapping. */
+/* Record a prompt and start its fold. */
 static void
 window_copy_fold_start_prompt(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold, struct grid_line *sgl,
@@ -979,13 +974,12 @@ window_copy_fold_start_prompt(struct window_copy_mode_data *data,
 	if (fold->source_x != od->prompt_col || flags == 0)
 		return;
 
-	/* A may follow hidden output after a visible command prefix. */
+	/* Keep a visible command prefix separate from the next prompt. */
 	if ((flags & GRID_LINE_START_PROMPT) && fold->hiding)
 		window_copy_map_line(data, fold, ctx);
 	dy = screen_hsize(dst) + dst->cy;
 	dgl = grid_get_line(dst->grid, dy);
 
-	/* A starts a new prompt and ends the preceding output region. */
 	if (flags & GRID_LINE_START_PROMPT) {
 		dgl->flags |= GRID_LINE_START_PROMPT;
 		dgl->osc133_data.prompt_col = dst->cx;
@@ -1005,7 +999,7 @@ window_copy_fold_start_prompt(struct window_copy_mode_data *data,
 	}
 }
 
-/* Record an output start and attach its control to the prompt. */
+/* Record C and attach its fold control to the prompt. */
 static void
 window_copy_fold_start_output(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold, struct grid_line *sgl,
@@ -1017,17 +1011,15 @@ window_copy_fold_start_output(struct window_copy_mode_data *data,
 	    fold->source_x != osc133->out_start_col)
 		return;
 
-	/* C starts the collapsible output region. */
 	dgl->flags |= GRID_LINE_START_OUTPUT;
 	dgl->osc133_data.out_start_col = col;
 	fold->output_line = fold->source_y;
 	fold->output_flag = WINDOW_COPY_FOLD_OUTPUT;
 	fold->tree = 1;
 	fold->in_output = 1;
-
-	/* Assume no output until a non-padding cell is processed. */
 	fold->output_empty = 1;
-	/* A retained C before the first prompt still uses the initial fold. */
+
+	/* C before the first prompt belongs to the initial fold. */
 	if (fold->initial && fold->prompt_dy == UINT_MAX) {
 		fold->collapsed = data->source_flags[0] &
 		    WINDOW_COPY_FOLD_INITIAL;
@@ -1042,7 +1034,7 @@ window_copy_fold_start_output(struct window_copy_mode_data *data,
 	}
 }
 
-/* Record an output end and fold separator text until the next prompt. */
+/* Record D and fold the following separator text. */
 static void
 window_copy_fold_end_output(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold, struct grid_line *sgl,
@@ -1054,7 +1046,6 @@ window_copy_fold_end_output(struct window_copy_mode_data *data,
 	    fold->source_x != osc133->out_end_col)
 		return;
 
-	/* Fold text after D until the next A. */
 	dgl->flags |= GRID_LINE_END_OUTPUT;
 	if (sgl->flags & GRID_LINE_END_OUTPUT_STATUS)
 		dgl->flags |= GRID_LINE_END_OUTPUT_STATUS;
@@ -1063,13 +1054,13 @@ window_copy_fold_end_output(struct window_copy_mode_data *data,
 	if (fold->in_output &&
 	    fold->output_empty &&
 	    fold->prompt_dy != UINT_MAX) {
-		/* No output to hide, no +/-. */
+		/* Empty output has no +/- control. */
 		window_copy_set_line_control(data, fold->prompt_dy,
 		    fold->output_line, fold->output_flag, 0);
 	}
 	fold->in_output = 0;
 	if (fold->output_line == UINT_MAX && fold->command) {
-		/* B without C has no output. */
+		/* Use D if no C marker was received. */
 		fold->output_line = fold->source_y;
 		fold->output_flag = WINDOW_COPY_FOLD_SEPARATOR;
 		fold->tree = 1;
@@ -1087,34 +1078,30 @@ window_copy_fold_end_output(struct window_copy_mode_data *data,
 	}
 	fold->hiding = fold->collapsed;
 	if (fold->initial && fold->prompt_dy == UINT_MAX) {
-		/* Keep the initial fold state. */
 		fold->hiding = data->source_flags[0] &
 		    WINDOW_COPY_FOLD_INITIAL;
 	}
 	fold->command = 0;
 }
 
-/* Update fold state for one non-padding source cell, even if hidden. */
+/* Mark output or separator text as nonempty. */
 static void
 window_copy_fold_cell(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold)
 {
 	if (fold->in_output) {
-		/* C set output_empty to 1; seeing this cell makes it false. */
 		fold->output_empty = 0;
 		return;
 	}
-	/* No fold or unset line indices means no prompt control to update. */
 	if (!fold->tree ||
 	    fold->output_line == UINT_MAX ||
 	    fold->prompt_dy == UINT_MAX)
 		return;
-	/* Enable this fold's +/- control for the separator text after D. */
 	window_copy_set_line_control(data, fold->prompt_dy, fold->output_line,
 	    fold->output_flag, 1);
 }
 
-/* Skip hidden rows without markers after recording any output or separator. */
+/* Skip hidden rows without markers. */
 static int
 window_copy_fold_hidden_line(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold, struct grid_line *gl)
@@ -1123,7 +1110,6 @@ window_copy_fold_hidden_line(struct window_copy_mode_data *data,
 	struct grid_cell	 gc;
 	u_int			 x;
 
-	/* Keep markers and the initial control row in the normal scan. */
 	if (!fold->hiding ||
 	    (gl->flags & GRID_LINE_OSC133_FLAGS) ||
 	    (fold->initial && fold->source_y == 0))
@@ -1131,7 +1117,6 @@ window_copy_fold_hidden_line(struct window_copy_mode_data *data,
 	if (fold->in_output && !fold->output_empty)
 		return (1);
 
-	/* A non-padding cell or image makes this fold nonempty. */
 #ifdef ENABLE_IMAGES
 	if (image_grid_line_has_images(gl)) {
 		window_copy_fold_cell(data, fold);
@@ -1149,17 +1134,15 @@ window_copy_fold_hidden_line(struct window_copy_mode_data *data,
 	return (1);
 }
 
-/* Keep line breaks on visible rows and the initial output's control row. */
+/* Keep breaks after visible text and the initial control row. */
 static void
 window_copy_fold_linefeed(struct screen_write_ctx *ctx,
     struct window_copy_fold_ctx *fold, struct grid_line *gl, u_int total)
 {
-	/* Wrapped text continues, while image rows keep their boundaries. */
 	if (fold->source_y + 1 == total ||
 	    ((gl->flags & GRID_LINE_WRAPPED) && !fold->keep_line))
 		return;
 
-	/* Keep a hard break after visible command text or initial controls. */
 	if (fold->hiding &&
 	    ctx->s->cx == 0 &&
 	    (!fold->initial || fold->source_y != 0))
@@ -1168,12 +1151,11 @@ window_copy_fold_linefeed(struct screen_write_ctx *ctx,
 	screen_write_linefeed(ctx, gl->flags & GRID_LINE_WRAPPED, 8);
 }
 
-/* Attach controls to the first line of initial output. */
+/* Keep the first initial-output row as its control. */
 static void
 window_copy_fold_initial_control(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold, u_int y)
 {
-	/* Only initial output gets a control at source position (0, 0). */
 	if (!fold->initial || fold->source_y != 0 || fold->source_x != 0)
 		return;
 	window_copy_set_line_info(data, y, 0, UINT_MAX,
@@ -1181,12 +1163,11 @@ window_copy_fold_initial_control(struct window_copy_mode_data *data,
 	    WINDOW_COPY_LINE_CONTROL|WINDOW_COPY_LINE_INITIAL);
 }
 
-/* Continue the gutter tree on empty output lines. */
+/* Extend the gutter tree over empty output rows. */
 static void
 window_copy_fold_empty_line(struct window_copy_mode_data *data,
     struct window_copy_fold_ctx *fold, struct grid_line *gl, u_int y)
 {
-	/* Require a visible empty fold row without prompt or output markers. */
 	if (fold->hiding ||
 	    !fold->tree ||
 	    gl->cellused != 0 ||
@@ -1197,7 +1178,7 @@ window_copy_fold_empty_line(struct window_copy_mode_data *data,
 	    fold->output_flag, WINDOW_COPY_LINE_MEMBER);
 }
 
-/* Source grid: the unfolded copy while folding, otherwise the backing. */
+/* Get the unfolded source, or backing when folding is off. */
 static struct grid *
 window_copy_source_grid(struct window_copy_mode_data *data)
 {
@@ -1206,7 +1187,7 @@ window_copy_source_grid(struct window_copy_mode_data *data)
 	return (data->backing->grid);
 }
 
-/* Create the folded view using the backing as its unfolded source. */
+/* Save the source and build a fold view. */
 static void
 window_copy_create_fold_view(struct window_mode_entry *wme)
 {
@@ -1222,7 +1203,7 @@ window_copy_create_fold_view(struct window_mode_entry *wme)
 	window_copy_rebuild_backing(wme);
 }
 
-/* Destroy the folded view and restore the unfolded backing. */
+/* Restore the unfolded backing. */
 static void
 window_copy_destroy_fold_view(struct window_mode_entry *wme)
 {
@@ -1233,7 +1214,7 @@ window_copy_destroy_fold_view(struct window_mode_entry *wme)
 	data->backing = data->source;
 	data->source = NULL;
 
-	/* The saved source may still be wrapped to an earlier pane size. */
+	/* The source may still have the old pane size. */
 	screen_resize_cursor(data->backing, screen_size_x(&data->screen),
 	    screen_size_y(&data->screen), 1, 0, 0);
 	free(data->source_flags);
@@ -1246,7 +1227,7 @@ window_copy_destroy_fold_view(struct window_mode_entry *wme)
 	data->fold_view = 0;
 }
 
-/* Include marker positions even when cursor movement left no stored cells. */
+/* Include markers beyond stored cells. */
 static u_int
 window_copy_fold_line_length(struct grid_line *gl)
 {
@@ -1265,7 +1246,7 @@ window_copy_fold_line_length(struct grid_line *gl)
 	return (length);
 }
 
-/* Keep image rows intact and let tab columns wrap without losing the tab. */
+/* Copy a cell, preserving tabs and image row boundaries. */
 static void
 window_copy_write_fold_cell(struct window_copy_mode_data *data,
     struct screen_write_ctx *ctx, struct window_copy_fold_ctx *fold,
@@ -1279,7 +1260,7 @@ window_copy_write_fold_cell(struct window_copy_mode_data *data,
 	if (!fold->keep_line && fold->source_x >= fold->tab_end) {
 		screen_write_cell(ctx, gc);
 
-		/* Unchanged blank cells still belong to the copied source. */
+		/* Record blank cells skipped by screen_write_cell. */
 		y = screen_hsize(dst) + dst->cy;
 		gl = grid_get_line(dst->grid, y);
 		if (gl->cellused < dst->cx)
@@ -1287,7 +1268,6 @@ window_copy_write_fold_cell(struct window_copy_mode_data *data,
 		return;
 	}
 
-	/* Map a new backing row if this tab crosses the right edge. */
 	if (!fold->keep_line && dst->cx == screen_size_x(dst)) {
 		screen_write_linefeed(ctx, 1, 8);
 		screen_write_carriagereturn(ctx);
@@ -1308,7 +1288,7 @@ window_copy_write_fold_cell(struct window_copy_mode_data *data,
 }
 
 #ifdef ENABLE_IMAGES
-/* Copy image runs when wrapping or hidden cells interrupt their mapping. */
+/* Copy image runs; width zero flushes the pending run. */
 static void
 window_copy_fold_images(struct window_copy_image_ctx *images,
     struct window_copy_fold_ctx *fold, u_int width)
@@ -1316,11 +1296,10 @@ window_copy_fold_images(struct window_copy_image_ctx *images,
 	struct screen	*dst = images->backing;
 	u_int		 x, y;
 
-	/* An overwide cell may have been omitted by screen_write_cell. */
+	/* screen_write_cell may drop an overwide cell. */
 	if (width > dst->cx)
 		width = 0;
 
-	/* Extend a run while source and backing cells remain adjacent. */
 	if (width != 0) {
 		x = dst->cx - width;
 		y = screen_hsize(dst) + dst->cy;
@@ -1332,7 +1311,6 @@ window_copy_fold_images(struct window_copy_image_ctx *images,
 			return;
 		}
 	}
-	/* Flush the previous run before starting another or ending the row. */
 	if (images->width != 0) {
 		image_grid_copy_area(dst->grid, images->backing_x,
 		    images->backing_y, images->source->grid, images->source_x,
@@ -1348,7 +1326,7 @@ window_copy_fold_images(struct window_copy_image_ctx *images,
 }
 #endif
 
-/* Recreate the backing screen with any collapsed OSC 133 output omitted. */
+/* Build the backing without collapsed output. */
 static void
 window_copy_rebuild_backing(struct window_mode_entry *wme)
 {
@@ -1376,7 +1354,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	sx = screen_size_x(&data->screen);
 	dst = xcalloc(1, sizeof *dst);
 
-	/* Retain every snapshot row, including extra rows from wrapping. */
+	/* Wrapping may add rows; retain them all. */
 	screen_init(dst, sx, screen_size_y(&data->screen), UINT_MAX);
 #ifdef ENABLE_IMAGES
 	images.source = src;
@@ -1386,7 +1364,8 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	data->lines = NULL;
 	data->line_count = 0;
 	window_copy_grow_line_info(data, total);
-	/* Blank lines at the end would only scroll the folded view. */
+
+	/* Skip unused trailing rows to avoid scrolling the view. */
 	last = total;
 	while (last > 1) {
 		sgl = grid_get_line(sgd, last - 1);
@@ -1400,15 +1379,13 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	}
 	y = window_copy_first_prompt(sgd);
 
-	/* Keep the first line as the control for any initial output. */
 	if (y != 0 && y != UINT_MAX)
 		fold.initial = 1;
 
 	screen_write_start(&ctx, dst);
 
-	/* Include the final cell boundary for markers after the last cell. */
 	for (y = 0; y < last; y++) {
-		/* Keep joined source rows in one mapping coordinate space. */
+		/* Track columns across wrapped source rows. */
 		if (y != 0) {
 			sgl = grid_get_line(sgd, y - 1);
 			if (sgl->flags & GRID_LINE_WRAPPED)
@@ -1425,12 +1402,12 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		fold.keep_line = image_grid_line_has_images(sgl);
 #endif
 		if (window_copy_fold_hidden_line(data, &fold, sgl)) {
-			/* Keep the hard break after visible command text. */
+			/* Keep any hard break after the visible prefix. */
 			window_copy_fold_linefeed(&ctx, &fold, sgl, last);
 			continue;
 		}
 
-		/* Image rows must not join the preceding wrapped text. */
+		/* Keep image rows separate from preceding wrapped text. */
 		if (!fold.hiding &&
 		    dst->cx != 0 &&
 		    (dst->cx == sx || fold.keep_line)) {
@@ -1439,8 +1416,9 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		}
 		osc133 = &sgl->osc133_data;
 		end = window_copy_fold_line_length(sgl);
+
+		/* Scan markers after the last cell too. */
 		for (x = 0; x <= end; x++) {
-			/* Wrapped backing rows may outnumber source rows. */
 			window_copy_grow_line_info(data,
 			    screen_hsize(dst) + screen_size_y(dst));
 			was_hiding = fold.hiding;
@@ -1448,7 +1426,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			if (!fold.hiding)
 				window_copy_map_line(data, &fold, &ctx);
 
-			/* Process markers on hidden rows too. */
+			/* Process markers even in hidden output. */
 			dy = screen_hsize(dst) + dst->cy;
 			dgl = grid_get_line(dst->grid, dy);
 			window_copy_fold_initial_control(data, &fold, dy);
@@ -1467,7 +1445,6 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				dgl->osc133_data.cmd_col = dst->cx;
 				fold.command = 1;
 			}
-			/* A may expose cells after a folded region. */
 			if (was_hiding && !fold.hiding)
 				window_copy_map_line(data, &fold, &ctx);
 			if (x == end) {
@@ -1482,7 +1459,6 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			    !fold.keep_line)
 				continue;
 
-			/* Only stored cells or images make output nonempty. */
 			content = x < sgl->cellused &&
 			    (~gc.flags & GRID_FLAG_PADDING);
 #ifdef ENABLE_IMAGES
@@ -1494,7 +1470,6 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			if (content)
 				window_copy_fold_cell(data, &fold);
 
-			/* Skip hidden cells after processing their markers. */
 			if (fold.hiding)
 				continue;
 			window_copy_write_fold_cell(data, &ctx, &fold, &gc);
@@ -1511,7 +1486,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		}
 #ifdef ENABLE_IMAGES
 		if (fold.keep_line) {
-			/* Image-only cells also make a fold nonempty. */
+			/* Images may extend beyond stored text. */
 			image_tail = end < sgd->sx &&
 			    image_grid_area_has_images(sgd, end, y,
 			    sgd->sx - end, 1);
@@ -1519,7 +1494,6 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				window_copy_fold_cell(data, &fold);
 			window_copy_fold_images(&images, &fold, 0);
 
-			/* Copy spans beyond the last text cell. */
 			if (image_tail && !fold.hiding && dst->cx < sx) {
 				image_width = sgd->sx - end;
 				if (image_width > sx - dst->cx)
@@ -1537,7 +1511,6 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		window_copy_fold_empty_line(data, &fold, sgl, dy);
 		window_copy_fold_linefeed(&ctx, &fold, sgl, last);
 		if (fold.initial && y == 0) {
-			/* Fold below the initial control line. */
 			fold.tree = 1;
 			fold.hiding = data->source_flags[0] &
 			    WINDOW_COPY_FOLD_INITIAL;
@@ -1550,7 +1523,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	}
 	data->backing = dst;
 
-	/* Keep format lookups in range until the cursor is restored. */
+	/* Clamp positions before expanding gutter formats. */
 	if (data->oy > screen_hsize(dst))
 		data->oy = screen_hsize(dst);
 	if (data->cy >= screen_size_y(dst))
@@ -2236,7 +2209,7 @@ window_copy_get_hyperlink(struct window_pane *wp, u_int x, u_int y)
 	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
 }
 
-/* Get the hyperlink under the displayed copy-mode cursor. */
+/* Get the hyperlink under the copy-mode cursor. */
 static void *
 window_copy_cursor_hyperlink_cb(struct format_tree *ft)
 {
@@ -2417,11 +2390,7 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	if (screen_size_x(s) == sx && screen_size_y(s) == sy)
 		return;
 
-	/*
-	 * If this view supports folding, rebuild from its separate source,
-	 * even if all output is expanded. Preserve the cursor using source
-	 * coordinates because rebuilding can change the backing row mappings.
-	 */
+	/* Rebuild from source even when no output is collapsed. */
 	if (data->fold_view) {
 		window_copy_get_cursor_source(wme, &source_x, &source_y);
 		screen_resize(s, sx, sy, 0);
@@ -2833,7 +2802,7 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	free(buf);
 
 	if (data->fold_view) {
-		/* Expand at C even when the next prompt shares its row. */
+		/* Expand at C, which may share a row with the next prompt. */
 		if (all)
 			changed = window_copy_set_all_folds_collapsed(data, 0);
 		else if (window_copy_in_initial_output(gd, sx, sy)) {
@@ -4521,7 +4490,7 @@ window_copy_cmd_search_forward_incremental_regex(
 	    WINDOW_COPY_SEARCHDOWN, 1));
 }
 
-/* Copy collapse flags to matching output markers in a refreshed source. */
+/* Preserve collapse flags on surviving source markers. */
 static u_char *
 window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 {
@@ -4546,19 +4515,18 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 
 	flags = xcalloc(total, sizeof *flags);
 
-	/* Expanded views have no old marker positions to preserve. */
 	if (!window_copy_any_fold_collapsed(data))
 		return (flags);
 	collected = wme->swp->base.grid->scroll_collected -
 	    data->sync_collected;
 
-	/* Reflow a copy of the old source to locate its surviving markers. */
+	/* Locate old markers after reflow. */
 	resized = window_copy_clone_screen(data->source, src, NULL, NULL, 0);
 	rgd = resized->grid;
 	for (y = 0; y < data->source_line_count; y++) {
 		gl = grid_get_line(old, y);
 		for (i = 0; i < nitems(markers); i++) {
-			/* Visit C and D in order as reflow advances. */
+			/* Visit C and D in column order. */
 			index = i;
 			if (gl->osc133_data.out_end_col <
 			    gl->osc133_data.out_start_col)
@@ -4572,7 +4540,7 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 			else
 				col = gl->osc133_data.out_end_col;
 
-			/* Find this marker's reflowed row and column. */
+			/* Find the marker in the reflowed copy. */
 			while (reflow_y + 1 < rgd->hsize + rgd->sy) {
 				rgl = grid_get_line(rgd, reflow_y);
 				if (reflow_row == wy &&
@@ -4590,7 +4558,6 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 			x = wx + col - reflow_col;
 			new_y = reflow_y;
 
-			/* Skip markers collected from history. */
 			if (new_y >= collected && new_y - collected < total) {
 				new_y -= collected;
 				new_gl = grid_get_line(gd, new_y);
@@ -4603,7 +4570,6 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 			}
 		}
 
-		/* Include marker boundaries after the last cell. */
 		if (gl->flags & GRID_LINE_WRAPPED)
 			wx += gl->cellused;
 		else {
@@ -4614,7 +4580,7 @@ window_copy_clone_fold_flags(struct window_mode_entry *wme, struct screen *src)
 	screen_free(resized);
 	free(resized);
 
-	/* Keep the initial fold if both sources retain leading output. */
+	/* Keep initial folding if both snapshots retain leading output. */
 	first_prompt = window_copy_first_prompt(old);
 	if (collected == 0 && first_prompt != 0 && first_prompt != UINT_MAX) {
 		first_prompt = window_copy_first_prompt(gd);
@@ -4647,7 +4613,6 @@ window_copy_do_refresh(struct window_mode_entry *wme, int follow)
 
 	if (!window_copy_sync_backing(wme)) {
 		if (data->fold_view) {
-			/* Preserve folds before replacing the old source. */
 			source = window_copy_clone_screen(&wp->base,
 			    &data->screen, NULL, NULL, wme->swp != wme->wp);
 			flags = window_copy_clone_fold_flags(wme, source);
@@ -4908,7 +4873,7 @@ window_copy_cmd_line_numbers_toggle(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
-/* Toggle the folded view while preserving the cursor's source position. */
+/* Toggle the fold view, preserving the source cursor. */
 static enum window_copy_cmd_action
 window_copy_cmd_fold_view_toggle(struct window_copy_cmd_state *cs)
 {
@@ -4922,7 +4887,7 @@ window_copy_cmd_fold_view_toggle(struct window_copy_cmd_state *cs)
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
 	if (data->fold_view) {
-		/* Reflowing the source also changes the cursor coordinates. */
+		/* Reflow changes source coordinates. */
 		grid_wrap_position(data->source->grid, source_x, source_y,
 		    &wx, &wy);
 		window_copy_destroy_fold_view(wme);
@@ -4938,7 +4903,7 @@ window_copy_cmd_fold_view_toggle(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
-/* Find the fold containing a source position and its prompt and flag rows. */
+/* Find the command fold containing a source position. */
 static int
 window_copy_find_fold(struct window_mode_entry *wme, u_int target_x,
     u_int target_y, struct window_copy_fold *fold)
@@ -4959,7 +4924,7 @@ window_copy_find_fold(struct window_mode_entry *wme, u_int target_x,
 		gl = grid_get_line(gd, y);
 		mode = WINDOW_COPY_FOLD_SCAN_LINE;
 
-		/* Stop before a prompt beyond the target position. */
+		/* Stop before the next prompt. */
 		if ((gl->flags & GRID_LINE_START_PROMPT) &&
 		    (y > target_y ||
 		    (y == target_y && gl->osc133_data.prompt_col > target_x)))
@@ -4974,7 +4939,7 @@ window_copy_find_fold(struct window_mode_entry *wme, u_int target_x,
 	return (1);
 }
 
-/* Express a source position relative to its first wrapped row. */
+/* Count source columns from the first wrapped row. */
 static void
 window_copy_wrap_source_position(struct window_copy_mode_data *data,
     u_int *x, u_int *y)
@@ -4991,7 +4956,7 @@ window_copy_wrap_source_position(struct window_copy_mode_data *data,
 	}
 }
 
-/* Restore a source position to the row containing its column. */
+/* Convert wrapped source columns to a row and column. */
 static void
 window_copy_unwrap_source_position(struct window_copy_mode_data *data,
     u_int *x, u_int *y)
@@ -5021,7 +4986,6 @@ window_copy_source_line(struct window_copy_mode_data *data, u_int y)
 	if (line->wrapped_line == UINT_MAX)
 		return (data->source_line_count - 1);
 
-	/* Joined rows use the first wrapped source row's column space. */
 	source_y = line->wrapped_line;
 	if (line->source_col > line->backing_col)
 		source_x = line->source_col - line->backing_col;
@@ -5029,7 +4993,7 @@ window_copy_source_line(struct window_copy_mode_data *data, u_int y)
 	return (source_y);
 }
 
-/* Map the cursor to its position in the unfolded source. */
+/* Map the cursor to the unfolded source. */
 static void
 window_copy_get_cursor_source(struct window_mode_entry *wme, u_int *source_x,
     u_int *source_y)
@@ -5045,7 +5009,8 @@ window_copy_get_cursor_source(struct window_mode_entry *wme, u_int *source_x,
 		*source_y = y;
 		return;
 	}
-	/* Unmapped padding refers to the start of the last source row. */
+
+	/* Unmapped padding refers to the last source row. */
 	if (line->source_line == UINT_MAX) {
 		*source_x = 0;
 		*source_y = data->source_line_count - 1;
@@ -5061,7 +5026,7 @@ window_copy_get_cursor_source(struct window_mode_entry *wme, u_int *source_x,
 	window_copy_unwrap_source_position(data, source_x, source_y);
 }
 
-/* Find the backing position corresponding to a source position. */
+/* Map a source position to the backing. */
 static int
 window_copy_find_backing_position(struct window_mode_entry *wme, u_int source_x,
     u_int source_y, u_int *backing_x, u_int *backing_y)
@@ -5077,7 +5042,6 @@ window_copy_find_backing_position(struct window_mode_entry *wme, u_int source_x,
 		return (1);
 	}
 
-	/* Joined source rows share a row and column space in the mappings. */
 	window_copy_wrap_source_position(data, &source_x, &source_y);
 	total = screen_hsize(data->backing) + screen_size_y(data->backing);
 	for (y = 0; y < total; y++) {
@@ -5092,7 +5056,6 @@ window_copy_find_backing_position(struct window_mode_entry *wme, u_int source_x,
 			x = line->backing_col - (line->source_col - source_x);
 		}
 
-		/* A source row may span several backing rows after wrapping. */
 		gl = grid_get_line(data->backing->grid, y);
 		if (x > gl->cellused ||
 		    (x == gl->cellused && (gl->flags & GRID_LINE_WRAPPED)))
@@ -5104,7 +5067,7 @@ window_copy_find_backing_position(struct window_mode_entry *wme, u_int source_x,
 	return (0);
 }
 
-/* Put the cursor on a backing line, scrolling the view into history. */
+/* Show a backing row, scrolling if necessary. */
 static void
 window_copy_show_line(struct window_copy_mode_data *data, u_int y)
 {
@@ -5122,7 +5085,7 @@ window_copy_show_line(struct window_copy_mode_data *data, u_int y)
 	data->oy = 0;
 }
 
-/* Restore the cursor to a visible, nonempty source position. */
+/* Restore the cursor to visible source text. */
 static int
 window_copy_restore_cursor(struct window_mode_entry *wme, u_int source_x,
     u_int source_y)
@@ -5144,7 +5107,7 @@ window_copy_restore_cursor(struct window_mode_entry *wme, u_int source_x,
 	return (1);
 }
 
-/* Place the cursor at the command end before its output marker. */
+/* Restore the command end before its C or D marker. */
 static int
 window_copy_restore_command_end(struct window_mode_entry *wme,
     const struct window_copy_fold *fold)
@@ -5155,14 +5118,13 @@ window_copy_restore_command_end(struct window_mode_entry *wme,
 	u_int				 x, y = fold->line;
 	int				 restored;
 
-	/* Locate C, or D for a command without an output start. */
 	gl = grid_get_line(gd, y);
 	if (fold->flag == WINDOW_COPY_FOLD_OUTPUT)
 		x = gl->osc133_data.out_start_col;
 	else
 		x = gl->osc133_data.out_end_col;
 
-	/* A marker at column zero follows the last nonempty command row. */
+	/* At column zero, find the preceding command text. */
 	while (x == 0 && y > fold->prompt) {
 		y--;
 		x = window_copy_copy_grid_line_length(gd, y, NULL);
@@ -5170,14 +5132,14 @@ window_copy_restore_command_end(struct window_mode_entry *wme,
 	if (x == 0)
 		return (0);
 
-	/* Map the last command column to stay before wrapped output. */
+	/* Map the last command cell, then advance to its boundary. */
 	restored = window_copy_restore_cursor(wme, x - 1, y);
 	if (restored)
 		data->cx++;
 	return (restored);
 }
 
-/* Place the cursor at the last nonempty line at or before source_y. */
+/* Use the last nonempty row at or before source_y. */
 static int
 window_copy_restore_before(struct window_mode_entry *wme, u_int source_y)
 {
@@ -5187,19 +5149,16 @@ window_copy_restore_before(struct window_mode_entry *wme, u_int source_y)
 	struct window_copy_line		*line;
 	u_int				 length, y, last = UINT_MAX;
 
-	/* Find the last visible nonempty row at or before source_y. */
 	for (y = 0; y < gd->hsize + gd->sy; y++) {
 		line = window_copy_get_line_info(data, y);
 		gl = grid_get_line(gd, y);
 
-		/* Skip unmapped rows, later source rows and empty rows. */
 		if (line == NULL ||
 		    line->source_line > source_y ||
 		    gl->cellused == 0)
 			continue;
 		last = y;
 	}
-	/* No suitable backing row remains at or before the source position. */
 	if (last == UINT_MAX)
 		return (0);
 	length = window_copy_find_length(wme, last);
@@ -5208,7 +5167,7 @@ window_copy_restore_before(struct window_mode_entry *wme, u_int source_y)
 	return (1);
 }
 
-/* Apply a fold request, rebuild the view and restore the cursor. */
+/* Change fold flags, rebuild and restore the cursor. */
 static int
 window_copy_apply_fold_request(struct window_mode_entry *wme,
     const struct window_copy_fold_request *request)
@@ -5223,22 +5182,17 @@ window_copy_apply_fold_request(struct window_mode_entry *wme,
 	int				 found, initial;
 	int				 wanted;
 
-	/* Generated text in view mode does not support output folding. */
 	if (data->viewmode)
 		return (0);
 
-	/* Save the cursor before folding changes the backing row mappings. */
 	window_copy_get_cursor_source(wme, &source_x, &source_y);
 
-	/* An unspecified target means the cursor's current source row. */
 	if (target == UINT_MAX) {
 		target = source_y;
 		column = source_x;
 	}
-	/* Positions before the first prompt belong to the initial fold. */
 	gd = window_copy_source_grid(data);
 	initial = window_copy_in_initial_output(gd, column, target);
-	/* Create a fold-aware view if one does not already exist. */
 	if (!data->fold_view) {
 		window_copy_create_fold_view(wme);
 		enabled = 1;
@@ -5248,9 +5202,8 @@ window_copy_apply_fold_request(struct window_mode_entry *wme,
 	if (request->action == WINDOW_COPY_FOLD_COLLAPSE)
 		wanted = 1;
 
-	/* Update all folds, the initial fold or the target command's fold. */
 	if (request->all) {
-		/* Expand if any fold is collapsed; otherwise collapse all. */
+		/* Expand all if any fold is collapsed. */
 		if (request->action == WINDOW_COPY_FOLD_TOGGLE)
 			wanted = !window_copy_any_fold_collapsed(data);
 		changed = window_copy_set_all_folds_collapsed(data, wanted);
@@ -5267,28 +5220,27 @@ window_copy_apply_fold_request(struct window_mode_entry *wme,
 		changed = window_copy_set_fold_collapsed(data, fold.line,
 		    fold.flag, wanted);
 	}
-	/* Undo a newly created view if the request changed no fold flags. */
+
+	/* Discard a new view if no fold changed. */
 	if (!changed) {
 		if (enabled)
 			window_copy_destroy_fold_view(wme);
 		return (0);
 	}
-	/* Discard selection and search marks tied to the old backing layout. */
+
+	/* Rebuilding invalidates selection and search positions. */
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
 	window_copy_rebuild_backing(wme);
 
-	/* Keep the source cell unless the request prefers the command end. */
 	if (!request->command_end &&
 	    window_copy_restore_cursor(wme, source_x, source_y))
 		return (1);
-	/* Fall back to the initial output's first row or the command end. */
 	if (initial && window_copy_restore_before(wme, 0))
 		return (1);
 	if (found && window_copy_restore_command_end(wme, &fold))
 		return (1);
 
-	/* Otherwise use earlier visible text, or the bottom of the view. */
 	if (window_copy_restore_before(wme, source_y))
 		return (1);
 	data->cy = screen_size_y(&data->screen) - 1;
@@ -5297,7 +5249,7 @@ window_copy_apply_fold_request(struct window_mode_entry *wme,
 	return (1);
 }
 
-/* Collapse the current output region, or all regions with -a. */
+/* Collapse one or all output folds. */
 static enum window_copy_cmd_action
 window_copy_cmd_collapse_output(struct window_copy_cmd_state *cs)
 {
@@ -5312,7 +5264,7 @@ window_copy_cmd_collapse_output(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
-/* Expand the current output region, or all regions with -a. */
+/* Expand one or all output folds. */
 static enum window_copy_cmd_action
 window_copy_cmd_expand_output(struct window_copy_cmd_state *cs)
 {
@@ -5327,7 +5279,7 @@ window_copy_cmd_expand_output(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
-/* Toggle output folds at the cursor, in the gutter or across the view. */
+/* Toggle output at the cursor, in the gutter (-m), or everywhere (-a). */
 static enum window_copy_cmd_action
 window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 {
@@ -5345,18 +5297,14 @@ window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 	int				 current_found;
 	int				 initial;
 
-	/* -m chooses a fold from the gutter instead of the cursor's row. */
 	if (args_has(cs->wargs, 'm')) {
-		/* Require a mouse event inside this pane's gutter. */
 		if (cs->m == NULL ||
 		    cmd_mouse_at(cs->wme->wp, cs->m, &x, &y, 0) != 0 ||
 		    x >= window_copy_left_margin(cs->wme))
 			return (WINDOW_COPY_CMD_NOTHING);
-		/* Convert the clicked screen row to a backing row. */
 		target = screen_hsize(data->backing) + y - data->oy;
 		line = window_copy_get_line_info(data, target);
 
-		/* A source mapping is needed to identify the clicked fold. */
 		if (line == NULL || line->source_line == UINT_MAX)
 			return (WINDOW_COPY_CMD_NOTHING);
 		first_prompt = window_copy_first_prompt(data->source->grid);
@@ -5364,18 +5312,15 @@ window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 		    line->source_line < first_prompt);
 		request.target = line->source_line;
 
-		/* A click on another fold should move to its command end. */
 		request.command_end = 1;
 
-		/* Initial output has no command prompt to compare. */
 		if (!initial) {
-			/* Require text or separator cells to hide. */
 			if (line->output_line >= data->source_line_count ||
 			    ((line->flags & WINDOW_COPY_LINE_CONTROL) &&
 			    (~line->flags & WINDOW_COPY_LINE_EXPANDABLE)))
 				return (WINDOW_COPY_CMD_NOTHING);
 
-			/* Locate the gutter's recorded output anchor. */
+			/* Use the recorded anchor when commands share a row. */
 			request.target = line->output_line;
 			gl = grid_get_line(data->source->grid, request.target);
 			if (line->output_flag == WINDOW_COPY_FOLD_OUTPUT)
@@ -5389,13 +5334,12 @@ window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 			current_found = window_copy_find_fold(cs->wme,
 			    x, current, &current_fold);
 
-			/* Keep the cursor if it is already in this command. */
+			/* Keep the cursor when clicking its current command. */
 			if (current_found &&
 			    current_fold.prompt == target_fold.prompt)
 				request.command_end = 0;
 		}
 	}
-	/* Apply the request and redraw only if fold state changed. */
 	if (window_copy_apply_fold_request(cs->wme, &request))
 		return (WINDOW_COPY_CMD_REDRAW);
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -6115,13 +6059,11 @@ window_copy_mouse_in_gutter(struct window_mode_entry *wme,
 {
 	u_int	 x, y;
 
-	/* Require a valid non-wheel mouse event invoking toggle-output. */
 	if (m == NULL ||
 	    !m->valid ||
 	    MOUSE_WHEEL(m->b) ||
 	    strcmp(command, "toggle-output") != 0)
 		return (0);
-	/* The event must be inside this pane and left of the text area. */
 	if (cmd_mouse_at(wme->wp, m, &x, &y, 0) != 0 ||
 	    x >= window_copy_left_margin(wme))
 		return (0);
@@ -7794,7 +7736,7 @@ window_copy_get_current_offset(struct window_pane *wp, u_int *offset,
 	return (1);
 }
 
-/* Choose the collapse control or tree character for a backing line. */
+/* Choose the fold control or tree character. */
 static char
 window_copy_gutter_control(struct window_copy_mode_data *data,
     struct window_copy_line *line, u_int y)
@@ -7803,38 +7745,31 @@ window_copy_gutter_control(struct window_copy_mode_data *data,
 	u_int			 output = UINT_MAX;
 	u_char			 flag;
 
-	/* Rows without fold metadata have no gutter symbol. */
 	if (line == NULL)
 		return (' ');
 	flag = line->output_flag;
 
-	/* Control rows show the action available for their output fold. */
 	if (line->flags & WINDOW_COPY_LINE_CONTROL) {
-		/* Initial output keeps its collapse flag on source row zero. */
+		/* Initial output uses the flag on source row zero. */
 		if (line->flags & WINDOW_COPY_LINE_INITIAL) {
 			output = 0;
 			flag = WINDOW_COPY_FOLD_INITIAL;
 		}
-		/* Other controls need expandable output and a valid row. */
 		else if ((line->flags & WINDOW_COPY_LINE_EXPANDABLE) &&
 		    line->output_line < data->source_line_count) {
 			output = line->output_line;
 		}
-		/* No associated fold means no +/- control to draw. */
 		if (output == UINT_MAX)
 			return (' ');
 
-		/* + expands collapsed output; - collapses expanded output. */
 		if (data->source_flags[output] & flag)
 			return ('+');
 		return ('-');
 	}
-	/* Only rows belonging to a fold continue the gutter tree. */
 	if (~line->flags & WINDOW_COPY_LINE_MEMBER)
 		return (' ');
 	next = window_copy_get_line_info(data, y + 1);
 
-	/* End the branch if the next row does not belong to the same fold. */
 	if (next == NULL ||
 	    (~next->flags & WINDOW_COPY_LINE_MEMBER) ||
 	    next->output_line != line->output_line ||
@@ -7843,7 +7778,7 @@ window_copy_gutter_control(struct window_copy_mode_data *data,
 	return ('x'); /* ACS vertical line */
 }
 
-/* Draw a backing line's fold control, tree and exit status. */
+/* Draw fold controls and exit status. */
 static void
 window_copy_write_gutter(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py, u_int line_width,
@@ -7855,7 +7790,7 @@ window_copy_write_gutter(struct window_mode_entry *wme,
 	u_int				 backing_y, i, width, status_width, sx;
 	char				 control, *status;
 
-	/* Clip the gutter to leave one text column and prevent wrapping. */
+	/* Leave one text column to avoid wrapping. */
 	sx = screen_size_x(ctx->s);
 	if (line_width >= sx - 1)
 		return;
@@ -7864,23 +7799,20 @@ window_copy_write_gutter(struct window_mode_entry *wme,
 	if (width > 2)
 		status_width = width - 2;
 
-	/* Find the metadata for the backing row currently displayed at py. */
 	backing_y = screen_hsize(data->backing) - data->oy + py;
 	line = window_copy_get_line_info(data, backing_y);
 	control = window_copy_gutter_control(data, line, backing_y);
 
-	/* Clear the gutter after the line numbers, including any old status. */
 	screen_write_cursormove(ctx, line_width, py, 0);
 	for (i = 0; i < width; i++)
 		screen_write_putc(ctx, gc, ' ');
 
-	/* Draw the control or tree symbol after the reserved status field. */
 	if (control != ' ') {
 		screen_write_cursormove(ctx,
 		    line_width + status_width, py, 0);
 		memcpy(&control_gc, gc, sizeof control_gc);
 
-		/* Draw tree symbols with ACS; +/- use ordinary text. */
+		/* Use ACS for tree branches. */
 		switch (control) {
 		case 'x':
 		case 'm':
@@ -7889,7 +7821,6 @@ window_copy_write_gutter(struct window_mode_entry *wme,
 		}
 		screen_write_putc(ctx, &control_gc, control);
 	}
-	/* Show a command's exit status only on its fold control row. */
 	if (line == NULL ||
 	    (~line->flags & WINDOW_COPY_LINE_CONTROL) ||
 	    status_width == 0)
@@ -7923,7 +7854,6 @@ window_copy_write_line(struct window_mode_entry *wme,
 	int				 flags;
 #endif
 
-	/* Leave room for both line numbers and the fold/status gutter. */
 	line_width = window_copy_line_number_width(wme);
 	width = window_copy_left_margin(wme);
 	if (data->fold_view && line_width > width)
@@ -7957,16 +7887,13 @@ window_copy_write_line(struct window_mode_entry *wme,
 		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
 		current = (py == data->cy);
 
-		/* Use the same row style for line numbers and gutter. */
 		line_gc = &ln_gc;
 		if (current)
 			line_gc = &cur_ln_gc;
 		backing_y = hsize - data->oy + py;
 
-		/* Number joined text from the source row at its left edge. */
 		absolute = window_copy_source_line(data, backing_y) + 1;
 		mode = window_copy_line_number_mode(wme);
-		/* Use source numbers by default in a fold-aware view. */
 		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT) {
 			if (data->fold_view)
 				line_number = absolute;
@@ -7989,7 +7916,6 @@ window_copy_write_line(struct window_mode_entry *wme,
 			screen_write_nputs(ctx, line_width, line_gc, "%*u ",
 			    (int)line_width - 1, line_number);
 		}
-		/* Draw fold controls and status after the line number field. */
 		if (data->fold_view) {
 			window_copy_write_gutter(wme, ctx, py, line_width,
 			    line_gc);
@@ -8562,7 +8488,7 @@ window_copy_get_output_range(struct window_mode_entry *wme, int all,
 	*sx = *sy = 0;
 	*ey = total - 1;
 
-	/* Folded backing omits unused trailing rows. */
+	/* Match the folded view's trimmed trailing rows. */
 	while (data->fold_view && *ey > 0) {
 		gl = grid_get_line(gd, *ey);
 		if (gl->cellused != 0 || (gl->flags & GRID_LINE_OSC133_FLAGS))
@@ -8889,7 +8815,7 @@ window_copy_copy_grid_line_length(struct grid *gd, u_int sy,
 	if (wrapped != NULL)
 		*wrapped = line_wrapped;
 
-	/* Allocation may extend past an early wide-character wrap. */
+	/* cellsize may include unused cells after a wide-character wrap. */
 	if (line_wrapped)
 		length = gl->cellused;
 	else
@@ -8906,7 +8832,7 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	window_copy_copy_grid_line(data->backing->grid, buf, off, sy, sx, ex);
 }
 
-/* Append a grid line's requested text range to the copy buffer. */
+/* Append a grid text range to the copy buffer. */
 static void
 window_copy_copy_grid_line(struct grid *gd, char **buf, size_t *off, u_int sy,
     u_int sx, u_int ex)
