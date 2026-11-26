@@ -68,7 +68,7 @@ set -g status off
 set -g window-size manual
 set -g automatic-rename off
 set -g default-terminal tmux
-set -s terminal-features 'xterm*:RGB:sync'
+set -s terminal-features 'xterm*:RGB:sync:ecmasgr'
 set -s disable-backoff on
 EOF
 # "default" leaves the option unset, using tmux's built-in history limit.
