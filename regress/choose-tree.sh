@@ -134,6 +134,53 @@ $TMUX new-session -d -s aaa -x 80 -y 24 'cat' || exit 1
 $TMUX2 new-session -d -s out -x 80 -y 24 "$TMUX attach -t aaa" || exit 1
 wait_clients 1 || fail "no client attached to test server"
 
+# --- preview refresh with the status line disabled -------------------------
+$TMUX set-option -t aaa status off || exit 1
+$TMUX set-option -w -t aaa:0 tree-mode-preview-interval 1500 || exit 1
+$TMUX choose-tree -sNN -t aaa:0 -O index -F 'PREVIEW' || exit 1
+$TMUX send-keys -t aaa:0 g || exit 1
+wait_for 'zzz (sort:'
+$TMUX send-keys -t zzz:1 -l 'preview_delayed' || exit 1
+$TMUX send-keys -t zzz:1 Enter || exit 1
+wait_for 'preview_delayed'
+
+# Changing the option while the picker is open takes effect on new output.
+$TMUX set-option -w -t aaa:0 tree-mode-preview-interval 100 || exit 1
+$TMUX send-keys -t zzz:1 -l 'preview_live' || exit 1
+$TMUX send-keys -t zzz:1 Enter || exit 1
+i=0
+while ! capture | grep -F -q 'preview_live'; do
+	[ "$i" -lt 20 ] || fail "live preview did not refresh within one second"
+	sleep 0.05
+	i=$((i + 1))
+done
+exit_mode q
+
+# Killing a previewed pane removes it from the tree and the preview.
+$TMUX new-session -d -s zzz_kill -x 80 -y 24 'cat' || exit 1
+$TMUX choose-tree -sNN -t aaa:0 -O name -F 'KILL' || exit 1
+$TMUX send-keys -t aaa:0 G || exit 1
+wait_for 'zzz_kill (sort:'
+$TMUX send-keys -t zzz_kill:0 -l 'preview_killed' || exit 1
+$TMUX send-keys -t zzz_kill:0 Enter || exit 1
+i=0
+while ! capture | grep -F -q 'preview_killed'; do
+	[ "$i" -lt 20 ] || fail "preview did not appear within one second"
+	sleep 0.05
+	i=$((i + 1))
+done
+$TMUX kill-pane -t zzz_kill:0.0 || exit 1
+i=0
+while capture | grep -F -q 'preview_killed'; do
+	[ "$i" -lt 20 ] || fail "stale preview did not clear after pane kill"
+	sleep 0.05
+	i=$((i + 1))
+done
+capture | grep -F -q 'zzz_kill' && fail "killed session still in the tree"
+exit_mode q
+$TMUX set-option -wu -t aaa:0 tree-mode-preview-interval || exit 1
+$TMUX set-option -u -t aaa status || exit 1
+
 # --- filter keeping only aaa ------------------------------------------------
 #
 # zzz must disappear entirely: its single-pane window 1 and - the GitHub 5326

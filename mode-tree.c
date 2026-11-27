@@ -445,6 +445,22 @@ mode_tree_get_current(struct mode_tree_data *mtd)
 	return (mtd->line_list[mtd->current].item->itemdata);
 }
 
+static int
+mode_tree_has_preview(struct mode_tree_data *mtd)
+{
+	u_int sy = screen_size_y(&mtd->screen);
+
+	return (mtd->preview != MODE_TREE_PREVIEW_OFF && mtd->height >= 2 &&
+	    sy > mtd->height + 4 && mtd->width > 4);
+}
+
+int
+mode_tree_preview_visible(struct mode_tree_data *mtd)
+{
+	return (mtd->line_size != 0 && !mtd->help &&
+	    mode_tree_has_preview(mtd));
+}
+
 const char *
 mode_tree_get_current_name(struct mode_tree_data *mtd)
 {
@@ -983,13 +999,10 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	}
 	format_free(ft);
 
-	if (mtd->preview == MODE_TREE_PREVIEW_OFF)
+	if (!mode_tree_has_preview(mtd))
 		goto done;
 
 	sy = screen_size_y(s);
-	if (sy <= 4 || h < 2 || sy - h <= 4 || w <= 4)
-		goto done;
-
 	line = &mtd->line_list[mtd->current];
 	mti = line->item;
 	if (mti->draw_as_parent)

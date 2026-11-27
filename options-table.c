@@ -1930,6 +1930,17 @@ const struct options_table_entry options_table[] = {
 	  .text = "Format of the preview indicator in tree mode."
 	},
 
+	{ .name = "tree-mode-preview-interval",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 0,
+	  .unit = "milliseconds",
+	  .text = "Delay before refreshing a tree mode preview on new pane "
+		  "output. Zero disables refresh on pane output."
+	},
+
 	{ .name = "tree-mode-preview-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

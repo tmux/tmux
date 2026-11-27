@@ -6424,6 +6424,22 @@ section.
 .It Ic tree\-mode\-preview\-format Ar format
 Format of the preview indicator in tree mode.
 .Pp
+.It Ic tree\-mode\-preview\-interval Ar milliseconds
+Refresh the tree mode
+.Po
+.Ic choose-tree
+and
+.Ic find-window
+.Pc
+preview this many milliseconds after new output arrives in a previewed pane.
+Output arriving while a refresh is pending does not restart the delay, so
+continuous output refreshes the preview about once every
+.Ar milliseconds .
+The preview is also redrawn, showing any new output immediately, whenever the
+tree is redrawn for another reason, such as navigation or a status line
+redraw.
+The default of zero disables refreshing on pane output.
+.Pp
 .It Ic tree\-mode\-preview\-style Ar style
 Set the style of the preview indicator in tree mode.
 For how to specify

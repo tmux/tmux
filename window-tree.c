@@ -31,6 +31,7 @@ static void		 window_tree_free(struct window_mode_entry *);
 static void		 window_tree_resize(struct window_mode_entry *, u_int,
 			     u_int);
 static void		 window_tree_update(struct window_mode_entry *);
+static void		 window_tree_check_preview(struct window_mode_entry *);
 static void		 window_tree_key(struct window_mode_entry *,
 			     struct client *, struct session *,
 			     struct winlink *, key_code, struct mouse_event *);
@@ -89,6 +90,7 @@ const struct window_mode window_tree_mode = {
 	.free = window_tree_free,
 	.resize = window_tree_resize,
 	.update = window_tree_update,
+	.check_preview = window_tree_check_preview,
 	.key = window_tree_key,
 };
 
@@ -106,6 +108,12 @@ struct window_tree_itemdata {
 	int			pane;
 };
 
+/* Pane IDs, since previewed panes may be killed while the tree is open. */
+struct window_tree_source {
+	u_int				 pane;
+	uint64_t			 generation;
+};
+
 struct window_tree_modedata {
 	struct window_pane		 *wp;
 	int				  dead;
@@ -119,6 +127,12 @@ struct window_tree_modedata {
 	int				  hide_preview_this_pane;
 	int				  preview_is_info;
 	int				  prompt_flags;
+
+	struct event			  preview_timer;
+	int				  preview_interval;
+	struct window_tree_source	 *preview_sources;
+	u_int				  preview_count;
+	u_int				  preview_capacity;
 
 	struct window_tree_itemdata	**item_list;
 	u_int				  item_size;
@@ -534,6 +548,23 @@ window_tree_border_cell(struct grid_cell *gc, struct options *oo,
 }
 
 static void
+window_tree_draw_pane(struct window_tree_modedata *data, struct window_pane *wp,
+    struct screen_write_ctx *ctx, u_int sx, u_int sy)
+{
+	struct window_tree_source	*source;
+
+	if (data->preview_count == data->preview_capacity) {
+		data->preview_capacity = 2 * data->preview_capacity + 1;
+		data->preview_sources = xreallocarray(data->preview_sources,
+		    data->preview_capacity, sizeof *source);
+	}
+	source = &data->preview_sources[data->preview_count++];
+	source->pane = wp->id;
+	source->generation = wp->output_generation;
+	screen_write_preview(ctx, &wp->base, sx, sy);
+}
+
+static void
 window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
     struct screen_write_ctx *ctx, u_int sx, u_int sy)
 {
@@ -651,7 +682,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 			width = each - 1;
 
 		screen_write_cursormove(ctx, cx + offset, cy, 0);
-		screen_write_preview(ctx, &w->active->base, width, sy);
+		window_tree_draw_pane(data, w->active, ctx, width, sy);
 
 		format = options_get_string(oo, "tree-mode-preview-format");
 		if (*format != '\0') {
@@ -800,7 +831,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 			width = each - 1;
 
 		screen_write_cursormove(ctx, cx + offset, cy, 0);
-		screen_write_preview(ctx, &wp->base, width, sy);
+		window_tree_draw_pane(data, wp, ctx, width, sy);
 
 		format = options_get_string(oo, "tree-mode-preview-format");
 		if (*format != '\0') {
@@ -909,6 +940,8 @@ window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
 	struct winlink			*wl;
 	struct window_pane		*wp;
 
+	data->preview_count = 0;
+	evtimer_del(&data->preview_timer);
 	window_tree_pull_item(item, &sp, &wl, &wp);
 	if (wp == NULL)
 		return;
@@ -929,7 +962,7 @@ window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
 		break;
 	case WINDOW_TREE_PANE:
 		if (!data->hide_preview_this_pane || wp != data->wp)
-			screen_write_preview(ctx, &wp->base, sx, sy);
+			window_tree_draw_pane(data, wp, ctx, sx, sy);
 		break;
 	}
 }
@@ -1123,6 +1156,61 @@ window_tree_help(u_int *width, const char **item)
 	return (window_tree_help_lines);
 }
 
+static int
+window_tree_preview_changed(struct window_tree_modedata *data)
+{
+	struct window_tree_source	*source;
+	struct window_pane		*wp;
+	u_int				 i;
+
+	if (!mode_tree_preview_visible(data->data))
+		return (0);
+	for (i = 0; i < data->preview_count; i++) {
+		source = &data->preview_sources[i];
+		wp = window_pane_find_by_id(source->pane);
+		if (wp == NULL || wp->output_generation != source->generation)
+			return (1);
+	}
+	return (0);
+}
+
+static void
+window_tree_preview_timer(__unused int fd, __unused short events, void *arg)
+{
+	struct window_mode_entry	*wme = arg;
+	struct window_tree_modedata	*data = wme->data;
+
+	if (TAILQ_FIRST(&data->wp->modes) == wme &&
+	    options_get_number(data->wp->window->options,
+	    "tree-mode-preview-interval") == data->preview_interval &&
+	    window_tree_preview_changed(data))
+		window_tree_update(wme);
+}
+
+static void
+window_tree_check_preview(struct window_mode_entry *wme)
+{
+	struct window_tree_modedata	*data = wme->data;
+	struct timeval			 tv;
+	int				 interval;
+
+	interval = options_get_number(data->wp->window->options,
+	    "tree-mode-preview-interval");
+	if (interval != data->preview_interval) {
+		evtimer_del(&data->preview_timer);
+		data->preview_interval = interval;
+	}
+	if (interval <= 0 || !window_tree_preview_changed(data)) {
+		evtimer_del(&data->preview_timer);
+		return;
+	}
+	if (!evtimer_pending(&data->preview_timer, NULL)) {
+		tv.tv_sec = interval / 1000;
+		tv.tv_usec = (interval % 1000) * 1000L;
+		evtimer_add(&data->preview_timer, &tv);
+	}
+}
+
 static struct screen *
 window_tree_init(struct window_mode_entry *wme,
     __unused struct cmdq_item *item, struct cmd_find_state *fs,
@@ -1135,6 +1223,9 @@ window_tree_init(struct window_mode_entry *wme,
 	wme->data = data = xcalloc(1, sizeof *data);
 	data->wp = wp;
 	data->references = 1;
+	data->preview_interval = options_get_number(wp->window->options,
+	    "tree-mode-preview-interval");
+	evtimer_set(&data->preview_timer, window_tree_preview_timer, wme);
 
 	if (args_has(args, 's'))
 		data->type = WINDOW_TREE_SESSION;
@@ -1192,6 +1283,7 @@ window_tree_destroy(struct window_tree_modedata *data)
 	for (i = 0; i < data->item_size; i++)
 		window_tree_free_item(data->item_list[i]);
 	free(data->item_list);
+	free(data->preview_sources);
 
 	free(data->format);
 	free(data->key_format);
@@ -1209,6 +1301,7 @@ window_tree_free(struct window_mode_entry *wme)
 		return;
 
 	data->dead = 1;
+	evtimer_del(&data->preview_timer);
 	mode_tree_free(data->data);
 	window_tree_destroy(data);
 }
