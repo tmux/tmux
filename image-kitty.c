@@ -22,9 +22,7 @@
 #include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef HAVE_LIBZ
 #include <zlib.h>
-#endif
 
 #include "tmux.h"
 
@@ -770,17 +768,13 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 	struct image			*im = image_find(ug->image_id);
 	char				 s[128], e[4097];
 	const char			*compression = "";
-	u_char				*p, *row, *p0, *pixels;
+	u_char				*p, *row, *p0, *pixels, *compressed;
 	size_t				 offset, size, total;
 	size_t				 stride, source_stride;
 	u_int				 x, y, sx, sy;
 	u_int				 w = ug->w, h = ug->h;
-	int				 elen;
-#ifdef HAVE_LIBZ
-	u_char				*compressed;
 	uLongf				 csize;
-	int				 status;
-#endif
+	int				 elen, status;
 
 	/* Bound each upload rectangle by the terminal dimension limit. */
 	if (w > KITTY_MAX_DIMENSION || h > KITTY_MAX_DIMENSION)
@@ -815,9 +809,8 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 	upload->size = total;
 	ko->size += total;
 
-#ifdef HAVE_LIBZ
-	/* Compress the image data, if the terminal supports it. */
-	if ((tty->term->flags & TERM_KITTYZLIB) && total <= ULONG_MAX) {
+	/* Compress the image data. */
+	if (total <= ULONG_MAX) {
 		csize = compressBound(total);
 		if (csize >= total && csize <= SIZE_MAX) {
 			compressed = xmalloc(csize);
@@ -832,7 +825,6 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 				free(compressed);
 		}
 	}
-#endif
 
 	do
 		upload->kitty_id = ++ko->next_id;

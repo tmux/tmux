@@ -472,21 +472,13 @@ tty_send_requests(struct tty *tty)
 		tty_puts(tty, "\033]7501;?\033\\");
 
 #ifdef ENABLE_IMAGES
-	if (tty_term_flag(term, TTYC_XT) && (~flags & TTY_HAVEKITTYGRAPHICS))
-		tty_puts(tty, "\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\");
-	else
-		tty->flags |= TTY_HAVEKITTYGRAPHICS;
-#ifdef HAVE_LIBZ
-	if (tty_term_flag(term, TTYC_XT) && (~flags & TTY_HAVEKITTYZLIB)) {
-		tty_puts(tty, "\033_Gi=32,s=1,v=1,a=q,t=d,f=24,o=z;"
+	if (tty_term_flag(term, TTYC_XT) && (~flags & TTY_HAVEKITTYGRAPHICS)) {
+		tty_puts(tty, "\033_Gi=31,s=1,v=1,a=q,t=d,f=24,o=z;"
 		    "eJxjYGAAAAADAAE=\033\\");
 	} else
-		tty->flags |= TTY_HAVEKITTYZLIB;
+		tty->flags |= TTY_HAVEKITTYGRAPHICS;
 #else
-	tty->flags |= TTY_HAVEKITTYZLIB;
-#endif
-#else
-	tty->flags |= (TTY_HAVEKITTYGRAPHICS|TTY_HAVEKITTYZLIB);
+	tty->flags |= TTY_HAVEKITTYGRAPHICS;
 #endif
 
 	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");

@@ -57,24 +57,19 @@ def matches(name, value):
         required = {
             "256", "RGB", "bpaste", "clipboard", "mouse",
             "strikethrough", "title", "ccolour", "cstyle", "extkeys",
-            "focus", "hyperlinks", "osc7", "usstyle", "kittygraphics",
-            "kittyzlib"}
+            "focus", "hyperlinks", "osc7", "usstyle", "kittygraphics"}
         if name == "XDA-kitty":
             required.add("sync")
         elif "sync" in features:
             return False
         return kind == "kitty(0.43.0)" and required <= features
     if name == "XDA-ghostty":
-        required = {"kittygraphics", "kittyzlib", "margins", "sync",
-            "usstyle", "progressbar"}
-        return kind == "ghostty 1.2.0" and required <= features
+        return kind == "ghostty 1.2.0" and {
+            "kittygraphics", "margins", "sync", "usstyle", "progressbar"} <= features
     if name == "XDA-WezTerm":
-        required = {"sixel", "overline", "sync", "usstyle"}
-        return (kind == "WezTerm 20240203-110809-5046fc22" and
-            required <= features and
-            "margins" not in features and
-            "kittygraphics" not in features and
-            "kittyzlib" not in features)
+        return kind == "WezTerm 20240203-110809-5046fc22" and {
+            "sixel", "overline", "sync", "usstyle"} <= features and \
+            "margins" not in features
     if name == "sync":
         return "sync" in features
     if name.startswith("kitty-graphics"):
@@ -168,7 +163,8 @@ for name, report in reports:
                         run("refresh-client", "-q")
                     wait_query(fd, b"\033[18t\033[14t", context, output)
                 if name.startswith("kitty-graphics"):
-                    query = b"\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\"
+                    query = (b"\033_Gi=31,s=1,v=1,a=q,t=d,f=24,o=z;"
+                        b"eJxjYGAAAAADAAE=\033\\")
                     if name == "kitty-graphics-no-query":
                         assert query not in output, (context, "unexpected graphics query")
                     else:
@@ -179,7 +175,7 @@ for name, report in reports:
                 if delivery == "invalid":
                     # A near match must fall back to ordinary key parsing.
                     if name == "kitty-graphics":
-                        wire = b"\033_Gi=33;OK\033\\"
+                        wire = b"\033_Gi=32;OK\033\\"
                     else:
                         wire = b"\033[?2026;5$y"
                 if delivery == "unanswered":

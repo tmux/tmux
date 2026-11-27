@@ -387,13 +387,6 @@ static const struct tty_feature tty_feature_kittygraphics = {
 	TERM_KITTYGRAPHICS
 };
 
-/* Terminal supports ZLIB compression for Kitty graphics. */
-static const struct tty_feature tty_feature_kittyzlib = {
-	"kittyzlib",
-	NULL,
-	TERM_KITTYZLIB
-};
-
 /* Terminal moves images with scroll regions. */
 static const char *const tty_feature_imagescroll_capabilities[] = {
 	"Iscrl",
@@ -445,7 +438,6 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_ignorefkeys,
 	&tty_feature_imagescroll,
 	&tty_feature_kittygraphics,
-	&tty_feature_kittyzlib,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,
@@ -707,8 +699,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "sync,"
 			      "usstyle,"
 			      "progressbar,"
-			      "kittygraphics,"
-			      "kittyzlib"
+			      "kittygraphics"
 		},
 		{ .name = "kitty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -722,8 +713,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "progressbar,"
 			      "sync,"
 			      "usstyle,"
-			      "kittygraphics,"
-			      "kittyzlib"
+			      "kittygraphics"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","

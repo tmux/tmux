@@ -9,7 +9,6 @@ export PATH TERM
 command -v python3 >/dev/null || exit 101
 
 python3 -B - "$TEST_TMUX" <<'PY'
-import os
 import shlex
 import sys
 import time
@@ -34,9 +33,7 @@ def rectangle(colour, x=0, w=16):
     return {(px + x, y): colour for y in range(16) for px in range(w)}
 
 
-# An outer build without zlib exercises compression negotiation failure.
-outer_tmux = os.environ.get('TEST_TMUX_OUTER', sys.argv[1])
-with image_test(outer_tmux) as outer, image_test(sys.argv[1]) as inner:
+with image_test(sys.argv[1]) as outer, image_test(sys.argv[1]) as inner:
     client = outer.attach(kitty_graphics=True)
     terminal = KittyTerminal()
     inner.run('set-option', '-as', 'terminal-features', ',*:kittygraphics')

@@ -1612,37 +1612,19 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
     size_t *size, int apply)
 {
 	struct client		*c = tty->client;
-	static const char	 prefix[] = "\033_Gi=3";
+	static const char	 prefix[] = "\033_Gi=31;";
 	size_t			 i, end;
-	int			 flag;
 
 	*size = 0;
-	if ((tty->flags & TTY_HAVEKITTYGRAPHICS) &&
-	    (tty->flags & TTY_HAVEKITTYZLIB)) {
+	if (tty->flags & TTY_HAVEKITTYGRAPHICS)
 		return (-1);
-	}
+
 	for (i = 0; i < (sizeof prefix) - 1; i++) {
 		if (i == len)
 			return (1);
 		if (buf[i] != prefix[i])
 			return (-1);
 	}
-	if (i == len)
-		return (1);
-	if (buf[i] == '1')
-		flag = TTY_HAVEKITTYGRAPHICS;
-	else if (buf[i] == '2')
-		flag = TTY_HAVEKITTYZLIB;
-	else
-		return (-1);
-	if (tty->flags & flag)
-		return (-1);
-	i++;
-	if (i == len)
-		return (1);
-	if (buf[i] != ';')
-		return (-1);
-	i++;
 	for (end = i; end < len; end++) {
 		if (buf[end] == '\033')
 			break;
@@ -1658,15 +1640,12 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
 		return (0);
 
 	if (end - i == 2 && memcmp(buf + i, "OK", 2) == 0) {
-		if (flag == TTY_HAVEKITTYGRAPHICS)
-			tty_parse_client_features(c, "kittygraphics", ",");
-		else
-			tty_parse_client_features(c, "kittyzlib", ",");
+		tty_parse_client_features(c, "kittygraphics", ",");
 		tty_update_features(tty);
 	}
 	log_debug("%s: received Kitty graphics response %.*s", c->name,
 	    (int)*size, buf);
-	tty->flags |= flag;
+	tty->flags |= TTY_HAVEKITTYGRAPHICS;
 
 	return (0);
 }

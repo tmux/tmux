@@ -93,21 +93,20 @@ static const char *window_client_info_lines[] = {
 	WINDOW_CLIENT_FEATURE(imagescroll),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(kittygraphics) " "
-	WINDOW_CLIENT_FEATURE(kittyzlib) " "
 	WINDOW_CLIENT_FEATURE(margins) " "
-	WINDOW_CLIENT_FEATURE(mouse),
+	WINDOW_CLIENT_FEATURE(mouse) " "
+	WINDOW_CLIENT_FEATURE(osc7),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
-	WINDOW_CLIENT_FEATURE(osc7) " "
 	WINDOW_CLIENT_FEATURE(overline) " "
 	WINDOW_CLIENT_FEATURE(programstatus) " "
-	WINDOW_CLIENT_FEATURE(progressbar),
+	WINDOW_CLIENT_FEATURE(progressbar) " "
+	WINDOW_CLIENT_FEATURE(rectfill),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
-	WINDOW_CLIENT_FEATURE(rectfill) " "
 	WINDOW_CLIENT_FEATURE(sixel) " "
 	WINDOW_CLIENT_FEATURE(strikethrough) " "
-	WINDOW_CLIENT_FEATURE(sync),
+	WINDOW_CLIENT_FEATURE(sync) " "
+	WINDOW_CLIENT_FEATURE(title),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
-	WINDOW_CLIENT_FEATURE(title) " "
 	WINDOW_CLIENT_FEATURE(usstyle) " "
 	WINDOW_CLIENT_FEATURE(utf8),
 	"#[#{E:tree-mode-border-style},acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",
