@@ -111,12 +111,6 @@ struct kitty_upload_geom {
 	u_int	width;		/* output width, excluding the border */
 	u_int	height;		/* output height, excluding the border */
 
-	/* Full prepared canvas and tile origin, in output pixels. */
-	u_int	canvas_width;
-	u_int	canvas_height;
-	u_int	canvas_x;
-	u_int	canvas_y;
-
 	/* Source and output spans; zero source width uses view geometry. */
 	u_int	src_w;
 	u_int	src_h;
@@ -145,12 +139,6 @@ struct kitty_image_cache {
 	int					replace;   /* reorder upload */
 	u_int					xpixel;
 	u_int					ypixel;
-
-	/* Source tile bounds, in image cells. */
-	u_int					tile_x;
-	u_int					tile_y;
-	u_int					sx;
-	u_int					sy;
 
 	/* Origin of this view within the upload, in output pixels. */
 	u_int					src_x;
@@ -248,7 +236,6 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 	struct image_geom		*bg;
 	u_int				 id = image_get_id(im);
 	u_int				 src_w = 0, src_h = 0, dst_w, dst_h;
-	u_int				 ox, oy;
 	uint64_t			 width, height, x, y, bw, bh;
 	size_t				 limit;
 	int				 reuse = 0;
@@ -263,15 +250,9 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 	}
 	dst_w = width;
 	dst_h = height;
-	ox = entry->tile_x * entry->xpixel;
-	oy = entry->tile_y * entry->ypixel;
-	width = entry->sx * entry->xpixel;
-	height = entry->sy * entry->ypixel;
 
 	/* Keep padding and fractional origins in their own prepared canvas. */
 	if (source != im &&
-	    entry->sx == ig->sx &&
-	    entry->sy == ig->sy &&
 	    ig->canvas_xoff == 0 &&
 	    ig->canvas_yoff == 0 &&
 	    ig->scaled_width == ig->canvas_width &&
@@ -332,13 +313,6 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 		ug = &upload->geom;
 		if (ug->image_id != id)
 			continue;
-		if (src_w == 0 &&
-		    (ug->canvas_x != ox ||
-		    ug->canvas_y != oy ||
-		    ug->width != width ||
-		    ug->height != height)) {
-			continue;
-		}
 		if (src_w != 0 &&
 		    ((uint64_t)ug->src_w * dst_w !=
 		    (uint64_t)src_w * ug->dst_w ||
@@ -358,12 +332,6 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 	upload->geom.src_h = src_h;
 	upload->geom.dst_w = dst_w;
 	upload->geom.dst_h = dst_h;
-	if (src_w == 0) {
-		upload->geom.canvas_width = dst_w;
-		upload->geom.canvas_height = dst_h;
-		upload->geom.canvas_x = ox;
-		upload->geom.canvas_y = oy;
-	}
 	TAILQ_INSERT_TAIL(&ko->uploads, upload, entry);
 	return (upload);
 }
@@ -391,47 +359,25 @@ kitty_same_geometry(struct image_geom *a, struct image_geom *b)
 
 /* Get a cached image in drawing order, reusing a replaced identical view. */
 static struct kitty_image_cache *
-kitty_get_image(struct tty *tty, struct image_rect *rect)
+kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 {
-	struct image			*im = rect->image;
-	struct kitty_output		*ko;
+	struct kitty_output		*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*entry, *before;
 	struct kitty_placement_cache	*kpl;
 	struct image_geom		*ig = image_get_geometry(im);
 	u_int				 source_id;
-	u_int				 xpixel = tty->xpixel;
-	u_int				 ypixel = tty->ypixel;
-	u_int				 sx, sy, tile_x, tile_y;
-
-	/* Leave a one-pixel border inside the terminal dimension limit. */
-	if (xpixel == 0)
-		xpixel = 8;
-	if (ypixel == 0)
-		ypixel = 16;
-	sx = (KITTY_MAX_DIMENSION - 2) / xpixel;
-	sy = (KITTY_MAX_DIMENSION - 2) / ypixel;
-	if (sx == 0 || sy == 0)
-		return (NULL);
-	tile_x = rect->src_x / sx * sx;
-	tile_y = rect->src_y / sy * sy;
-	ko = kitty_get_output(tty);
 
 	/* Look for this image and placement in the output cache. */
 	TAILQ_FOREACH(entry, &ko->images, entry) {
 		if (entry->image_id == image_get_id(im) &&
-		    entry->index == rect->index &&
-		    entry->tile_x == tile_x &&
-		    entry->tile_y == tile_y) {
+		    entry->index == index)
 			return (entry);
-		}
 	}
 
 	/* Transfer an identical upload before removing the old view. */
 	source_id = image_get_id(image_get_source(im));
 	TAILQ_FOREACH(entry, &ko->images, entry) {
 		if (entry->source_id != source_id ||
-		    entry->tile_x != tile_x ||
-		    entry->tile_y != tile_y ||
 		    !kitty_same_geometry(&entry->geom, ig) ||
 		    image_find(entry->image_id) != NULL) {
 			continue;
@@ -443,7 +389,7 @@ kitty_get_image(struct tty *tty, struct image_rect *rect)
 		if (entry->upload->geom.src_w == 0)
 			entry->upload->geom.image_id = entry->image_id;
 		entry->order_id = image_get_order_id(im);
-		entry->index = rect->index;
+		entry->index = index;
 		goto insert;
 	}
 
@@ -453,17 +399,13 @@ kitty_get_image(struct tty *tty, struct image_rect *rect)
 	entry->source_id = source_id;
 	entry->geom = *ig;
 	entry->order_id = image_get_order_id(im);
-	entry->index = rect->index;
-	entry->xpixel = xpixel;
-	entry->ypixel = ypixel;
-	entry->tile_x = tile_x;
-	entry->tile_y = tile_y;
-	entry->sx = sx;
-	if (entry->sx > ig->sx - tile_x)
-		entry->sx = ig->sx - tile_x;
-	entry->sy = sy;
-	if (entry->sy > ig->sy - tile_y)
-		entry->sy = ig->sy - tile_y;
+	entry->index = index;
+	entry->xpixel = tty->xpixel;
+	if (entry->xpixel == 0)
+		entry->xpixel = 8;
+	entry->ypixel = tty->ypixel;
+	if (entry->ypixel == 0)
+		entry->ypixel = 16;
 	TAILQ_INIT(&entry->placements);
 	entry->upload = kitty_get_upload(tty, entry, im);
 	if (entry->upload == NULL) {
@@ -785,7 +727,11 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 	int				 status;
 #endif
 
-	/* Allow for a one-pixel border around the prepared source. */
+	/* Bound each padded upload by the terminal dimension limit. */
+	if (width > KITTY_MAX_DIMENSION - 2 ||
+	    height > KITTY_MAX_DIMENSION - 2) {
+		return (0);
+	}
 	w = width + 2;
 	h = height + 2;
 	if ((uint64_t)w * h > SIZE_MAX / 4)
@@ -806,11 +752,8 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 			if (ug->src_w != 0) {
 				sx = (uint64_t)x * ug->src_w / ug->dst_w;
 				p0 = pixels + sy * source_stride + sx * 4;
-			} else {
-				p0 = image_get_pixel(im, ug->canvas_x + x,
-				    ug->canvas_y + y, ug->canvas_width,
-				    ug->canvas_height);
-			}
+			} else
+				p0 = image_get_pixel(im, x, y, width, height);
 			memcpy(row + (x + 1) * 4, p0, 4);
 		}
 
@@ -972,31 +915,14 @@ void
 kitty_draw_rect(struct tty *tty, struct image_rect *rect)
 {
 	struct kitty_image_cache	*entry;
-	struct image_rect		 piece = *rect;
-	u_int				 x, y;
 
-	/* Split the visible rectangle at upload tile boundaries. */
-	for (y = 0; y < rect->sy; y += piece.sy) {
-		for (x = 0; x < rect->sx; x += piece.sx) {
-			piece.src_x = rect->src_x + x;
-			piece.src_y = rect->src_y + y;
-			entry = kitty_get_image(tty, &piece);
-			if (entry == NULL)
-				return;
-			piece.sx = entry->tile_x + entry->sx - piece.src_x;
-			if (piece.sx > rect->sx - x)
-				piece.sx = rect->sx - x;
-			piece.sy = entry->tile_y + entry->sy - piece.src_y;
-			if (piece.sy > rect->sy - y)
-				piece.sy = rect->sy - y;
-			kitty_get_output(tty)->changed = 1;
-			kitty_place(entry, entry->src_x +
-			    (piece.src_x - entry->tile_x) * entry->xpixel,
-			    entry->src_y +
-			    (piece.src_y - entry->tile_y) * entry->ypixel,
-			    piece.sx, piece.sy, rect->dst_x + x, rect->dst_y + y);
-		}
-	}
+	entry = kitty_get_image(tty, rect->image, rect->index);
+	if (entry == NULL)
+		return;
+	kitty_get_output(tty)->changed = 1;
+	kitty_place(entry, entry->src_x + rect->src_x * entry->xpixel,
+	    entry->src_y + rect->src_y * entry->ypixel,
+	    rect->sx, rect->sy, rect->dst_x, rect->dst_y);
 }
 
 /* Parse Kitty graphics control data. */
