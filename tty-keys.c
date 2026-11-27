@@ -1545,7 +1545,9 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
 
 	tty_update_features(tty);
-	tty->flags |= TTY_ALL_REQUEST_FLAGS;
+
+	/* Keep Kitty compression pending until its reply or timeout. */
+	tty->flags |= TTY_ALL_REQUEST_FLAGS & ~TTY_HAVEKITTYZLIB;
 	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG);
 
 	return (0);
