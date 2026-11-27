@@ -225,7 +225,7 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 	struct image_geom		*ig = image_get_geometry(im);
 	struct image_geom		*sg = image_get_geometry(source);
 	struct kitty_upload_cache	*upload;
-	struct kitty_upload_geom		*ug;
+	struct kitty_upload_geom	*ug;
 	struct kitty_image_cache	*before;
 	struct image_geom		*bg;
 	u_int				 id = image_get_id(im);
