@@ -49,8 +49,9 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(expected(0, 0))
     assert terminal.uploads == 1
-    width, height, _ = next(iter(terminal.images.values()))
-    assert (width, height) == (18, 34), (width, height)
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
+    assert (width, height) == (16, 32), (width, height)
     uploads = terminal.uploads
 
     # Expand once, then scroll both source coordinates without uploading pixels.
@@ -60,8 +61,9 @@ with image_test(sys.argv[1]) as test:
         terminal.check(expected(x, y))
         assert terminal.uploads == uploads + 1, (x, y, terminal.uploads)
     uploads = terminal.uploads
-    width, height, _ = next(iter(terminal.images.values()))
-    assert (width, height) == (34, 130), (width, height)
+
+    # The initial prepared crop may also remain cached after expansion.
+    assert any((w, h) == (32, 128) for w, h, _ in terminal.images.values())
 
     # A smaller source rectangle at the same scale uses the same upload.
     test.emit(b'\033[H' +
@@ -69,14 +71,40 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(expected(8, 16, w=8, h=16))
     assert terminal.uploads == uploads
-    test.emit(b'\033[H' + crop(0, 0))
+    test.emit(b'\033[H' + crop(16, 32))
     terminal.feed(client.data)
 
     # Disjoint placements of the same source also share the upload.
     test.emit(b'\033[5;1H' + crop(8, 16, placement=2))
     terminal.feed(client.data)
-    terminal.check(expected(0, 0) | expected(8, 16, dy=64))
+    terminal.check(expected(16, 32) | expected(8, 16, dy=64))
     assert terminal.uploads == uploads
+
+    # Shared uploads count once when enforcing the retained memory limit.
+    client.clear()
+    cached = len(terminal.images)
+    size = sum(w * h * 4 for w, h, _ in terminal.images.values())
+    limit = test.run('show-option', '-sv', 'image-total-size-limit')
+    test.run('set-option', '-s', 'image-total-size-limit', str(size))
+
+    def pixels():
+        """Read output and render visible placements."""
+        terminal.feed(client.data)
+        client.data.clear()
+        return terminal.render()
+
+    test.run('new-window', 'stty raw -echo; exec cat')
+    test.wait(lambda: pixels() == {})
+    terminal.check({})
+    assert not terminal.placements
+    assert len(terminal.images) == cached
+    test.run('select-window', '-t', ':0')
+    test.wait(lambda: pixels() == expected(16, 32) | expected(8, 16, dy=64))
+    terminal.check(expected(16, 32) | expected(8, 16, dy=64))
+    assert terminal.uploads == uploads
+    test.run('set-option', '-s', 'image-total-size-limit', limit)
+    client.read(0.2)
+    terminal.feed(client.data)
 
     # Overlap separates the shared upload and preserves placement order.
     test.emit(b'\033[H' + crop(8, 16, placement=2))
@@ -90,7 +118,7 @@ with image_test(sys.argv[1]) as test:
     assert terminal.uploads == uploads + 2
     test.emit(b'\033[5;1H' + crop(8, 16, placement=2))
     terminal.feed(client.data)
-    terminal.check(expected(0, 0) | expected(8, 16, dy=64))
+    terminal.check(expected(16, 32) | expected(8, 16, dy=64))
     assert terminal.uploads == uploads + 2
 
     # Fractional origins retain the existing sampling behaviour.
@@ -116,8 +144,9 @@ with image_test(sys.argv[1]) as test:
     for (client, cw, ch), terminal in zip(clients, terminals):
         terminal.feed(client.data)
         terminal.check(expected(0, 0, w=2 * cw, h=2 * ch, cw=cw, ch=ch))
-        width, height, _ = next(iter(terminal.images.values()))
-        assert (width, height) == (2 * cw + 2, 2 * ch + 2)
+        image = next(iter(terminal.placements))[0]
+        width, height, _ = terminal.images[image]
+        assert (width, height) == (2 * cw, 2 * ch)
     test.emit(b'\033[H' + crop(8, 16))
     for (client, cw, ch), terminal in zip(clients, terminals):
         terminal.feed(client.data)
@@ -143,25 +172,28 @@ with image_test(sys.argv[1]) as test:
                 expected_pixels[px, py] = tuple(pixels[offset:offset + 3])
         terminal.check(expected_pixels)
         assert terminal.uploads == min(step + 1, 2)
-    width, height, _ = next(iter(terminal.images.values()))
-    assert (width, height) == (28, 64)
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
+    assert (width, height) == (26, 62)
 
 
 # Expanding the whole source beyond the upload limit keeps a cropped canvas.
 with image_test(sys.argv[1]) as test:
     client = test.attach(kitty_graphics=True)
     terminal = KittyTerminal()
-    test.run('set-option', '-s', 'image-size-limit', '2048')
+    test.run('set-option', '-s', 'image-size-limit', '2047')
     test.emit(source(4, 4) + kitty('a=p,i=7,p=1,w=2,h=2,c=1,r=1,C=1'))
     terminal.feed(client.data)
     terminal.check({(x, y): colour(0, 0) for y in range(16) for x in range(8)})
-    width, height, _ = next(iter(terminal.images.values()))
-    assert (width, height) == (10, 18)
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
+    assert (width, height) == (8, 16)
     test.emit(b'\033[H' +
         kitty('a=p,i=7,p=1,x=1,y=1,w=2,h=2,c=1,r=1,C=1'))
     terminal.feed(client.data)
     terminal.check({(x, y): colour(1, 1) for y in range(16) for x in range(8)})
-    width, height, _ = next(iter(terminal.images.values()))
-    assert (width, height) == (10, 18)
+    image = next(iter(terminal.placements))[0]
+    width, height, _ = terminal.images[image]
+    assert (width, height) == (8, 16)
     assert terminal.uploads == 2
 PY
