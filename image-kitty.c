@@ -966,10 +966,11 @@ kitty_draw_rect(struct tty *tty, struct image_rect *rect)
 {
 	struct kitty_output		*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*entry;
-	struct image_rect		 subrect;
+	struct image_rect		 subrect = { 0 };
 	u_int				 x, y, src_x, src_y;
 
-	memcpy(&subrect, rect, sizeof subrect);
+	subrect.image = rect->image;
+	subrect.index = rect->index;
 
 	/* Split the visible rectangle at upload rectangle boundaries. */
 	for (y = 0; y < rect->sy; y += subrect.sy) {
