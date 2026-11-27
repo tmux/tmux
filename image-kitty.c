@@ -128,8 +128,8 @@ struct kitty_upload_cache {
 /* One image view and its visible terminal rectangles. */
 struct kitty_image_cache {
 	u_int					image_id;
-	u_int					source_id; /* root image ID */
-	struct image_geom			geom;      /* view geometry */
+	u_int					source_id;
+	struct image_geom			geom;
 	u_int					order_id;
 	uint64_t				index;
 	int					replace;   /* reorder upload */
@@ -330,7 +330,7 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 	return (upload);
 }
 
-/* Check whether two views prepare the same source pixels in the same way. */
+/* Check if two geometries are the same. */
 static int
 kitty_same_geometry(struct image_geom *a, struct image_geom *b)
 {
@@ -345,13 +345,12 @@ kitty_same_geometry(struct image_geom *a, struct image_geom *b)
 	    a->scaled_width != b->scaled_width ||
 	    a->scaled_height != b->scaled_height ||
 	    a->sx != b->sx ||
-	    a->sy != b->sy) {
+	    a->sy != b->sy)
 		return (0);
-	}
 	return (1);
 }
 
-/* Get a cached image in drawing order, reusing a replaced identical view. */
+/* Get a cached image in drawing order, reusing uploads after a move. */
 static struct kitty_image_cache *
 kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 {
@@ -368,7 +367,7 @@ kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 			return (entry);
 	}
 
-	/* Transfer an identical upload before removing the old view. */
+	/* Reuse the uploaded pixels when only the image position changes. */
 	source_id = image_get_id(image_get_source(im));
 	TAILQ_FOREACH(entry, &ko->images, entry) {
 		if (entry->source_id != source_id ||
@@ -384,30 +383,31 @@ kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 			entry->upload->geom.image_id = entry->image_id;
 		entry->order_id = image_get_order_id(im);
 		entry->index = index;
-		goto insert;
+		break;
 	}
 
-	/* Create a cache entry using this terminal's cell pixel size. */
-	entry = xcalloc(1, sizeof *entry);
-	entry->image_id = image_get_id(im);
-	entry->source_id = source_id;
-	entry->geom = *ig;
-	entry->order_id = image_get_order_id(im);
-	entry->index = index;
-	entry->xpixel = tty->xpixel;
-	if (entry->xpixel == 0)
-		entry->xpixel = 8;
-	entry->ypixel = tty->ypixel;
-	if (entry->ypixel == 0)
-		entry->ypixel = 16;
-	TAILQ_INIT(&entry->placements);
-	entry->upload = kitty_get_upload(tty, entry, im);
-	if (entry->upload == NULL) {
-		free(entry);
-		return (NULL);
+	if (entry == NULL) {
+		/* Create a cache entry for this terminal. */
+		entry = xcalloc(1, sizeof *entry);
+		entry->image_id = image_get_id(im);
+		entry->source_id = source_id;
+		memcpy(&entry->geom, ig, sizeof entry->geom);
+		entry->order_id = image_get_order_id(im);
+		entry->index = index;
+		entry->xpixel = tty->xpixel;
+		if (entry->xpixel == 0)
+			entry->xpixel = 8;
+		entry->ypixel = tty->ypixel;
+		if (entry->ypixel == 0)
+			entry->ypixel = 16;
+		TAILQ_INIT(&entry->placements);
+		entry->upload = kitty_get_upload(tty, entry, im);
+		if (entry->upload == NULL) {
+			free(entry);
+			return (NULL);
+		}
 	}
 
-insert:
 	/* Insert the entry in image and placement drawing order. */
 	TAILQ_FOREACH(before, &ko->images, entry) {
 		if (entry->order_id < before->order_id ||
