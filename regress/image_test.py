@@ -106,12 +106,19 @@ class ImageTest:
             "#{pane_title}") == "READY")
 
     def attach(self, graphical=True, utf8=True, cw=8, ch=16, term=None,
-            kitty_graphics=False, reply_da=True):
-        """Attach a client with a known cell pixel size and image feature."""
+            kitty_graphics=False, reply_da=True, clear=True):
+        """Attach a client with a known cell pixel size and image feature.
+
+        kitty_graphics=None leaves Kitty support detection enabled.
+        clear=False retains startup queries.
+        """
         if term is None:
             term = "xterm-256color" if graphical else "screen-256color"
         features = term + (":sixel" if graphical else ":sixel@")
-        features += ":kittygraphics" if kitty_graphics else ":kittygraphics@"
+        if kitty_graphics is not None:
+            features += ":kittygraphics"
+            if not kitty_graphics:
+                features += "@"
         self.run("set-option", "-as", "terminal-features", features)
         pid, fd = os.forkpty()
         if pid == 0:
@@ -144,7 +151,8 @@ class ImageTest:
                 "#{client_pid}:#{client_name}").splitlines()
             if line.startswith(str(pid) + ":"))
         client.read(0.2)
-        client.clear()
+        if clear:
+            client.clear()
         return client
 
     def client_size(self, client):

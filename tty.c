@@ -447,6 +447,25 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_release = NULL;
 }
 
+#if defined(ENABLE_IMAGES) && defined(HAVE_LIBZ)
+/* Ask the terminal whether it supports compressed Kitty images. */
+static void
+tty_request_kitty_zlib(struct tty *tty)
+{
+	if (~tty->flags & TTY_STARTED)
+		return;
+	if (~tty->term->flags & TERM_KITTYGRAPHICS) {
+		tty->flags |= TTY_HAVEKITTYZLIB;
+		return;
+	}
+
+	tty->flags &= ~TTY_HAVEKITTYZLIB;
+	tty_puts(tty, "\033_Gi=32,s=1,v=1,a=q,t=d,f=24,o=z;"
+	    "eJxjYGAAAAADAAE=\033\\");
+	tty_start_start_timer(tty);
+}
+#endif
+
 void
 tty_send_requests(struct tty *tty)
 {
@@ -477,11 +496,8 @@ tty_send_requests(struct tty *tty)
 	else
 		tty->flags |= TTY_HAVEKITTYGRAPHICS;
 #ifdef HAVE_LIBZ
-	if (tty_term_flag(term, TTYC_XT) && (~flags & TTY_HAVEKITTYZLIB)) {
-		tty_puts(tty, "\033_Gi=32,s=1,v=1,a=q,t=d,f=24,o=z;"
-		    "eJxjYGAAAAADAAE=\033\\");
-	} else
-		tty->flags |= TTY_HAVEKITTYZLIB;
+	if (~flags & TTY_HAVEKITTYZLIB)
+		tty_request_kitty_zlib(tty);
 #else
 	tty->flags |= TTY_HAVEKITTYZLIB;
 #endif
@@ -642,6 +658,9 @@ tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
 	int		 changed = 0;
+#if defined(ENABLE_IMAGES) && defined(HAVE_LIBZ)
+	int		 flags = tty->term->flags;
+#endif
 
 	if (tty_apply_features(tty->term)) {
 		tty_term_apply_overrides(tty->term);
@@ -650,6 +669,12 @@ tty_update_features(struct tty *tty)
 #ifdef ENABLE_IMAGES
 	if (image_tty_update(tty))
 		changed = 1;
+#ifdef HAVE_LIBZ
+	if (~flags & TERM_KITTYGRAPHICS &&
+	    tty->term->flags & TERM_KITTYGRAPHICS) {
+		tty_request_kitty_zlib(tty);
+	}
+#endif
 #endif
 
 	if (tty_use_margin(tty))
