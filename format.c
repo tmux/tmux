@@ -2584,6 +2584,57 @@ format_cb_pane_unseen_changes(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_osc133_exit_status - last command exit status from OSC 133. */
+static void *
+format_cb_pane_osc133_exit_status(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	struct grid		*gd;
+	struct grid_line	*gl;
+	u_int			 line;
+
+	if (wp == NULL)
+		return (NULL);
+
+	gd = wp->base.grid;
+	/* Search backwards from bottom of history+screen for a prompt line. */
+	for (line = gd->hsize + gd->sy; line > 0; line--) {
+		gl = grid_get_line(gd, line - 1);
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			/* Found a prompt, return its exit status. */
+			return (xasprintf("%u", gl->osc133_data.exit_status));
+		}
+	}
+	return (NULL);
+}
+
+/* Callback for pane_osc133_prompt_line - line number of last prompt. */
+static void *
+format_cb_pane_osc133_prompt_line(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	struct grid		*gd;
+	struct grid_line	*gl;
+	u_int			 line;
+
+	if (wp == NULL)
+		return (NULL);
+
+	gd = wp->base.grid;
+	/* Search backwards for a prompt line, return offset from visible top. */
+	for (line = gd->hsize + gd->sy; line > 0; line--) {
+		gl = grid_get_line(gd, line - 1);
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			/* Return line relative to visible screen. */
+			if (line - 1 >= gd->hsize)
+				return (xasprintf("%u", line - 1 - gd->hsize));
+			/* Prompt is in scrollback, return negative offset. */
+			return (xasprintf("-%u", gd->hsize - (line - 1)));
+		}
+	}
+	return (NULL);
+}
+
 /* Callback for pane_key_mode. */
 static void *
 format_cb_pane_key_mode(struct format_tree *ft)
@@ -4144,6 +4195,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_unseen_changes", FORMAT_TABLE_STRING,
 	  format_cb_pane_unseen_changes
+	},
+	{ "pane_osc133_exit_status", FORMAT_TABLE_STRING,
+	  format_cb_pane_osc133_exit_status
+	},
+	{ "pane_osc133_prompt_line", FORMAT_TABLE_STRING,
+	  format_cb_pane_osc133_prompt_line
 	},
 	{ "pane_unzoomed_height", FORMAT_TABLE_STRING,
 	  format_cb_pane_unzoomed_height
