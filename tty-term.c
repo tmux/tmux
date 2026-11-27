@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.117 2026/11/22 16:39:20 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.119 2026/11/26 14:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -105,6 +105,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_ENESC] = { TTYCODE_STRING, "Enesc" },
 	[TTYC_ENFCS] = { TTYCODE_STRING, "Enfcs" },
 	[TTYC_ENMG] = { TTYCODE_STRING, "Enmg" },
+	[TTYC_ESGR] = { TTYCODE_FLAG, "Esgr" },
 	[TTYC_FSL] = { TTYCODE_STRING, "fsl" },
 	[TTYC_HLS] = { TTYCODE_STRING, "Hls" },
 	[TTYC_HOME] = { TTYCODE_STRING, "home" },
@@ -260,6 +261,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_OL] = { TTYCODE_STRING, "ol" },
 	[TTYC_OP] = { TTYCODE_STRING, "op" },
 	[TTYC_RECT] = { TTYCODE_STRING, "Rect" },
+	[TTYC_REP] = { TTYCODE_STRING, "rep" },
 	[TTYC_REV] = { TTYCODE_STRING, "rev" },
 	[TTYC_RGB] = { TTYCODE_FLAG, "RGB" },
 	[TTYC_RIN] = { TTYCODE_STRING, "rin" },
@@ -510,6 +512,20 @@ tty_term_apply_overrides(struct tty_term *term)
 			tty_term_apply(term, s + offset, 0, 0);
 		a = options_array_next(a);
 	}
+
+	/* Emulate screen's italics behaviour if default-terminal is screen. */
+	s = options_get_string(global_options, "default-terminal");
+	if (tty_term_has(term, TTYC_SITM) &&
+	    strcmp(s, "screen") != 0 &&
+	    strncmp(s, "screen-", 7) != 0)
+		term->italics = TTYC_SITM;
+	else
+		term->italics = TTYC_SMSO;
+
+	/* Cache the separate reset mask when italics use SGR. */
+	term->separate_reset = 0;
+	if (term->italics == TTYC_SITM && tty_term_flag(term, TTYC_ESGR))
+		term->separate_reset = GRID_ATTR_SEPARATE_RESET;
 
 	/* Update the VT100 flag. */
 	s = tty_term_string(term, TTYC_CLEAR);
