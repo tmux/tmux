@@ -5308,6 +5308,15 @@ Supports the OSC 7 working directory extension.
 Supports the overline SGR attribute.
 .It programstatus
 Supports the OSC 7501 program status extension.
+.It pointer
+Supports setting the mouse pointer shape with OSC 22.
+When the
+.Ic mouse
+option is on, the shape is set from the
+.Ic pointer\-shape
+and
+.Ic copy\-mode\-pointer\-shape
+options.
 .It progressbar
 Supports the OSC 9;4 progress bar extension.
 .It rectfill
@@ -6079,6 +6088,11 @@ see the
 .Sx STYLES
 section.
 .Pp
+.It Ic copy\-mode\-pointer\-shape Ar format
+Like
+.Ic pointer\-shape
+but used when the mouse is over a pane in copy mode.
+.Pp
 .It Ic copy\-mode\-position\-format Ar format
 Format of the position indicator in copy mode.
 .Pp
@@ -6384,6 +6398,34 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.Pp
+.It Ic pointer\-shape Ar format
+Format of the mouse pointer shape, for terminals with the
+.Ic pointer
+feature.
+This is expanded when the mouse moves and should give an X11 cursor name.
+The
+.Ql mouse_location
+format variable is where the mouse is, using the location names from
+.Sx MOUSE SUPPORT
+(for example
+.Ql Pane
+or
+.Ql Border ) ;
+.Ql border_side
+is the side of the border
+.Pf ( Ql Left ,
+.Ql Right ,
+.Ql Top
+or
+.Ql Bottom ) ;
+.Ql mouse_drag
+is 1 when a drag starts; and
+.Ql mouse_shift ,
+.Ql mouse_meta
+and
+.Ql mouse_ctrl
+are 1 if those modifiers are held.
 .Pp
 .It Ic session\-status\-current\-style Ar style
 Set status line style for the currently active session.

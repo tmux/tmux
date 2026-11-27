@@ -646,10 +646,65 @@ server_client_update_scrollbar_hover(struct client *c, int type, int px, int py)
 	}
 }
 
+/* Get the name of a mouse location, as used in mouse key names. */
+static const char *
+server_client_mouse_location_name(enum key_code_mouse_location loc)
+{
+	const char	*name;
+	size_t		 len = strlen("MouseDown1");
+
+	name = key_string_lookup_key(KEYC_MAKE_MOUSE_KEY(KEYC_TYPE_MOUSEDOWN,
+	    1, loc), 0);
+	if (strncmp(name, "MouseDown1", len) != 0)
+		return ("");
+	return (name + len);
+}
+
+/* Set the mouse pointer shape for what is under the mouse. */
+static void
+server_client_update_pointer(struct client *c, struct mouse_event *m,
+    enum key_code_type type, enum key_code_mouse_location loc,
+    struct window_pane *wp, const char *side)
+{
+	struct session		*s = c->session;
+	struct options		*oo;
+	struct format_tree	*ft;
+	const char		*name = "pointer-shape";
+	char			*shape;
+
+	if (!tty_term_has(c->tty.term, TTYC_SPT))
+		return;
+
+	if (wp != NULL)
+		oo = wp->options;
+	else
+		oo = s->curw->window->options;
+	if (wp != NULL && loc == KEYC_MOUSE_LOCATION_PANE &&
+	    window_pane_mode(wp) == WINDOW_PANE_COPY_MODE)
+		name = "copy-mode-pointer-shape";
+	if (loc == KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER)
+		side = (m->sideat == 0) ? "Right" : "Left";
+
+	ft = format_create(c, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, c, s, s->curw, wp);
+	format_add(ft, "mouse_location", "%s",
+	    server_client_mouse_location_name(loc));
+	format_add(ft, "border_side", "%s", side == NULL ? "" : side);
+	format_add(ft, "mouse_drag", "%d", type == KEYC_TYPE_MOUSEDRAG);
+	format_add(ft, "mouse_shift", "%d", !!(m->b & MOUSE_MASK_SHIFT));
+	format_add(ft, "mouse_meta", "%d", !!(m->b & MOUSE_MASK_META));
+	format_add(ft, "mouse_ctrl", "%d", !!(m->b & MOUSE_MASK_CTRL));
+	shape = format_expand(ft, options_get_string(oo, name));
+	format_free(ft);
+
+	tty_set_pointer(&c->tty, shape);
+	free(shape);
+}
+
 /* Is the mouse inside a pane? */
 static enum key_code_mouse_location
 server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
-    u_int *sl_mpos)
+    u_int *sl_mpos, const char **side)
 {
 	struct window		*w = wp->window;
 	struct window_pane	*fwp;
@@ -742,6 +797,12 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 		    py == wp->yoff - 1 ||
 		    py == wp->yoff + (int)wp->sy)) {
 			/* Floating or separate left, bottom or top border. */
+			if (px == bdr_left)
+				*side = "Left";
+			else if (py == wp->yoff - 1)
+				*side = "Top";
+			else
+				*side = "Bottom";
 			return (KEYC_MOUSE_LOCATION_BORDER);
 		} else {
 			/* Must be inside the pane. */
@@ -774,20 +835,28 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			}
 			if (py >= fwp->yoff - 1 &&
 			    py <= fwp->yoff + (int)fwp->sy) {
-				if (px == bdr_right)
+				if (px == bdr_right) {
+					*side = "Right";
 					break;
+				}
 				if (window_pane_is_floating(wp) || separate) {
 					/* Also check left border. */
-					if (px == bdr_left)
+					if (px == bdr_left) {
+						*side = "Left";
 						break;
+					}
 				}
 			}
 			if (px >= bdr_left && px <= fwp->xoff + (int)fwp->sx) {
 				bdr_bottom = fwp->yoff + fwp->sy;
-				if (py == bdr_bottom)
+				if (py == bdr_bottom) {
+					*side = "Bottom";
 					break;
-				if (py == bdr_top)
+				}
+				if (py == bdr_top) {
+					*side = "Top";
 					break;
+				}
 			}
 		}
 		if (fwp != NULL)
@@ -934,7 +1003,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct mouse_event		*m = &event->m;
 	struct session			*s = c->session;
 	struct window			*w = s->curw->window;
-	struct window_pane		*wp, *lwp = NULL;
+	struct window_pane		*wp = NULL, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
@@ -944,6 +1013,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct style_range		*sr;
 	enum key_code_type		 type = KEYC_TYPE_NOTYPE;
 	enum key_code_mouse_location	 loc = KEYC_MOUSE_LOCATION_NOWHERE;
+	const char			*side = NULL;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -1116,7 +1186,7 @@ have_event:
 		} else {
 			if (!modal_drag) {
 				loc = server_client_check_mouse_in_pane(wp, px,
-				    py, &sl_mpos);
+				    py, &sl_mpos, &side);
 			}
 			if (loc == KEYC_MOUSE_LOCATION_PANE) {
 				log_debug("mouse %u,%u on pane %%%u", x, y,
@@ -1139,6 +1209,11 @@ have_event:
 		}
 	} else
 		server_client_update_scrollbar_hover(c, type, -1, -1);
+
+	if (type == KEYC_TYPE_MOUSEMOVE ||
+	    type == KEYC_TYPE_MOUSEUP ||
+	    (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0))
+		server_client_update_pointer(c, m, type, loc, wp, side);
 
 	/* Reset click type or add a click timer if needed. */
 	if (type == KEYC_TYPE_MOUSEDOWN ||
@@ -2382,6 +2457,7 @@ server_client_reset_state(struct client *c)
 			}
 		}
 		if (options_get_number(oo, "focus-follows-mouse") ||
+		    tty_term_has(tty->term, TTYC_SPT) ||
 		    w->sb == PANE_SCROLLBARS_MODAL ||
 		    w->sb == PANE_SCROLLBARS_AUTOHIDE)
 			mode |= MODE_MOUSE_ALL;

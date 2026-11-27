@@ -721,6 +721,7 @@ enum tty_code_code {
 	TTYC_SMULX,
 	TTYC_SMXX,
 	TTYC_SPB,
+	TTYC_SPT,
 	TTYC_SXL,
 	TTYC_SS,
 	TTYC_SWD,
@@ -1980,6 +1981,7 @@ struct tty {
 	int		 mouse_scrolling_flag;
 	int		 mouse_slider_mpos;
 	int              mouse_last_pane;
+	char		*pointer;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
@@ -3122,6 +3124,7 @@ void	tty_repeat_requests(struct tty *, int);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
+void	tty_set_pointer(struct tty *, const char *);
 void	tty_set_progress_bar(struct tty *, struct progress_bar *);
 void	tty_set_program_status(struct tty *, const struct window_pane *);
 void	tty_default_attributes(struct tty *, u_int,

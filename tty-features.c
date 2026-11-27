@@ -416,6 +416,17 @@ static const struct tty_feature tty_feature_programstatus = {
 	TERM_PROGRAMSTATUS
 };
 
+/* Terminal supports setting the mouse pointer shape with OSC 22. */
+static const char *const tty_feature_pointer_capabilities[] = {
+	"Spt=\\E]22;%p1%s\\a",
+	NULL
+};
+static const struct tty_feature tty_feature_pointer = {
+	"pointer",
+	tty_feature_pointer_capabilities,
+	0
+};
+
 /* Terminal supports UTF-8. */
 static const struct tty_feature tty_feature_utf8 = {
 	"utf8",
@@ -443,6 +454,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_osc7,
 	&tty_feature_overline,
 	&tty_feature_programstatus,
+	&tty_feature_pointer,
 	&tty_feature_progressbar,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
@@ -660,7 +672,8 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "sync,"
 			      "osc7,"
 			      "hyperlinks,"
-			      "progressbar"
+			      "progressbar,"
+			      "pointer"
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -670,7 +683,8 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "usstyle,"
 			      "sync,"
 			      "osc7,"
-			      "hyperlinks"
+			      "hyperlinks,"
+			      "pointer"
 		},
 		{ .name = "WezTerm",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -713,7 +727,8 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "progressbar,"
 			      "sync,"
 			      "usstyle,"
-			      "kittygraphics"
+			      "kittygraphics,"
+			      "pointer"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -737,7 +752,8 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "ccolour,"
 			      "cstyle,"
 			      "extkeys,"
-			      "focus"
+			      "focus,"
+			      "pointer"
 		},
 	};
 	u_int	i;
