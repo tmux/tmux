@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1502 2026/11/26 12:35:47 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1506 2026/11/26 15:59:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -538,6 +538,7 @@ enum tty_code_code {
 	TTYC_ENESC,
 	TTYC_ENFCS,
 	TTYC_ENMG,
+	TTYC_ESGR,
 	TTYC_FSL,
 	TTYC_HLS,
 	TTYC_HOME,
@@ -693,6 +694,7 @@ enum tty_code_code {
 	TTYC_OL,
 	TTYC_OP,
 	TTYC_RECT,
+	TTYC_REP,
 	TTYC_REV,
 	TTYC_RGB,
 	TTYC_RI,
@@ -854,11 +856,22 @@ struct colour_palette {
 
 /* All underscore attributes. */
 #define GRID_ATTR_ALL_UNDERSCORE \
-	(GRID_ATTR_UNDERSCORE|	 \
+	(GRID_ATTR_UNDERSCORE| \
 	 GRID_ATTR_UNDERSCORE_2| \
 	 GRID_ATTR_UNDERSCORE_3| \
 	 GRID_ATTR_UNDERSCORE_4| \
 	 GRID_ATTR_UNDERSCORE_5)
+
+/* Grid attributes with separate resets. */
+#define GRID_ATTR_SEPARATE_RESET \
+	(GRID_ATTR_BRIGHT| \
+	 GRID_ATTR_DIM| \
+	 GRID_ATTR_ALL_UNDERSCORE| \
+	 GRID_ATTR_BLINK| \
+	 GRID_ATTR_REVERSE| \
+	 GRID_ATTR_HIDDEN| \
+	 GRID_ATTR_ITALICS| \
+	 GRID_ATTR_STRIKETHROUGH)
 
 /* Grid flags. */
 #define GRID_FLAG_FG256 0x1
@@ -1120,6 +1133,13 @@ struct progress_bar {
 	int			progress;
 };
 
+/* Pending scroll type. */
+enum screen_scroll_type {
+	SCREEN_SCROLL_UP,
+	SCREEN_SCROLL_DL,
+	SCREEN_SCROLL_IL
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -1130,7 +1150,6 @@ struct screen {
 	u_int				 ntitles;
 
 	struct grid			*grid;	  /* grid data */
-
 	u_int				 cx;	  /* cursor x */
 	u_int				 cy;	  /* cursor y */
 
@@ -1157,10 +1176,14 @@ struct screen {
 	struct screen_write_cline	*write_list;
 	u_int				 write_start;
 	u_int				 write_end;
-	u_int				 write_scrolled;
+
 	u_int				 write_rupper;
 	u_int				 write_rlower;
 	u_int				 write_bg;
+
+	enum screen_scroll_type		 scroll_type;
+	u_int				 scroll_lines;
+	u_int				 scroll_y;
 
 	struct hyperlinks		*hyperlinks;
 	struct progress_bar		 progress_bar;
@@ -1821,6 +1844,8 @@ struct tty_term {
 	char			*name;
 	struct tty		*tty;
 	int			 applied_features;
+	enum tty_code_code	 italics;
+	u_int			 separate_reset;
 
 	char			 acs[UCHAR_MAX + 1][2];
 	struct tty_code		*codes;
@@ -4283,6 +4308,7 @@ enum utf8_state	 utf8_fromwc(int wc, struct utf8_data *);
 int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
+int		 utf8_is_one(utf8_char, u_char);
 int		 utf8_get_one(utf8_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
 void		 utf8_to_data(utf8_char, struct utf8_data *);

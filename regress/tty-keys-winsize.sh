@@ -70,6 +70,10 @@ def check_escape(context):
 
 try:
     run("new-session", "-d", "-s", "winsize", "-x80", "-y24", "sleep 60")
+    support = run("display-message", "-p", "#{image_support}")
+    if support == "0":
+        sys.exit(101)
+    assert support == "1", ("unexpected image_support", support)
     run("set-option", "-s", "escape-time", "0")
     run("set-option", "-g", "assume-paste-time", "0")
     for key, label in (("Escape", "E"), ("M-Escape", "M"),
