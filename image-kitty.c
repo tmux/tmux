@@ -108,7 +108,7 @@ struct kitty_upload_geom {
 	u_int	width;		/* output width, excluding the border */
 	u_int	height;		/* output height, excluding the border */
 
-	/* Source and output spans; zero source width uses view geometry. */
+	/* Source and output sizes; zero source width uses image geometry. */
 	u_int	src_w;
 	u_int	src_h;
 	u_int	dst_w;
@@ -119,13 +119,13 @@ struct kitty_upload_geom {
 struct kitty_upload_cache {
 	struct kitty_upload_geom	geom;
 	u_int				kitty_id;   /* zero until uploaded */
-	u_int				references; /* cached views */
+	u_int				references; /* cache entries */
 	u_int				next_placement;
 
 	TAILQ_ENTRY(kitty_upload_cache)	entry;
 };
 
-/* One image view and its visible terminal rectangles. */
+/* An image and its visible terminal rectangles. */
 struct kitty_image_cache {
 	u_int					image_id;
 	u_int					source_id;
@@ -136,7 +136,7 @@ struct kitty_image_cache {
 	u_int					xpixel;
 	u_int					ypixel;
 
-	/* Origin of this view within the upload, in output pixels. */
+	/* Origin of this image within the upload, in output pixels. */
 	u_int					src_x;
 	u_int					src_y;
 	struct kitty_upload_cache		*upload;
@@ -215,7 +215,7 @@ kitty_delete(struct tty *tty, u_int id)
 		tty_raw(tty, s);
 }
 
-/* Reuse a scaled source when the crop aligns with its output pixels. */
+/* Find or create an upload with matching image geometry. */
 static struct kitty_upload_cache *
 kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
     struct image *im)
@@ -225,7 +225,7 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 	struct image_geom		*ig = image_get_geometry(im);
 	struct image_geom		*sg = image_get_geometry(source);
 	struct kitty_upload_cache	*upload;
-	struct kitty_upload_geom	*ug;
+	struct kitty_upload_geom		*ug;
 	struct kitty_image_cache	*before;
 	struct image_geom		*bg;
 	u_int				 id = image_get_id(im);
@@ -245,7 +245,7 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 	dst_w = width;
 	dst_h = height;
 
-	/* Keep padding and fractional origins in their own prepared canvas. */
+	/* Share sources only when crops align with output pixels. */
 	if (source != im &&
 	    ig->canvas_xoff == 0 &&
 	    ig->canvas_yoff == 0 &&
@@ -262,7 +262,7 @@ kitty_get_upload(struct tty *tty, struct kitty_image_cache *entry,
 		    width <= KITTY_MAX_DIMENSION - 2 &&
 		    height <= KITTY_MAX_DIMENSION - 2 &&
 		    (width + 2) * (height + 2) <= limit / 4) {
-			/* Expand the source for a second compatible view. */
+			/* Share the source between images at the same scale. */
 			if (ig->src_w == sg->src_w && ig->src_h == sg->src_h)
 				reuse = 1;
 			TAILQ_FOREACH(before, &ko->images, entry) {
@@ -740,7 +740,7 @@ kitty_redraw_finish(struct tty *tty)
 	struct kitty_image_cache	*entry, *other, *next_entry;
 	struct kitty_placement_cache	*kpl, *next;
 	struct kitty_upload_cache	*upload, *next_upload;
-	u_int				id;
+	u_int				 id;
 	int				 changed;
 
 	if (ko == NULL)
@@ -789,7 +789,7 @@ kitty_redraw_finish(struct tty *tty)
 		}
 	} while (changed);
 
-	/* Separate overlapping views without disturbing other shared views. */
+	/* Give overlapping images separate uploads to preserve their order. */
 	TAILQ_FOREACH(entry, &ko->images, entry) {
 		if (!entry->replace)
 			continue;
@@ -803,13 +803,14 @@ kitty_redraw_finish(struct tty *tty)
 			continue;
 		}
 		entry->upload = xcalloc(1, sizeof *upload);
-		entry->upload->geom = upload->geom;
+		memcpy(&entry->upload->geom, &upload->geom,
+		    sizeof entry->upload->geom);
 		entry->upload->references = 1;
 		upload->references--;
 		TAILQ_INSERT_TAIL(&ko->uploads, entry->upload, entry);
 	}
 
-	/* Release uploads no longer referenced by a visible view. */
+	/* Free unused uploads. */
 	TAILQ_FOREACH_SAFE(upload, &ko->uploads, entry, next_upload) {
 		if (upload->references != 0)
 			continue;
