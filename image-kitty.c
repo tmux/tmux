@@ -256,7 +256,7 @@ kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 		if (entry->ypixel == 0)
 			entry->ypixel = 16;
 		TAILQ_INIT(&entry->placements);
-		kq->count++;
+		ko->count++;
 	}
 
 	/* Insert the entry in image and placement drawing order. */
