@@ -19,25 +19,32 @@ all: prepare $(TESTS)
 	exit $$failed
 
 prepare:
+	@test "$$(uname -s)" = Linux || \
+	    { printf '%s\n' 'bench requires Linux' >&2; exit 1; }
+	@command -v perf >/dev/null || \
+	    { printf '%s\n' 'bench requires perf' >&2; exit 1; }
 	@mkdir -p "$(LOGDIR)"
-	@rm -f "$(LOGDIR)"/*.log "$(LOGDIR)"/*.time
+	@rm -f "$(LOGDIR)"/*.log "$(LOGDIR)"/*.counts
+	@printf '%-28s %16s %16s %14s %8s\n' \
+	    test instructions cycles bytes time
 
 $(TESTS): prepare
 	@base="$@"; base=$${base##*/}; \
 	log="$(LOGDIR)/$${base%.sh}.log"; \
-	timing="$(LOGDIR)/$${base%.sh}.time"; \
-	BENCH_TEST="./$@" BENCH_TIME="$(CURDIR)/$$timing" SHELL=/bin/sh LC_ALL=C \
-	    timeout 60 script -q -e \
+	counts="$(LOGDIR)/$${base%.sh}.counts"; \
+	BENCH_TEST="./$@" BENCH_COUNTS="$(CURDIR)/$$counts" \
+	    SHELL=/bin/sh LC_ALL=C timeout 60 script -q -e \
 	    -c 'exec sh "$$BENCH_TEST"' /dev/null </dev/null \
 	    >"$$log" 2>&1; \
 	result=$$?; \
 	case $$result in \
 	0) \
-		seconds=$$(cat "$$timing"); \
+		read -r instructions cycles elapsed <"$$counts" || exit 1; \
 		bytes=$$(wc -c <"$$log"); \
-		rm -f "$$log" "$$timing"; \
-		printf '%-28s %10s %14s\n' "$${base%.sh}" "$$seconds" "$$bytes" ;; \
+		rm -f "$$log" "$$counts"; \
+		printf '%-28s %16s %16s %14s %8s\n' \
+		    "$${base%.sh}" "$$instructions" "$$cycles" "$$bytes" "$$elapsed" ;; \
 	*) \
-		rm -f "$$timing"; \
+		rm -f "$$counts"; \
 		printf '%-28s FAIL (%s)\n log: %s\n' "$@" "$$result" "$$log" ;; \
 	esac

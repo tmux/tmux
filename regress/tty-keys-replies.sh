@@ -36,6 +36,14 @@ def state():
         "#{client_width}x#{client_height}|"
         "#{client_cell_width}x#{client_cell_height}")
 
+def wait_query(fd, query, context, output=b""):
+    deadline = time.monotonic() + 10
+    while query not in output:
+        assert time.monotonic() < deadline, (context, "missing query", query)
+        if select.select([fd], [], [], .01)[0]:
+            output += os.read(fd, 65536)
+    return output
+
 def matches(name, value):
     features, kind, size, cells = value.split("|")
     features = set(features.split(","))
@@ -148,12 +156,12 @@ for name, report in reports:
                     fcntl.ioctl(0, termios.TIOCSWINSZ,
                         struct.pack("HHHH", 24, 80, 0, 0))
                     os.execv(tmux, server + ["attach-session", "-t", "replies"])
-                output = b""
-                deadline = time.monotonic() + 10
-                while b"\033]11;?\033\\" not in output:
-                    assert time.monotonic() < deadline, (context, "missing query")
-                    if select.select([fd], [], [], .01)[0]:
-                        output += os.read(fd, 65536)
+                output = wait_query(fd, b"\033]11;?\033\\", context)
+                if name in ("characters", "pixels"):
+                    # Automatic size queries require image support.
+                    if not images:
+                        run("refresh-client", "-q")
+                    wait_query(fd, b"\033[18t\033[14t", context, output)
                 if name.startswith("kitty-graphics"):
                     query = b"\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\"
                     if name == "kitty-graphics-no-query":

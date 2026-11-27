@@ -7,6 +7,7 @@ pane=$3
 directory=$4
 phases=$5
 stty raw -echo
+
 phase=0
 while [ "$phase" -lt "$phases" ]; do
 	"$binary" -S "$socket" wait-for -S "ready-$pane-$phase"

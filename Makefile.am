@@ -30,6 +30,13 @@ AM_CFLAGS += -O2
 else
 AM_CFLAGS += -O0
 endif
+if IS_LTO_AUTO
+AM_CFLAGS += -flto=auto
+else
+if IS_LTO
+AM_CFLAGS += -flto
+endif
+endif
 if IS_DEBUG
 AM_CFLAGS += -g3 -ggdb
 AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2 -Wno-use-after-free

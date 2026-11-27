@@ -93,13 +93,13 @@ $INNER set-option -g window-size manual || exit 1
 
 # Three rows of panes; the middle row is short and split into three so that
 # the middle pane has other panes on both sides and above and below.
-$INNER split-window -d -v -t inner:0.0 'sleep 100' || exit 1
-$INNER split-window -d -v -t inner:0.1 'sleep 100' || exit 1
+# Use empty panes for the splits to avoid allocating unused ptys.
+$INNER split-window -d -E -v -t inner:0.0 || exit 1
+$INNER split-window -d -E -v -t inner:0.1 || exit 1
 $INNER resize-pane -t inner:0.0 -y 6 || exit 1
 $INNER resize-pane -t inner:0.1 -y 4 || exit 1
-MID=$($INNER split-window -d -h -P -F '#{pane_id}' -l 20 -t inner:0.1 \
-    'sleep 100') || exit 1
-$INNER split-window -d -h -l 20 -t inner:0.1 'sleep 100' || exit 1
+$INNER split-window -d -E -h -l 20 -t inner:0.1 || exit 1
+$INNER split-window -d -E -h -l 20 -t inner:0.1 || exit 1
 
 # The covered pane is the one in the middle of the short row.
 set -- $($INNER list-panes -F '#{pane_left} #{pane_id}' -f '#{==:#{pane_top},7}' |
@@ -115,15 +115,14 @@ H=$($INNER display-message -p -t "$COVERED" '#{pane_height}')
 FLOAT=$($INNER new-pane -d -PF '#{pane_id}' -x $((W + 6)) -y $((H + 4)) \
     -X $((X - 3)) -Y $((Y - 2)) "perl '$FILLER'") || fail "new-pane failed"
 
-$INNER respawn-pane -k -t "$COVERED" "TRIGGER='$TRIGGER' perl '$EMITTER'" ||
+$INNER respawn-pane -t "$COVERED" "TRIGGER='$TRIGGER' perl '$EMITTER'" ||
     exit 1
 
-$OUTER new-session -d -s outer -x 60 -y 20 'sleep 100' || exit 1
-$OUTER set-option -g status off || exit 1
-$OUTER set-option -g window-size manual || exit 1
-$OUTER set-option -g default-terminal screen || exit 1
-$OUTER respawn-pane -k -t outer:0.0 \
-    "$TEST_TMUX -Lcovers-inner-$$ -f/dev/null attach-session -t inner" ||
+$OUTER set-option -g status off \; \
+    set-option -g window-size manual \; \
+    set-option -g default-terminal screen \; \
+    new-session -d -s outer -x 60 -y 20 \
+    "$TEST_TMUX" -Lcovers-inner-$$ -f/dev/null attach-session -t inner ||
     exit 1
 
 wait_outer_has FFFFFFFFFF
