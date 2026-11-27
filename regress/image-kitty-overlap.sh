@@ -34,9 +34,11 @@ def rectangle(colour, x=0, y=0, w=24, h=32):
 
 
 def image_id(terminal, colour):
-    """Find the current terminal upload for a solid colour."""
-    return next(id for id, (_, _, data) in terminal.images.items()
-        if tuple(data[:3]) == colour)
+    """Find the placed terminal upload for a solid colour."""
+    id = next(id for id, (_, _, data) in terminal.images.items()
+        if tuple(data[:3]) == colour and
+        any(image == id for image, _ in terminal.placements))
+    return id
 
 
 with image_test(sys.argv[1]) as test:

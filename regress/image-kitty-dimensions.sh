@@ -32,7 +32,7 @@ for vertical in (False, True):
             terminal = KittyTerminal(sx=sx, sy=sy, cw=cw, ch=ch)
             pixels = bytes(v for y in range(h) for x in range(w)
                 for v in (*colour(x, y), 255))
-            test.emit(kitty('a=T,i=7,f=32,s=%d,v=%d,c=%d,r=%d,C=1' %
+            test.emit(kitty('a=T,i=7,p=1,f=32,s=%d,v=%d,c=%d,r=%d,C=1' %
                 (w, h, w // cw, h // ch), pixels))
             terminal.feed(client.data)
             assert all(ww <= 10000 and hh <= 10000
@@ -51,6 +51,16 @@ for vertical in (False, True):
 
             if length <= 10000:
                 continue
+
+            # Moving a split image reuses each matching upload rectangle.
+            move = (1, 0) if vertical else (0, 1)
+            for dx, dy in (move, (0, 0)):
+                test.emit(('\033[%d;%dH' % (dy + 1, dx + 1)).encode() +
+                    kitty('a=p,i=7,p=1,c=%d,r=%d,C=1' % (w // cw, h // ch)))
+                terminal.feed(client.data)
+                terminal.check({(px + dx * cw, py + dy * ch): rgb
+                    for (px, py), rgb in visible.items()})
+                assert terminal.uploads == uploads
 
             # Cover a cell on each side of an upload boundary.
             x, y, fw, fh = 4999, 0, 2, 1

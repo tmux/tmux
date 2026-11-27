@@ -112,6 +112,7 @@ u_int		 image_get_id(struct image *);
 u_int		 image_get_order_id(struct image *);
 void		 image_set_order_id(struct image *, u_int);
 enum image_type	 image_get_type(struct image *);
+struct image	*image_get_source(struct image *);
 void		 image_ref(struct image *);
 void		 image_free(struct image *);
 void		 image_touch(struct image *);

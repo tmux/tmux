@@ -69,17 +69,19 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(rectangle(red))
     # A different window must not retain native placements from the first.
+    uploads = terminal.uploads
     client.clear()
     test.run('new-window', 'stty raw -echo; exec cat')
     client.read(0.3)
     terminal.feed(client.data)
     terminal.check({})
-    assert not terminal.images, 'hidden uploads were retained in the terminal'
+    assert terminal.images, 'hidden uploads were discarded'
     client.clear()
     test.run('select-window', '-t', ':0')
     client.read(0.3)
     terminal.feed(client.data)
     terminal.check(rectangle(red))
+    assert terminal.uploads == uploads, 'window switch uploaded pixels again'
     # Transparency is preserved across separately uploaded images.
     test.emit(kitty('a=T,i=400,f=32,s=1,v=1,c=2,r=1,C=1',
         bytes((0, 0, 255, 128))))
