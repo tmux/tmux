@@ -1,4 +1,4 @@
-/* $OpenBSD: window-client.c,v 1.54 2026/11/26 13:38:39 nicm Exp $ */
+/* $OpenBSD: window-client.c,v 1.55 2026/11/27 21:38:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -93,20 +93,21 @@ static const char *window_client_info_lines[] = {
 	WINDOW_CLIENT_FEATURE(imagescroll),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(kittygraphics) " "
+	WINDOW_CLIENT_FEATURE(kittyzlib) " "
 	WINDOW_CLIENT_FEATURE(margins) " "
-	WINDOW_CLIENT_FEATURE(mouse) " "
-	WINDOW_CLIENT_FEATURE(osc7),
+	WINDOW_CLIENT_FEATURE(mouse),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
+	WINDOW_CLIENT_FEATURE(osc7) " "
 	WINDOW_CLIENT_FEATURE(overline) " "
 	WINDOW_CLIENT_FEATURE(programstatus) " "
-	WINDOW_CLIENT_FEATURE(progressbar) " "
-	WINDOW_CLIENT_FEATURE(rectfill),
+	WINDOW_CLIENT_FEATURE(progressbar),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
+	WINDOW_CLIENT_FEATURE(rectfill) " "
 	WINDOW_CLIENT_FEATURE(sixel) " "
 	WINDOW_CLIENT_FEATURE(strikethrough) " "
-	WINDOW_CLIENT_FEATURE(sync) " "
-	WINDOW_CLIENT_FEATURE(title),
+	WINDOW_CLIENT_FEATURE(sync),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
+	WINDOW_CLIENT_FEATURE(title) " "
 	WINDOW_CLIENT_FEATURE(usstyle) " "
 	WINDOW_CLIENT_FEATURE(utf8),
 	"#[#{E:tree-mode-border-style},acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",

@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1206 2026/11/26 19:54:42 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1207 2026/11/27 21:38:10 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 26 2026 $
+.Dd $Mdocdate: November 27 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5288,6 +5288,10 @@ and use the
 internal set only.
 .It kittygraphics
 Supports the Kitty graphics protocol.
+.It kittyzlib
+Supports
+.Xr zlib 3
+compression for Kitty graphics.
 .It margins
 Supports DECSLRM margins.
 .It mouse
