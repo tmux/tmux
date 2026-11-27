@@ -646,45 +646,19 @@ server_client_update_scrollbar_hover(struct client *c, int type, int px, int py)
 	}
 }
 
-/* Mouse location names, as used in mouse key names. */
-static const char *server_client_mouse_locations[] = {
-	[KEYC_MOUSE_LOCATION_PANE] = "Pane",
-	[KEYC_MOUSE_LOCATION_STATUS] = "Status",
-	[KEYC_MOUSE_LOCATION_STATUS_LEFT] = "StatusLeft",
-	[KEYC_MOUSE_LOCATION_STATUS_RIGHT] = "StatusRight",
-	[KEYC_MOUSE_LOCATION_STATUS_DEFAULT] = "StatusDefault",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER] = "SideStatusBorder",
-	[KEYC_MOUSE_LOCATION_BORDER] = "Border",
-	[KEYC_MOUSE_LOCATION_SCROLLBAR_UP] = "ScrollbarUp",
-	[KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER] = "ScrollbarSlider",
-	[KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN] = "ScrollbarDown",
-	[KEYC_MOUSE_LOCATION_EMPTY] = "Empty",
-	[KEYC_MOUSE_LOCATION_CONTROL0] = "Control0",
-	[KEYC_MOUSE_LOCATION_CONTROL1] = "Control1",
-	[KEYC_MOUSE_LOCATION_CONTROL2] = "Control2",
-	[KEYC_MOUSE_LOCATION_CONTROL3] = "Control3",
-	[KEYC_MOUSE_LOCATION_CONTROL4] = "Control4",
-	[KEYC_MOUSE_LOCATION_CONTROL5] = "Control5",
-	[KEYC_MOUSE_LOCATION_CONTROL6] = "Control6",
-	[KEYC_MOUSE_LOCATION_CONTROL7] = "Control7",
-	[KEYC_MOUSE_LOCATION_CONTROL8] = "Control8",
-	[KEYC_MOUSE_LOCATION_CONTROL9] = "Control9",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS] = "SideStatus",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_LEFT] = "SideStatusLeft",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_RIGHT] = "SideStatusRight",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_DEFAULT] = "SideStatusDefault",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL0] = "SideStatusControl0",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL1] = "SideStatusControl1",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL2] = "SideStatusControl2",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL3] = "SideStatusControl3",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL4] = "SideStatusControl4",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL5] = "SideStatusControl5",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL6] = "SideStatusControl6",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL7] = "SideStatusControl7",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL8] = "SideStatusControl8",
-	[KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL9] = "SideStatusControl9",
-	[KEYC_MOUSE_LOCATION_NOWHERE] = "Nowhere"
-};
+/* Get the name of a mouse location, as used in mouse key names. */
+static const char *
+server_client_mouse_location_name(enum key_code_mouse_location loc)
+{
+	const char	*name;
+	size_t		 len = strlen("MouseDown1");
+
+	name = key_string_lookup_key(KEYC_MAKE_MOUSE_KEY(KEYC_TYPE_MOUSEDOWN,
+	    1, loc), 0);
+	if (strncmp(name, "MouseDown1", len) != 0)
+		return ("");
+	return (name + len);
+}
 
 /* Set the mouse pointer shape for what is under the mouse. */
 static void
@@ -714,7 +688,7 @@ server_client_update_pointer(struct client *c, struct mouse_event *m,
 	ft = format_create(c, NULL, FORMAT_NONE, 0);
 	format_defaults(ft, c, s, s->curw, wp);
 	format_add(ft, "mouse_location", "%s",
-	    server_client_mouse_locations[loc]);
+	    server_client_mouse_location_name(loc));
 	format_add(ft, "border_side", "%s", side == NULL ? "" : side);
 	format_add(ft, "mouse_drag", "%d", type == KEYC_TYPE_MOUSEDRAG);
 	format_add(ft, "mouse_shift", "%d", !!(m->b & MOUSE_MASK_SHIFT));
