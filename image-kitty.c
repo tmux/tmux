@@ -101,8 +101,8 @@ struct kitty_image_map {
 /* An image uploaded to a terminal. */
 struct kitty_image_cache {
 	u_int					image_id;
-	u_int					source_id; /* root image ID */
-	size_t					size;      /* pixel bytes */
+	u_int					source_id;
+	size_t					size;
 	u_int					kitty_id;
 	u_int					order_id;
 	uint64_t				index;
@@ -132,7 +132,7 @@ struct kitty_placement_cache {
 /* Image uploads and placements for one terminal. */
 struct kitty_output {
 	TAILQ_HEAD(, kitty_image_cache)	images;
-	u_int				count; /* cached views */
+	u_int				 count; /* cache entries */
 	uint64_t			size;  /* uploaded pixel bytes */
 	u_int				next_id;
 	int				changed;
@@ -451,7 +451,7 @@ kitty_trim_cache(struct tty *tty)
 {
 	struct kitty_output		*ko = tty->image_data;
 	struct kitty_image_cache	*entry, *next;
-	u_int				count;
+	u_int				 count;
 	uint64_t			 size;
 
 	count = options_get_number(global_options, "image-total-count-limit");
