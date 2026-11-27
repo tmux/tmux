@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-run-shell.c,v 1.96 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-run-shell.c,v 1.97 2026/11/27 07:30:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -51,7 +51,7 @@ const struct cmd_entry cmd_run_shell_entry = {
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
-	.flags = 0,
+	.flags = CMD_DEFERGUARD,
 	.exec = cmd_run_shell_exec
 };
 

@@ -75,4 +75,38 @@ for name, xt, configured, identification in cases:
                 terminal.check(expected)
                 assert any(c.get(b'o') == b'z' for c in terminal.commands)
                 assert any(c.get(b'm') == b'1' for c in terminal.commands)
+
+
+# Retained shared uploads count decoded pixels rather than compressed bytes.
+with image_test(sys.argv[1]) as test:
+    client = test.attach(kitty_graphics=True, clear=False)
+    test.wait(lambda: query in client.data)
+    os.write(client.fd, b'\033_Gi=32;OK\033\\Y')
+    test.wait(lambda: test.run('capture-pane', '-p') == 'Y')
+    terminal = KittyTerminal()
+    test.emit(b'\033[H' + kitty(
+        'a=T,i=7,p=1,f=32,s=1,v=1,c=4,r=3,C=1', b'\xff\0\0\xff') +
+        b'\033[1;9H' + kitty('a=p,i=7,p=2,c=4,r=3,C=1'))
+    terminal.feed(client.data)
+    terminal.check({(x + dx, y): (255, 0, 0)
+        for dx in (0, 64) for y in range(48) for x in range(32)})
+    headers = [c for c in terminal.commands
+        if c.get(b'a') == b't' and b'f' in c]
+    assert len(headers) == 1 and headers[0].get(b'o') == b'z', headers
+    size = sum(w * h * 4 for w, h, _ in terminal.images.values())
+
+    def cache_state():
+        """Read output and report cached uploads and visible placements."""
+        terminal.feed(client.data)
+        client.data.clear()
+        return len(terminal.images), len(terminal.placements)
+
+    client.clear()
+    test.run('set-option', '-s', 'image-total-size-limit', str(size))
+    test.run('new-window', 'stty raw -echo; exec cat')
+    test.wait(lambda: cache_state() == (1, 0))
+    assert terminal.uploads == 1
+    test.run('set-option', '-s', 'image-total-size-limit', str(size - 1))
+    test.run('refresh-client', '-t', client.name)
+    test.wait(lambda: cache_state() == (0, 0))
 PY
