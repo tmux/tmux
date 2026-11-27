@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Expanded Kitty sources must fit each terminal dimension, without enlarging their pixels.
+# Expanded Kitty sources must fit each terminal dimension.
 
 PATH=/bin:/usr/bin
 TERM=screen
