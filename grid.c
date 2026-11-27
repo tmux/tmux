@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.171 2026/11/26 14:57:57 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.172 2026/11/27 23:12:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -46,14 +46,6 @@ const struct grid_cell grid_default_cell = {
  */
 static const struct grid_cell grid_padding_cell = {
 	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 8, 0
-};
-
-/* Cleared grid cell data. */
-static const struct grid_cell grid_cleared_cell = {
-	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 8, 0
-};
-static const struct grid_cell_entry grid_cleared_entry = {
-	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
 };
 
 /* Store cell in entry. */
@@ -105,26 +97,38 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 	return (grid_cell_needs_extended(gc));
 }
 
+/* Reserve extended cells and return the first offset. */
+static u_int
+grid_reserve_extended_cells(struct grid_line *gl, u_int nx)
+{
+	u_int	at = gl->extdsize, size, n;
+
+	if (nx > UINT_MAX - at)
+		fatalx("too many extended cells");
+	size = at + nx;
+	if (size > gl->extdalloc) {
+		n = gl->extdalloc;
+		if (n == 0)
+			n = 8;
+		while (n < size) {
+			if (n > UINT_MAX / 2)
+				fatalx("too many extended cells");
+			n *= 2;
+		}
+		gl->extddata = xreallocarray(gl->extddata, n,
+		    sizeof *gl->extddata);
+		gl->extdalloc = n;
+	}
+	gl->extdsize = size;
+	return (at);
+}
+
 /* Get an extended cell. */
 static void
 grid_get_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
     int flags)
 {
-	u_int at;
-
-	if (gl->extdsize == UINT_MAX)
-		fatalx("too many extended cells");
-	at = gl->extdsize + 1;
-	if (at > gl->extdalloc) {
-		if (gl->extdalloc > UINT_MAX / 2)
-			fatalx("too many extended cells");
-		gl->extdalloc = gl->extdalloc == 0 ? 8 : gl->extdalloc * 2;
-		gl->extddata = xreallocarray(gl->extddata, gl->extdalloc,
-		    sizeof *gl->extddata);
-	}
-	gl->extdsize = at;
-
-	gce->offset = at - 1;
+	gce->offset = grid_reserve_extended_cells(gl, 1);
 	gce->flags = (flags | GRID_FLAG_EXTENDED);
 }
 
@@ -265,34 +269,70 @@ grid_adjust_lines(struct grid *gd, u_int lines)
 	gd->linedata = xreallocarray(gd->linedata, lines, sizeof *gd->linedata);
 }
 
-/* Clear a cell, keeping its extended slot when possible. */
+/* Clear cells, keeping their extended slots when possible. */
 static void
-grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg, int moved)
+grid_clear_cells(struct grid_line *gl, u_int px, u_int nx, u_int bg, int keep)
 {
-	struct grid_line	*gl = &gd->linedata[py];
-	struct grid_cell_entry	*gce = &gl->celldata[px];
-	struct grid_extd_entry	*gee;
-	int			 already = 1;
-	utf8_char		 uc;
+	struct grid_cell_entry	 blank, *gce = &gl->celldata[px];
+	struct grid_extd_entry	 gee;
+	u_int			 at, xx;
 
-	if (moved ||
-	    (~gce->flags & GRID_FLAG_EXTENDED) ||
-	    gce->offset >= gl->extdsize)
-		already = 0;
-	if (already || (bg & (COLOUR_FLAG_RGB|COLOUR_FLAG_THEME))) {
-		if (!already)
-			grid_get_extended_cell(gl, gce, GRID_FLAG_CLEARED);
-		else
-			gce->flags = GRID_FLAG_CLEARED|GRID_FLAG_EXTENDED;
-		uc = utf8_build_one(' ');
+	/* Do not keep extended slot unless one was already in use. */
+	if (gl->extdsize == 0)
+		keep = 0;
 
-		gee = grid_store_extended_cell(gl, gce, &grid_cleared_cell, uc);
-		gee->bg = bg;
-	} else {
-		memcpy(gce, &grid_cleared_entry, sizeof *gce);
+	/* Fill with blanks if no extended slots are needed. */
+	if ((bg & (COLOUR_FLAG_RGB|COLOUR_FLAG_THEME)) == 0) {
+		blank.data.attr = 0;
+		blank.data.fg = 8;
+		blank.data.bg = bg;
+		blank.data.data = ' ';
+
 		if (bg & COLOUR_FLAG_256)
-			gce->flags |= GRID_FLAG_BG256;
-		gce->data.bg = bg;
+			blank.flags = (GRID_FLAG_CLEARED|GRID_FLAG_BG256);
+		else
+			blank.flags = GRID_FLAG_CLEARED;
+
+		if (!keep) {
+			for (xx = 0; xx < nx; xx++) {
+				memcpy(gce, &blank, sizeof blank);
+				gce++;
+			}
+			return;
+		}
+	}
+
+	/* Allocate all the extended slots in one go when filling new cells. */
+	grid_pack_extended_cell(&gee, &grid_default_cell, utf8_build_one(' '));
+	gee.bg = bg;
+	if (!keep) {
+		at = grid_reserve_extended_cells(gl, nx);
+		gl->flags |= GRID_LINE_EXTENDED;
+		for (xx = 0; xx < nx; xx++) {
+			gce->offset = at;
+			gce->flags = GRID_FLAG_CLEARED|GRID_FLAG_EXTENDED;
+			memcpy(&gl->extddata[at], &gee, sizeof gee);
+			at++;
+			gce++;
+		}
+		return;
+	}
+
+	/* Keep existing extended slots when clearing cells in place. */
+	for (xx = 0; xx < nx; xx++) {
+		if ((gce->flags & GRID_FLAG_EXTENDED) &&
+		    gce->offset < gl->extdsize)
+			gce->flags = GRID_FLAG_CLEARED|GRID_FLAG_EXTENDED;
+		else if (bg & (COLOUR_FLAG_RGB|COLOUR_FLAG_THEME))
+			grid_get_extended_cell(gl, gce, GRID_FLAG_CLEARED);
+		else {
+			memcpy(gce, &blank, sizeof *gce);
+			gce++;
+			continue;
+		}
+		gl->flags |= GRID_LINE_EXTENDED;
+		memcpy(&gl->extddata[gce->offset], &gee, sizeof gee);
+		gce++;
 	}
 }
 
@@ -559,11 +599,8 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 {
-	struct grid_line	*gl;
-	struct grid_cell_entry	*gce;
-	u_int			 xx;
+	struct grid_line	*gl = &gd->linedata[py];
 
-	gl = &gd->linedata[py];
 	if (sx <= gl->cellsize)
 		return;
 
@@ -576,20 +613,7 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 
 	gl->celldata = xreallocarray(gl->celldata, sx,
 	    sizeof *gl->celldata);
-	if (bg & (COLOUR_FLAG_RGB|COLOUR_FLAG_THEME)) {
-		memset(gl->celldata + gl->cellsize, 0,
-		    (sx - gl->cellsize) * sizeof *gl->celldata);
-		for (xx = gl->cellsize; xx < sx; xx++)
-			grid_clear_cell(gd, xx, py, bg, 0);
-	} else {
-		gce = &gl->celldata[gl->cellsize];
-		memcpy(gce, &grid_cleared_entry, sizeof *gce);
-		gce->data.bg = bg;
-		if (bg & COLOUR_FLAG_256)
-			gce->flags |= GRID_FLAG_BG256;
-		for (xx = gl->cellsize + 1; xx < sx; xx++)
-			memcpy(&gl->celldata[xx], gce, sizeof *gce);
-	}
+	grid_clear_cells(gl, gl->cellsize, sx - gl->cellsize, bg, 0);
 	gl->cellsize = sx;
 }
 
@@ -794,7 +818,7 @@ void
 grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 {
 	struct grid_line	*gl;
-	u_int			 xx, yy, ox, sx;
+	u_int			 yy, ox, sx;
 
 	if (nx == 0 || ny == 0)
 		return;
@@ -819,15 +843,14 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 			sx = gl->cellsize;
 		ox = nx;
 		if (COLOUR_DEFAULT(bg)) {
-			if (px > sx)
+			if (px >= sx)
 				continue;
 			if (px + nx > sx)
 				ox = sx - px;
 		}
 
 		grid_expand_line(gd, yy, px + ox, 8); /* default bg first */
-		for (xx = px; xx < px + ox; xx++)
-			grid_clear_cell(gd, xx, yy, bg, 0);
+		grid_clear_cells(gl, px, ox, bg, 1);
 	}
 }
 
@@ -901,7 +924,7 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
     u_int bg)
 {
 	struct grid_line	*gl;
-	u_int			 xx;
+	u_int			 end = px + nx;
 
 	if (nx == 0 || px == dx)
 		return;
@@ -917,12 +940,13 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
 	if (dx + nx > gl->cellused)
 		gl->cellused = dx + nx;
 
-	/* Wipe any cells that have been moved. */
-	for (xx = px; xx < px + nx; xx++) {
-		if (xx >= dx && xx < dx + nx)
-			continue;
-		grid_clear_cell(gd, xx, py, bg, 1);
-	}
+	/* Clear the source cells outside the destination. */
+	if (dx > px) {
+		if (end > dx)
+			end = dx;
+	} else if (px < dx + nx)
+		px = dx + nx;
+	grid_clear_cells(gl, px, end - px, bg, 0);
 }
 
 /* Get ANSI foreground sequence. */
