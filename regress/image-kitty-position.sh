@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Replacing an identical Kitty view moves its upload, including padded views.
+# Reuse Kitty uploads when moving images, including images with padding.
 
 PATH=/bin:/usr/bin
 TERM=screen
