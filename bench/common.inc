@@ -15,44 +15,36 @@ tmux()
 	"$TEST_TMUX" -u -S "$SOCKET" -f "$DIR/config" "$@"
 }
 
-# Read only the server's user and system CPU time, excluding its children.
-bench_cpu_time()
-{
-	if [ "$BENCH_OS" = Linux ]; then
-		awk -v ticks="$BENCH_TICKS" '
-		{
-			sub(/^.*\) /, "")
-			printf "%.6f\n", ($12 + $13) / ticks
-		}' "/proc/$BENCH_PID/stat"
-	else
-		ps -o time= -p "$BENCH_PID" | awk '
-		NF {
-			n = split($1, parts, /[-:]/)
-			seconds = parts[n] + 60 * parts[n - 1]
-			if (n >= 3) seconds += 3600 * parts[n - 2]
-			if (n >= 4) seconds += 86400 * parts[n - 3]
-			printf "%.6f\n", seconds
-			found = 1
-		}
-		END { if (!found) exit 1 }'
-	fi
-}
-
 # Call after generating input and preparing panes. The command queue must wait
 # for all pane completion reports before detaching the attached client.
 bench_run()
 {
-	BENCH_PID=$(tmux display-message -p '#{pid}')
-	BENCH_OS=$(uname -s)
-	if [ "$BENCH_OS" = Linux ]; then
-		BENCH_TICKS=$(getconf CLK_TCK)
+	pid=$(tmux display-message -p '#{pid}') || return 1
+	stats=$DIR/perf
+	if ! perf stat -x, --no-big-num --no-scale --no-inherit \
+	    -e instructions:u,cycles:u,duration_time -p "$pid" -o "$stats" -- \
+	    "$TEST_TMUX" -u -S "$SOCKET" -f "$DIR/config" "$@"; then
+		if [ -s "$stats" ]; then
+			cat "$stats" >&2
+		fi
+		return 1
 	fi
-	before=$(bench_cpu_time)
-	tmux "$@"
-	after=$(bench_cpu_time)
-	awk -v before="$before" -v after="$after" \
-	    'BEGIN { printf "%.2f\n", after - before }' \
-	    >"${BENCH_TIME:-/dev/stderr}"
+
+	# Sum the raw counts across PMUs on systems with mixed core types.
+	if ! awk -F, '
+	    $1 !~ /^[0-9]+$/ { next }
+	    $3 ~ /(^|\/)instructions([:\/]u)?$/ { instructions += $1 }
+	    $3 ~ /(^|\/)cycles([:\/]u)?$/ { cycles += $1 }
+	    $3 == "duration_time" { elapsed = $1 / 1000000000 }
+	    END {
+		    if (instructions == 0 || cycles == 0 || elapsed == 0)
+			    exit 1
+		    printf "%.0f %.0f %.1f\n", instructions, cycles, elapsed
+	    }' "$stats" >"${BENCH_COUNTS:-/dev/stderr}"; then
+		printf '%s\n' 'perf stat did not report all measurements' >&2
+		cat "$stats" >&2
+		return 1
+	fi
 }
 
 cleanup()
@@ -68,7 +60,7 @@ set -g status off
 set -g window-size manual
 set -g automatic-rename off
 set -g default-terminal tmux
-set -s terminal-features 'xterm*:RGB:sync'
+set -s terminal-features 'xterm*:RGB:sync:ecmasgr'
 set -s disable-backoff on
 EOF
 # "default" leaves the option unset, using tmux's built-in history limit.
