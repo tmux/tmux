@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Expanded Kitty sources must fit each terminal dimension, including borders.
+# Expanded Kitty sources must fit each terminal dimension, without enlarging their pixels.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -20,7 +20,7 @@ def colour(i):
 
 
 for vertical in (False, True):
-    for length in (9998, 9999, 14000):
+    for length in (9998, 9999, 10000, 14000):
         w, h, cw, ch = length, 1, 2, 1
         if vertical:
             w, h, cw, ch = 1, length, 1, 2
@@ -42,7 +42,7 @@ for vertical in (False, True):
                 assert all(ww <= 10000 and hh <= 10000
                     for ww, hh, _ in terminal.images.values())
                 uploads = step + 1
-                if length == 9998:
+                if length <= 10000:
                     uploads = min(step + 1, 2)
                 assert terminal.uploads == uploads, (vertical, length, step)
 PY

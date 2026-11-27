@@ -51,7 +51,7 @@ with image_test(sys.argv[1]) as test:
     assert terminal.uploads == 1
     image = next(iter(terminal.placements))[0]
     width, height, _ = terminal.images[image]
-    assert (width, height) == (18, 34), (width, height)
+    assert (width, height) == (16, 32), (width, height)
     uploads = terminal.uploads
 
     # Expand once, then scroll both source coordinates without uploading pixels.
@@ -63,7 +63,7 @@ with image_test(sys.argv[1]) as test:
     uploads = terminal.uploads
 
     # The initial prepared crop may also remain cached after expansion.
-    assert any((w, h) == (34, 130) for w, h, _ in terminal.images.values())
+    assert any((w, h) == (32, 128) for w, h, _ in terminal.images.values())
 
     # A smaller source rectangle at the same scale uses the same upload.
     test.emit(b'\033[H' +
@@ -120,7 +120,7 @@ with image_test(sys.argv[1]) as test:
         terminal.check(expected(0, 0, w=2 * cw, h=2 * ch, cw=cw, ch=ch))
         image = next(iter(terminal.placements))[0]
         width, height, _ = terminal.images[image]
-        assert (width, height) == (2 * cw + 2, 2 * ch + 2)
+        assert (width, height) == (2 * cw, 2 * ch)
     test.emit(b'\033[H' + crop(8, 16))
     for (client, cw, ch), terminal in zip(clients, terminals):
         terminal.feed(client.data)
@@ -148,26 +148,26 @@ with image_test(sys.argv[1]) as test:
         assert terminal.uploads == min(step + 1, 2)
     image = next(iter(terminal.placements))[0]
     width, height, _ = terminal.images[image]
-    assert (width, height) == (28, 64)
+    assert (width, height) == (26, 62)
 
 
 # Expanding the whole source beyond the upload limit keeps a cropped canvas.
 with image_test(sys.argv[1]) as test:
     client = test.attach(kitty_graphics=True)
     terminal = KittyTerminal()
-    test.run('set-option', '-s', 'image-size-limit', '2048')
+    test.run('set-option', '-s', 'image-size-limit', '2047')
     test.emit(source(4, 4) + kitty('a=p,i=7,p=1,w=2,h=2,c=1,r=1,C=1'))
     terminal.feed(client.data)
     terminal.check({(x, y): colour(0, 0) for y in range(16) for x in range(8)})
     image = next(iter(terminal.placements))[0]
     width, height, _ = terminal.images[image]
-    assert (width, height) == (10, 18)
+    assert (width, height) == (8, 16)
     test.emit(b'\033[H' +
         kitty('a=p,i=7,p=1,x=1,y=1,w=2,h=2,c=1,r=1,C=1'))
     terminal.feed(client.data)
     terminal.check({(x, y): colour(1, 1) for y in range(16) for x in range(8)})
     image = next(iter(terminal.placements))[0]
     width, height, _ = terminal.images[image]
-    assert (width, height) == (10, 18)
+    assert (width, height) == (8, 16)
     assert terminal.uploads == 2
 PY
