@@ -141,6 +141,15 @@ image_get_type(struct image *im)
 	return (im->type);
 }
 
+/* Get the image owning the source pixels. */
+struct image *
+image_get_source(struct image *im)
+{
+	while (im->parent != NULL)
+		im = im->parent;
+	return (im);
+}
+
 /* Remove an image and children. */
 static void
 image_remove_all(struct image *im)

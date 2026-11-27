@@ -101,6 +101,8 @@ struct kitty_image_map {
 /* An image uploaded to a terminal. */
 struct kitty_image_cache {
 	u_int					image_id;
+	u_int					source_id;
+	struct image_geom			geom;
 	u_int					kitty_id;
 	u_int					order_id;
 	uint64_t				index;
@@ -181,12 +183,35 @@ kitty_delete(struct tty *tty, u_int id)
 		tty_raw(tty, s);
 }
 
-/* Get a cached image in drawing order. */
+/* Check if two geometries are the same. */
+static int
+kitty_same_geometry(struct image_geom *a, struct image_geom *b)
+{
+	if (a->src_x != b->src_x ||
+	    a->src_y != b->src_y ||
+	    a->src_w != b->src_w ||
+	    a->src_h != b->src_h ||
+	    a->canvas_width != b->canvas_width ||
+	    a->canvas_height != b->canvas_height ||
+	    a->canvas_xoff != b->canvas_xoff ||
+	    a->canvas_yoff != b->canvas_yoff ||
+	    a->scaled_width != b->scaled_width ||
+	    a->scaled_height != b->scaled_height ||
+	    a->sx != b->sx ||
+	    a->sy != b->sy)
+		return (0);
+	return (1);
+}
+
+/* Get a cached image in drawing order, reusing uploads after a move. */
 static struct kitty_image_cache *
 kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 {
 	struct kitty_output		*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*entry, *before;
+	struct kitty_placement_cache	*kpl;
+	struct image_geom		*ig = image_get_geometry(im);
+	u_int				 source_id;
 
 	/* Look for this image and placement in the output cache. */
 	TAILQ_FOREACH(entry, &ko->images, entry) {
@@ -195,19 +220,40 @@ kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 			return (entry);
 	}
 
-	/* Create a cache entry using this terminal's cell pixel size. */
-	entry = xcalloc(1, sizeof *entry);
-	entry->image_id = image_get_id(im);
-	entry->order_id = image_get_order_id(im);
-	entry->index = index;
-	entry->upload = 1;
-	entry->xpixel = tty->xpixel;
-	if (entry->xpixel == 0)
-		entry->xpixel = 8;
-	entry->ypixel = tty->ypixel;
-	if (entry->ypixel == 0)
-		entry->ypixel = 16;
-	TAILQ_INIT(&entry->placements);
+	/* Reuse the uploaded pixels when only the image position changes. */
+	source_id = image_get_id(image_get_source(im));
+	TAILQ_FOREACH(entry, &ko->images, entry) {
+		if (entry->source_id != source_id ||
+		    !kitty_same_geometry(&entry->geom, ig) ||
+		    image_find(entry->image_id) != NULL) {
+			continue;
+		}
+		TAILQ_FOREACH(kpl, &entry->placements, entry)
+			kpl->pending_delete = 1;
+		TAILQ_REMOVE(&ko->images, entry, entry);
+		entry->image_id = image_get_id(im);
+		entry->order_id = image_get_order_id(im);
+		entry->index = index;
+		break;
+	}
+
+	if (entry == NULL) {
+		/* Create a cache entry for this terminal. */
+		entry = xcalloc(1, sizeof *entry);
+		entry->image_id = image_get_id(im);
+		entry->source_id = source_id;
+		memcpy(&entry->geom, ig, sizeof entry->geom);
+		entry->order_id = image_get_order_id(im);
+		entry->index = index;
+		entry->upload = 1;
+		entry->xpixel = tty->xpixel;
+		if (entry->xpixel == 0)
+			entry->xpixel = 8;
+		entry->ypixel = tty->ypixel;
+		if (entry->ypixel == 0)
+			entry->ypixel = 16;
+		TAILQ_INIT(&entry->placements);
+	}
 
 	/* Insert the entry in image and placement drawing order. */
 	TAILQ_FOREACH(before, &ko->images, entry) {
