@@ -620,7 +620,7 @@ kitty_redraw_finish(struct tty *tty)
 void
 kitty_draw_rect(struct tty *tty, struct image_rect *rect)
 {
-	struct kitty_output	*ko = kitty_get_output(tty);
+	struct kitty_output		*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*entry;
 	struct image_rect		 subrect;
 	u_int				 x, y;
