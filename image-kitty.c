@@ -44,6 +44,9 @@
 
 #define KITTY_CHUNK_SIZE 3072
 
+/* Kitty and Ghostty limit uploaded images to 10000 pixels per side. */
+#define KITTY_MAX_DIMENSION 10000
+
 /* State attached to an input parser. */
 struct kitty_state {
 	char				 action;
@@ -110,13 +113,20 @@ struct kitty_image_cache {
 	int					upload;
 	u_int					xpixel;
 	u_int					ypixel;
+
+	/* Source rectangle bounds, in image cells. */
+	u_int					src_x;
+	u_int					src_y;
+	u_int					sx;
+	u_int					sy;
+
 	u_int					next_placement;
 	TAILQ_HEAD(, kitty_placement_cache)	placements;
 
 	TAILQ_ENTRY(kitty_image_cache)		entry;
 };
 
-/* One grid row placed on a terminal, with positions and sizes in cells. */
+/* A terminal placement, with source cells relative to its upload rectangle. */
 struct kitty_placement_cache {
 	u_int					id;
 	u_int					x;
@@ -206,27 +216,48 @@ kitty_same_geometry(struct image_geom *a, struct image_geom *b)
 	return (1);
 }
 
-/* Get a cached image in drawing order, reusing uploads after a move. */
+/* Get a cached upload rectangle in drawing order. */
 static struct kitty_image_cache *
-kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
+kitty_get_image(struct tty *tty, struct image_rect *rect)
 {
-	struct kitty_output		*ko = kitty_get_output(tty);
+	struct image			*im = rect->image;
+	struct image_geom		*ig = image_get_geometry(im);
+	struct kitty_output		*ko;
 	struct kitty_image_cache	*entry, *before;
 	struct kitty_placement_cache	*kpl;
-	struct image_geom		*ig = image_get_geometry(im);
-	u_int				 source_id;
+	u_int				 xpixel = tty->xpixel;
+	u_int				 ypixel = tty->ypixel;
+	u_int				 sx, sy, src_x, src_y, source_id;
+
+	/* Bound each upload rectangle by the terminal dimension limit. */
+	if (xpixel == 0)
+		xpixel = 8;
+	if (ypixel == 0)
+		ypixel = 16;
+	sx = KITTY_MAX_DIMENSION / xpixel;
+	sy = KITTY_MAX_DIMENSION / ypixel;
+	if (sx == 0 || sy == 0)
+		return (NULL);
+	src_x = rect->src_x / sx * sx;
+	src_y = rect->src_y / sy * sy;
+	ko = kitty_get_output(tty);
 
 	/* Look for this image and placement in the output cache. */
 	TAILQ_FOREACH(entry, &ko->images, entry) {
 		if (entry->image_id == image_get_id(im) &&
-		    entry->index == index)
+		    entry->index == rect->index &&
+		    entry->src_x == src_x &&
+		    entry->src_y == src_y) {
 			return (entry);
+		}
 	}
 
 	/* Reuse the uploaded pixels when only the image position changes. */
 	source_id = image_get_id(image_get_source(im));
 	TAILQ_FOREACH(entry, &ko->images, entry) {
 		if (entry->source_id != source_id ||
+		    entry->src_x != src_x ||
+		    entry->src_y != src_y ||
 		    !kitty_same_geometry(&entry->geom, ig) ||
 		    image_find(entry->image_id) != NULL) {
 			continue;
@@ -236,7 +267,7 @@ kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 		TAILQ_REMOVE(&ko->images, entry, entry);
 		entry->image_id = image_get_id(im);
 		entry->order_id = image_get_order_id(im);
-		entry->index = index;
+		entry->index = rect->index;
 		break;
 	}
 
@@ -247,14 +278,18 @@ kitty_get_image(struct tty *tty, struct image *im, uint64_t index)
 		entry->source_id = source_id;
 		memcpy(&entry->geom, ig, sizeof entry->geom);
 		entry->order_id = image_get_order_id(im);
-		entry->index = index;
+		entry->index = rect->index;
 		entry->upload = 1;
-		entry->xpixel = tty->xpixel;
-		if (entry->xpixel == 0)
-			entry->xpixel = 8;
-		entry->ypixel = tty->ypixel;
-		if (entry->ypixel == 0)
-			entry->ypixel = 16;
+		entry->xpixel = xpixel;
+		entry->ypixel = ypixel;
+		entry->src_x = src_x;
+		entry->src_y = src_y;
+		entry->sx = sx;
+		if (entry->sx > ig->sx - src_x)
+			entry->sx = ig->sx - src_x;
+		entry->sy = sy;
+		if (entry->sy > ig->sy - src_y)
+			entry->sy = ig->sy - src_y;
 		TAILQ_INIT(&entry->placements);
 		ko->count++;
 	}
@@ -279,8 +314,8 @@ kitty_send_placement(struct tty *tty, struct kitty_image_cache *entry,
     struct kitty_placement_cache *kpl)
 {
 	char	s[256];
-	u_int	px = kpl->src_x * entry->xpixel + 1;
-	u_int	py = kpl->src_y * entry->ypixel + 1;
+	u_int	px = kpl->src_x * entry->xpixel;
+	u_int	py = kpl->src_y * entry->ypixel;
 	u_int	w = kpl->w * entry->xpixel, h = kpl->h * entry->ypixel;
 
 	do
@@ -528,7 +563,7 @@ kitty_images_overlap(struct kitty_image_cache *a, struct kitty_image_cache *b)
 	return (0);
 }
 
-/* Upload a canvas prepared for this terminal's cell pixel size. */
+/* Upload pixels at their placement size to avoid terminal-side scaling. */
 static int
 kitty_upload(struct tty *tty, struct kitty_image_cache *entry)
 {
@@ -540,18 +575,21 @@ kitty_upload(struct tty *tty, struct kitty_image_cache *entry)
 	size_t			 offset, size, total, limit, stride;
 	u_int			 x, y, w, h;
 	u_int			 cw = entry->xpixel, ch = entry->ypixel;
+	u_int			 ox = entry->src_x * cw;
+	u_int			 oy = entry->src_y * ch;
 	uint64_t		 width = (uint64_t)ig->sx * cw;
 	uint64_t		 height = (uint64_t)ig->sy * ch;
 	int			 elen;
 
-	/* Check the output size and allow for a one-pixel border. */
+	/* Check the full canvas size before sampling an upload rectangle. */
 	limit = options_get_number(global_options, "image-size-limit");
-	if (width > UINT_MAX - 2 ||
-	    height > UINT_MAX - 2 ||
-	    width * height > limit / 4)
+	if (width > UINT_MAX ||
+	    height > UINT_MAX ||
+	    width * height > limit / 4) {
 		return (0);
-	w = width + 2;
-	h = height + 2;
+	}
+	w = entry->sx * cw;
+	h = entry->sy * ch;
 	if ((uint64_t)w * h > SIZE_MAX / 4)
 		return (0);
 	stride = (size_t)w * 4;
@@ -559,19 +597,13 @@ kitty_upload(struct tty *tty, struct kitty_image_cache *entry)
 
 	/* Allocate and scale the output pixels. */
 	p = xmalloc(total);
-	for (y = 0; y < height; y++) {
-		row = p + (y + 1) * stride;
-		for (x = 0; x < width; x++) {
-			p0 = image_get_pixel(im, x, y, width, height);
-			memcpy(row + (x + 1) * 4, p0, 4);
+	for (y = 0; y < h; y++) {
+		row = p + y * stride;
+		for (x = 0; x < w; x++) {
+			p0 = image_get_pixel(im, ox + x, oy + y, width, height);
+			memcpy(row + x * 4, p0, 4);
 		}
-
-		/* Fill the side borders with copies of the edge pixels. */
-		memcpy(row, row + 4, 4);
-		memcpy(row + stride - 4, row + stride - 8, 4);
 	}
-	memcpy(p, p + stride, stride);
-	memcpy(p + (h - 1) * stride, p + (h - 2) * stride, stride);
 
 	entry->size = total;
 	ko->size += total;
@@ -688,12 +720,35 @@ kitty_redraw_finish(struct tty *tty)
 void
 kitty_draw_rect(struct tty *tty, struct image_rect *rect)
 {
+	struct kitty_output		*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*entry;
+	struct image_rect		 subrect = { 0 };
+	u_int				 x, y;
 
-	entry = kitty_get_image(tty, rect->image, rect->index);
-	kitty_get_output(tty)->changed = 1;
-	kitty_place(entry, rect->src_x, rect->src_y,
-	    rect->sx, rect->sy, rect->dst_x, rect->dst_y);
+	subrect.image = rect->image;
+	subrect.index = rect->index;
+
+	/* Split the visible rectangle at upload rectangle boundaries. */
+	for (y = 0; y < rect->sy; y += subrect.sy) {
+		for (x = 0; x < rect->sx; x += subrect.sx) {
+			subrect.src_x = rect->src_x + x;
+			subrect.src_y = rect->src_y + y;
+			entry = kitty_get_image(tty, &subrect);
+			if (entry == NULL)
+				return;
+			subrect.sx = entry->src_x + entry->sx - subrect.src_x;
+			if (subrect.sx > rect->sx - x)
+				subrect.sx = rect->sx - x;
+			subrect.sy = entry->src_y + entry->sy - subrect.src_y;
+			if (subrect.sy > rect->sy - y)
+				subrect.sy = rect->sy - y;
+			ko->changed = 1;
+			kitty_place(entry, subrect.src_x - entry->src_x,
+			    subrect.src_y - entry->src_y,
+			    subrect.sx, subrect.sy,
+			    rect->dst_x + x, rect->dst_y + y);
+		}
+	}
 }
 
 /* Parse Kitty graphics control data. */
