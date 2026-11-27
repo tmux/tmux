@@ -5181,8 +5181,12 @@ will write command prompt history on exit and load it from on start.
 Maximum size of a single image in bytes.
 .It Ic image\-total\-count\-limit Ar number
 Maximum number of stored images.
+Unused Kitty uploads are also discarded when a client's upload cache exceeds
+this limit.
 .It Ic image\-total\-size\-limit Ar bytes
 Maximum total bytes for all stored images.
+Unused Kitty uploads are also discarded when a client's upload cache exceeds
+this limit.
 .It Ic input\-buffer\-size Ar bytes
 Maximum of bytes allowed to read in escape and control sequences.
 Once reached, the sequence will be discarded.
@@ -5296,6 +5300,8 @@ and use the
 internal set only.
 .It kittygraphics
 Supports the Kitty graphics protocol.
+Uploaded images are retained across window changes and scrolling while their
+source images remain available.
 .It margins
 Supports DECSLRM margins.
 .It mouse
