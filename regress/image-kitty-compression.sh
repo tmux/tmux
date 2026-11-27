@@ -15,6 +15,7 @@ from image_test import image_test, kitty
 from image_kitty import KittyTerminal
 
 query = b'\033_Gi=32,'
+graphics_query = b'\033_Gi=31,'
 responses = [None, b'OK', b'EINVAL:compression unsupported', b'OKAY']
 cases = [
     ('configured', True, True, None),
@@ -24,31 +25,37 @@ cases = [
     ('XDA-with-XT', True, None, b'\033P>|kitty(0.49.2)\033\\'),
 ]
 for name, xt, configured, identification in cases:
-    for response in responses:
+    for response in (responses if xt else [None]):
         with image_test(sys.argv[1]) as test:
             if not xt:
                 test.run('set-option', '-as', 'terminal-overrides',
                     ',xterm-256color:XT@')
             client = test.attach(kitty_graphics=configured, reply_da=False,
                 clear=False)
-            if identification is not None:
+            if xt:
+                # Send both queries before support is learned from replies.
+                test.wait(lambda: query in client.data)
+                assert client.data.count(graphics_query) == 1, name
+                assert client.data.count(query) == 1, name
+                assert (client.data.index(graphics_query) <
+                    client.data.index(query)), name
+            else:
+                assert graphics_query not in client.data, name
                 assert query not in client.data, name
+            if identification is not None:
                 os.write(client.fd, identification)
-            test.wait(lambda: query in client.data)
-            assert client.data.count(query) == 1, name
 
-            # The initial DA reply can arrive before the compression reply.
-            os.write(client.fd, b'\033[?65cZ')
-            test.wait(lambda: test.run('capture-pane', '-p') == 'Z')
-            assert client.data.count(query) == 1, name
             if response is not None:
                 wire = b'\033_Gi=32;' + response + b'\033\\'
                 # Exercise the response parser with a bytewise reply.
                 for byte in wire:
                     os.write(client.fd, bytes([byte]))
                     client.read(0.01)
-                os.write(client.fd, b'Y')
-                test.wait(lambda: test.run('capture-pane', '-p') == 'ZY')
+
+            # Primary DA completes the startup replies.
+            os.write(client.fd, b'\033[?65cZ')
+            test.wait(lambda: test.run('capture-pane', '-p') == 'Z')
+            assert client.data.count(query) == (1 if xt else 0), name
             test.emit(b'\033[H' + kitty(
                 'a=T,i=7,f=32,s=1,v=1,c=16,r=8,C=1', b'\xff\0\0\xff'))
             terminal = KittyTerminal()
@@ -79,9 +86,9 @@ for name, xt, configured, identification in cases:
 
 # Retained shared uploads count decoded pixels rather than compressed bytes.
 with image_test(sys.argv[1]) as test:
-    client = test.attach(kitty_graphics=True, clear=False)
+    client = test.attach(kitty_graphics=None, reply_da=False, clear=False)
     test.wait(lambda: query in client.data)
-    os.write(client.fd, b'\033_Gi=32;OK\033\\Y')
+    os.write(client.fd, b'\033_Gi=32;OK\033\\\033_Gi=31;OK\033\\\033[?65cY')
     test.wait(lambda: test.run('capture-pane', '-p') == 'Y')
     terminal = KittyTerminal()
     test.emit(b'\033[H' + kitty(
