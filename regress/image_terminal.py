@@ -14,10 +14,10 @@ class Terminal:
         self.top, self.bottom = 0, sy - 1
         self.fg = self.bg = None
         self.bold = False
-        self.last_character = None
         self.pixels = {}
         self.cells = {}
         self.pending = b''
+        self.last = None
 
     def erase(self, x, y, w, h):
         """Remove image pixels and text in a rectangle of cells."""
@@ -83,8 +83,8 @@ class Terminal:
         self.pixels.update(moved)
         self.cells.update(cells)
 
-    def put_character(self, char):
-        """Write a character with the current attributes and remember it."""
+    def write(self, char):
+        """Draw a character and advance the cursor."""
         width = 2 if unicodedata.east_asian_width(char) in 'WF' else 1
         if self.x >= self.sx:
             self.x = 0
@@ -92,7 +92,7 @@ class Terminal:
         self.erase(self.x, self.y, width, 1)
         self.cells[self.x, self.y] = (char, self.fg, self.bg, self.bold)
         self.x += width
-        self.last_character = char
+        self.last = char
 
     def csi(self, params, command):
         """Apply cursor movement and erases; ignore terminal mode controls."""
@@ -132,9 +132,9 @@ class Terminal:
         elif command == ord('m'):
             self.sgr(args)
         elif command == ord('b'):
-            if self.last_character is not None:
+            if self.last is not None:
                 for _ in range(n):
-                    self.put_character(self.last_character)
+                    self.write(self.last)
         elif command == ord('r'):
             self.top = n - 1
             self.bottom = (args[1] or self.sy) - 1 if len(args) > 1 else self.sy - 1
@@ -213,8 +213,7 @@ class Terminal:
                     n = 4
                 if len(rest) < n:
                     break
-                char = rest[:n].decode()
-                self.put_character(char)
+                self.write(rest[:n].decode())
                 pos += n
         self.pending = data[pos:]
 
