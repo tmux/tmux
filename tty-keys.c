@@ -1618,7 +1618,7 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
 
 	*size = 0;
 	if ((tty->flags & TTY_HAVEKITTYGRAPHICS) &&
-	    (tty->flags & TTY_HAVEKITTYGRAPHICS_ZLIB)) {
+	    (tty->flags & TTY_HAVEKITTYZLIB)) {
 		return (-1);
 	}
 	for (i = 0; i < (sizeof prefix) - 1; i++) {
@@ -1632,7 +1632,7 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
 	if (buf[i] == '1')
 		flag = TTY_HAVEKITTYGRAPHICS;
 	else if (buf[i] == '2')
-		flag = TTY_HAVEKITTYGRAPHICS_ZLIB;
+		flag = TTY_HAVEKITTYZLIB;
 	else
 		return (-1);
 	if (tty->flags & flag)
@@ -1662,7 +1662,7 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
 			tty_parse_client_features(c, "kittygraphics", ",");
 			tty_update_features(tty);
 		} else
-			tty->term->flags |= TERM_KITTYGRAPHICS_ZLIB;
+			tty->term->flags |= TERM_KITTYZLIB;
 	}
 	log_debug("%s: received Kitty graphics response %.*s", c->name,
 	    (int)*size, buf);

@@ -818,9 +818,8 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 	ko->size += total;
 
 #ifdef HAVE_LIBZ
-	/* Compress only after a successful receiver probe. */
-	if ((tty->term->flags & TERM_KITTYGRAPHICS_ZLIB) &&
-	    total <= ULONG_MAX) {
+	/* Compress the image data, if the terminal supports it. */
+	if ((tty->term->flags & TERM_KITTYZLIB) && total <= ULONG_MAX) {
 		csize = compressBound(total);
 		if (csize >= total && csize <= SIZE_MAX) {
 			compressed = xmalloc(csize);
