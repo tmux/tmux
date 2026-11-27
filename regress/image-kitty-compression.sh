@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Compressed Kitty output requires a successful receiver probe.
+# Compress Kitty images only when the terminal reports support.
 
 PATH=/bin:/usr/bin
 TERM=screen
