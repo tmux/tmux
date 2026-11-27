@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Compress Kitty images only when the terminal reports support.
+# Compress Kitty images when the terminal has the kittyzlib feature.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -17,16 +17,26 @@ from image_kitty import KittyTerminal
 query = b'\033_Gi=32,'
 graphics_query = b'\033_Gi=31,'
 responses = [None, b'OK', b'EINVAL:compression unsupported', b'OKAY']
+kitty_xda = b'\033P>|kitty(0.49.2)\033\\'
+ghostty_xda = b'\033P>|ghostty 1.2.0\033\\'
 cases = [
-    ('configured', True, True, None),
-    ('configured-no-XT', False, True, None),
-    ('graphics-reply', True, None, b'\033_Gi=31;OK\033\\'),
-    ('XDA-no-XT', False, None, b'\033P>|kitty(0.49.2)\033\\'),
-    ('XDA-with-XT', True, None, b'\033P>|kitty(0.49.2)\033\\'),
+    ('configured', True, True, None, None, False),
+    ('configured-no-XT', False, True, None, None, False),
+    ('graphics-reply', True, None, b'\033_Gi=31;OK\033\\', None, False),
+    ('XDA-kitty-no-XT', False, None, kitty_xda, None, True),
+    ('XDA-kitty-with-XT', True, None, kitty_xda, None, True),
+    ('XDA-ghostty-no-XT', False, None, ghostty_xda, None, True),
+    ('XDA-ghostty-with-XT', True, None, ghostty_xda, None, True),
+    ('enabled-no-XT', False, True, None, 'kittyzlib', True),
+    ('disabled-query', True, True, None, 'kittyzlib@', False),
+    ('disabled-XDA', False, None, kitty_xda, 'kittyzlib@', False),
 ]
-for name, xt, configured, identification in cases:
+for name, xt, configured, identification, zlib_feature, known_zlib in cases:
     for response in (responses if xt else [None]):
         with image_test(sys.argv[1]) as test:
+            if zlib_feature is not None:
+                test.run('set-option', '-as', 'terminal-features',
+                    ',*:' + zlib_feature)
             if not xt:
                 test.run('set-option', '-as', 'terminal-overrides',
                     ',xterm-256color:XT@')
@@ -56,6 +66,12 @@ for name, xt, configured, identification in cases:
             os.write(client.fd, b'\033[?65cZ')
             test.wait(lambda: test.run('capture-pane', '-p') == 'Z')
             assert client.data.count(query) == (1 if xt else 0), name
+            expected_zlib = known_zlib
+            if response == b'OK' and zlib_feature != 'kittyzlib@':
+                expected_zlib = True
+            features = test.run('list-clients', '-F',
+                '#{client_termfeatures}').split(',')
+            assert ('kittyzlib' in features) == expected_zlib, (name, features)
             test.emit(b'\033[H' + kitty(
                 'a=T,i=7,f=32,s=1,v=1,c=16,r=8,C=1', b'\xff\0\0\xff'))
             terminal = KittyTerminal()
@@ -66,7 +82,7 @@ for name, xt, configured, identification in cases:
                 if c.get(b'a') == b't' and b'f' in c]
             assert len(headers) == 1, headers
             compressed = headers[0].get(b'o') == b'z'
-            assert compressed == (response == b'OK'), (response, headers)
+            assert compressed == expected_zlib, (name, response, headers)
             if compressed:
                 assert len(client.data) < 4096, len(client.data)
                 test.emit(kitty('a=d,d=A'))

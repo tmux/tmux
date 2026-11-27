@@ -1658,11 +1658,11 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
 		return (0);
 
 	if (end - i == 2 && memcmp(buf + i, "OK", 2) == 0) {
-		if (flag == TTY_HAVEKITTYGRAPHICS) {
+		if (flag == TTY_HAVEKITTYGRAPHICS)
 			tty_parse_client_features(c, "kittygraphics", ",");
-			tty_update_features(tty);
-		} else
-			tty->term->flags |= TERM_KITTYZLIB;
+		else
+			tty_parse_client_features(c, "kittyzlib", ",");
+		tty_update_features(tty);
 	}
 	log_debug("%s: received Kitty graphics response %.*s", c->name,
 	    (int)*size, buf);

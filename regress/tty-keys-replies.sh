@@ -57,19 +57,24 @@ def matches(name, value):
         required = {
             "256", "RGB", "bpaste", "clipboard", "mouse",
             "strikethrough", "title", "ccolour", "cstyle", "extkeys",
-            "focus", "hyperlinks", "osc7", "usstyle", "kittygraphics"}
+            "focus", "hyperlinks", "osc7", "usstyle", "kittygraphics",
+            "kittyzlib"}
         if name == "XDA-kitty":
             required.add("sync")
         elif "sync" in features:
             return False
         return kind == "kitty(0.43.0)" and required <= features
     if name == "XDA-ghostty":
-        return kind == "ghostty 1.2.0" and {
-            "kittygraphics", "margins", "sync", "usstyle", "progressbar"} <= features
+        required = {"kittygraphics", "kittyzlib", "margins", "sync",
+            "usstyle", "progressbar"}
+        return kind == "ghostty 1.2.0" and required <= features
     if name == "XDA-WezTerm":
-        return kind == "WezTerm 20240203-110809-5046fc22" and {
-            "sixel", "overline", "sync", "usstyle"} <= features and \
-            "margins" not in features
+        required = {"sixel", "overline", "sync", "usstyle"}
+        return (kind == "WezTerm 20240203-110809-5046fc22" and
+            required <= features and
+            "margins" not in features and
+            "kittygraphics" not in features and
+            "kittyzlib" not in features)
     if name == "sync":
         return "sync" in features
     if name.startswith("kitty-graphics"):
