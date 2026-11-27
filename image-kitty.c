@@ -179,7 +179,7 @@ struct kitty_placement_cache {
 struct kitty_output {
 	TAILQ_HEAD(, kitty_image_cache)	images;
 	TAILQ_HEAD(, kitty_upload_cache)	uploads;
-	u_int				count; /* cached views */
+	u_int				count; /* cache entries */
 	uint64_t			size;  /* uploaded pixel bytes */
 	u_int				next_id;
 	int				changed;
