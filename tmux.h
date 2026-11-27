@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1508 2026/11/27 21:15:15 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1509 2026/11/27 22:38:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1853,7 +1853,6 @@ struct tty_term {
 #define TERM_DIRECTCUP 0x400
 #define TERM_DIRECTRGB 0x800
 #define TERM_PROGRAMSTATUS 0x1000
-#define TERM_KITTYZLIB 0x2000
 	int			 flags;
 
 	LIST_ENTRY(tty_term)	 entry;
@@ -1942,14 +1941,12 @@ struct tty {
 #define TTY_GRACE 0x100000
 #define TTY_NOBACKOFF 0x200000
 #define TTY_HAVEPROGRAMSTATUS 0x400000
-#define TTY_HAVEKITTYZLIB 0x800000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA| \
 	 TTY_HAVEDA2| \
 	 TTY_HAVEXDA| \
 	 TTY_HAVESYNC| \
 	 TTY_HAVEKITTYGRAPHICS| \
-	 TTY_HAVEKITTYZLIB| \
 	 TTY_HAVEPROGRAMSTATUS)
 	int		 flags;
 

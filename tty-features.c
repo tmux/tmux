@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.58 2026/11/27 21:38:10 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.59 2026/11/27 22:38:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -377,13 +377,6 @@ static const struct tty_feature tty_feature_kittygraphics = {
 	TERM_KITTYGRAPHICS
 };
 
-/* Terminal supports ZLIB compression for Kitty graphics. */
-static const struct tty_feature tty_feature_kittyzlib = {
-	"kittyzlib",
-	NULL,
-	TERM_KITTYZLIB
-};
-
 /* Terminal moves images with scroll regions. */
 static const char *const tty_feature_imagescroll_capabilities[] = {
 	"Iscrl",
@@ -435,7 +428,6 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_ignorefkeys,
 	&tty_feature_imagescroll,
 	&tty_feature_kittygraphics,
-	&tty_feature_kittyzlib,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,
@@ -635,40 +627,40 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
-			      "overline,"
-			      "usstyle,"
 			      "hyperlinks,"
-			      "progressbar"
+			      "overline,"
+			      "progressbar,"
+			      "usstyle"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,"
 			      "bpaste,"
 			      "ccolour,"
 			      "cstyle,"
+			      "ignorefkeys,"
 			      "mouse,"
-			      "title,"
-			      "ignorefkeys"
+			      "title"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
 			      "cstyle,"
 			      "extkeys,"
-			      "margins,"
-			      "usstyle,"
-			      "sync,"
-			      "osc7,"
 			      "hyperlinks,"
-			      "progressbar"
+			      "margins,"
+			      "osc7,"
+			      "progressbar,"
+			      "sync,"
+			      "usstyle"
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
 			      "ccolour,"
 			      "cstyle,"
 			      "extkeys,"
-			      "usstyle,"
-			      "sync,"
+			      "hyperlinks,"
 			      "osc7,"
-			      "hyperlinks"
+			      "sync,"
+			      "usstyle"
 		},
 		{ .name = "WezTerm",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -689,16 +681,15 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
-			      "imagescroll,"
-			      "margins,"
-			      "overline,"
 			      "hyperlinks,"
-			      "osc7,"
-			      "sync,"
-			      "usstyle,"
-			      "progressbar,"
+			      "imagescroll,"
 			      "kittygraphics,"
-			      "kittyzlib"
+			      "margins,"
+			      "osc7,"
+			      "overline,"
+			      "progressbar,"
+			      "sync,"
+			      "usstyle"
 		},
 		{ .name = "kitty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -711,21 +702,20 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "osc7,"
 			      "progressbar,"
 			      "sync,"
-			      "usstyle,"
-			      "kittygraphics,"
-			      "kittyzlib"
+			      "usstyle"
+		              "kittygraphics,"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
 			      "ccolour,"
 			      "cstyle,"
 			      "focus,"
-			      "overline,"
 			      "hyperlinks,"
 			      "osc7,"
+			      "overline,"
+			      "progressbar,"
 			      "sync,"
-			      "usstyle,"
-			      "progressbar"
+			      "usstyle"
 		},
 		{ .name = "XTerm",
 		  /*
