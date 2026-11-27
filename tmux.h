@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1506 2026/11/26 15:59:01 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1507 2026/11/27 07:30:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2199,6 +2199,7 @@ struct cmd_entry {
 #define CMD_CLIENT_CFLAG 0x8
 #define CMD_CLIENT_TFLAG 0x10
 #define CMD_CLIENT_CANFAIL 0x20
+#define CMD_DEFERGUARD 0x40
 	int		 flags;
 
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmdq_item *);

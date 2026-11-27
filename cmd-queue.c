@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.127 2026/11/23 09:39:24 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.128 2026/11/27 07:30:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -34,6 +34,13 @@ enum cmdq_type {
 	CMDQ_CALLBACK,
 };
 
+/* State of a command's deferred guard in control mode. */
+enum cmdq_guard_state {
+	CMDQ_GUARD_NONE,
+	CMDQ_GUARD_PENDING,
+	CMDQ_GUARD_OPEN,
+};
+
 /* Command queue item. */
 struct cmdq_item {
 	char			*name;
@@ -48,6 +55,7 @@ struct cmdq_item {
 
 	u_int			 number;
 	time_t			 time;
+	enum cmdq_guard_state	 guard;
 
 	int			 flags;
 
@@ -419,10 +427,31 @@ cmdq_insert_hook(__unused struct session *s, struct cmdq_item *item,
 	free(name);
 }
 
+/* Start a deferred reply. */
+static void
+cmdq_open_guard(struct cmdq_item *item)
+{
+	if (item->guard != CMDQ_GUARD_PENDING)
+		return;
+	item->guard = CMDQ_GUARD_OPEN;
+	cmdq_guard(item, "begin", !!(item->state->flags & CMDQ_STATE_CONTROL));
+}
+
+/* Finish the reply, starting a block even if the reply is empty. */
+static void
+cmdq_close_guard(struct cmdq_item *item, const char *guard)
+{
+	cmdq_open_guard(item);
+	cmdq_guard(item, guard, !!(item->state->flags & CMDQ_STATE_CONTROL));
+	item->guard = CMDQ_GUARD_NONE;
+}
+
 /* Continue processing command queue. */
 void
 cmdq_continue(struct cmdq_item *item)
 {
+	if (item->guard != CMDQ_GUARD_NONE)
+		cmdq_close_guard(item, "end");
 	item->flags &= ~CMDQ_WAITING;
 }
 
@@ -631,7 +660,12 @@ cmdq_fire_command(struct cmdq_item *item)
 	}
 
 	flags = !!(state->flags & CMDQ_STATE_CONTROL);
-	cmdq_guard(item, "begin", flags);
+	if (saved != NULL &&
+	    (saved->flags & CLIENT_CONTROL) &&
+	    (entry->flags & CMD_DEFERGUARD))
+		item->guard = CMDQ_GUARD_PENDING;
+	else
+		cmdq_guard(item, "begin", flags);
 
 	if (flags &&
 	    saved != NULL &&
@@ -688,6 +722,14 @@ cmdq_fire_command(struct cmdq_item *item)
 
 out:
 	item->client = saved;
+
+	/*
+	 * Defer the reply until the command completes so pane output and
+	 * notifications can reach the client during the wait.
+	 */
+	if (retval == CMD_RETURN_WAIT && item->guard == CMDQ_GUARD_PENDING)
+		return (retval);
+
 	if (retval == CMD_RETURN_ERROR) {
 		fsp = NULL;
 		if (cmd_find_valid_state(&item->target))
@@ -698,9 +740,9 @@ out:
 			fsp = &fs;
 		cmdq_insert_hook(fsp != NULL ? fsp->s : NULL, item, fsp,
 		    "command-error");
-		cmdq_guard(item, "error", flags);
+		cmdq_close_guard(item, "error");
 	} else
-		cmdq_guard(item, "end", flags);
+		cmdq_close_guard(item, "end");
 	return (retval);
 }
 
@@ -860,6 +902,7 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 void
 cmdq_print_data(struct cmdq_item *item, struct evbuffer *evb)
 {
+	cmdq_open_guard(item);
 	server_client_print(item->client, 1, evb);
 }
 
@@ -899,6 +942,7 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 
 	log_debug("%s: %s", __func__, msg);
 
+	cmdq_open_guard(item);
 	if (c == NULL) {
 		cmd_get_source(cmd, &file, &line);
 		if (!cfg_finished) {
