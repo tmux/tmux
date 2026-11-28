@@ -2898,6 +2898,12 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		}
 	}
 
+#ifdef ENABLE_IMAGES
+       if (gd->images != NULL)
+               check = 0;
+       image_damage_screen(ctx, s->cx, s->cy, ci->used, 1);
+#endif
+
 	changed = grid_view_set_cells(gd, &ci->x, s->cy, &ci->gc, cl->data + start,
 	    &ci->used, check);
 	if (redraw)
