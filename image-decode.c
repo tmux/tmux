@@ -26,9 +26,7 @@
 #include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef HAVE_LIBZ
 #include <zlib.h>
-#endif
 
 #include "tmux.h"
 
@@ -71,7 +69,6 @@ image_base64_decode(const char *data, size_t size, size_t limit, size_t *osize)
 }
 
 /* Decompress a payload. */
-#ifdef HAVE_LIBZ
 static u_char *
 image_zlib_decode(const u_char *data, size_t size, size_t expected,
     size_t limit)
@@ -94,14 +91,6 @@ image_zlib_decode(const u_char *data, size_t size, size_t expected,
 	}
 	return (r);
 }
-#else
-static u_char *
-image_zlib_decode(__unused const u_char *data, __unused size_t size,
-    __unused size_t expected, __unused size_t limit)
-{
-	return (NULL);
-}
-#endif
 
 /* Decode PNG data into RGBA pixels. */
 #ifdef HAVE_LIBPNG

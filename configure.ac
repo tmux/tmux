@@ -580,7 +580,6 @@ if test "x$enable_images" = xyes; then
 			AM_CPPFLAGS="$LIBZ_CFLAGS $AM_CPPFLAGS"
 			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBZ_LIBS $LIBS"
-			AC_DEFINE(HAVE_LIBZ)
 			libz_version=`$PKG_CONFIG --modversion zlib 2>/dev/null`
 			test "x$libz_version" = x && libz_version=on
 		],
@@ -588,10 +587,9 @@ if test "x$enable_images" = xyes; then
 			AC_CHECK_HEADER(zlib.h, [
 				AC_CHECK_LIB(z, uncompress, [
 					LIBS="-lz $LIBS"
-					AC_DEFINE(HAVE_LIBZ)
 					libz_version=on
-				])
-			])
+				], [AC_MSG_ERROR("libz not found")])
+			], [AC_MSG_ERROR("zlib.h not found")])
 		]
 	)
 	PKG_CHECK_MODULES(

@@ -163,7 +163,8 @@ for name, report in reports:
                         run("refresh-client", "-q")
                     wait_query(fd, b"\033[18t\033[14t", context, output)
                 if name.startswith("kitty-graphics"):
-                    query = b"\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\"
+                    query = (b"\033_Gi=31,s=1,v=1,a=q,t=d,f=24,o=z;"
+                        b"eJxjYGAAAAADAAE=\033\\")
                     if name == "kitty-graphics-no-query":
                         assert query not in output, (context, "unexpected graphics query")
                     else:
