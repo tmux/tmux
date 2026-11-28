@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -99,6 +101,13 @@ $TMUX send-keys -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = "$EXPECTED" ] || exit 1
 $TMUX send-keys -X cancel || exit 1
 
+$TMUX copy-mode -c || exit 1
+$TMUX send-keys -X search-backward echo || exit 1
+$TMUX send-keys -X select-output || exit 1
+$TMUX send-keys -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$EXPECTED" ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
 $TMUX copy-mode || exit 1
 $TMUX send-keys -X search-backward one || exit 1
 $TMUX set-buffer sentinel || exit 1
@@ -192,6 +201,15 @@ $TMUX send-keys -t :prompt.0 -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = one ] || exit 1
 $TMUX send-keys -t :prompt.0 -X cancel || exit 1
 
+$TMUX copy-mode -c -t :prompt || exit 1
+$TMUX send-keys -t :prompt.0 -X expand-output || exit 1
+$TMUX send-keys -t :prompt.0 -X -N 100 cursor-down || exit 1
+$TMUX send-keys -t :prompt.0 -X select-output || exit 1
+[ "$($TMUX display-message -p -t :prompt.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX send-keys -t :prompt.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = one ] || exit 1
+$TMUX send-keys -t :prompt.0 -X cancel || exit 1
+
 $TMUX copy-mode -t :prompt || exit 1
 $TMUX send-keys -t :prompt.0 -X -N 100 cursor-down || exit 1
 $TMUX send-keys -t :prompt.0 C-o || exit 1
@@ -219,6 +237,18 @@ $TMUX set-buffer sentinel || exit 1
 $TMUX send-keys -t :clear.0 -X copy-selection || exit 1
 [ "$($TMUX show-buffer)" = "$(printf '1\nPID TTY\n1 pts/0')" ] || exit 1
 $TMUX send-keys -t :clear.0 -X cancel || exit 1
+
+# Do not infer output from a D which belongs to the first surviving prompt.
+$TMUX new-window -d -n prefix "printf 'prefix\\n\\033]133;A\\007p\\$ \\033]133;B\\007echo\\033]133;C\\007one\\033]133;D;0\\007'; printf '\\033]2;prefix-ready\\007'; exec sleep 100" || exit 1
+wait_for_output prefix-ready $TMUX display-message -t :prefix -p '#{pane_title}' || exit 1
+$TMUX copy-mode -t :prefix || exit 1
+$TMUX send-keys -t :prefix.0 -X cursor-up || exit 1
+$TMUX send-keys -t :prefix.0 C-o || exit 1
+[ "$($TMUX display-message -p -t :prefix.0 '#{selection_present}')" = 0 ] || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :prefix.0 -X copy-output || exit 1
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+$TMUX send-keys -t :prefix.0 -X cancel || exit 1
 
 $TMUX new-window -d -n oneline "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007one\\033]133;D;0\\007\\nseparator\\n\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
 sleep 1
@@ -251,5 +281,19 @@ $TMUX show-buffer >$OUT
 [ "$(tail -n1 "$OUT")" = 103 ] || exit 1
 grep -q seq "$OUT" && exit 1
 $TMUX send-keys -t :hist.0 -X cancel || exit 1
+
+# View mode has no pane source snapshot.
+$TMUX new-window -d -n view 'exec sleep 100' || exit 1
+$TMUX run-shell -t :view.0 "printf 'view one\nview two\n'" || exit 1
+[ "$($TMUX display-message -p -t :view.0 '#{pane_mode}')" = view-mode ] || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :view.0 -X copy-output -a || exit 1
+[ "$($TMUX show-buffer)" = "$(printf 'view one\nview two')" ] || exit 1
+$TMUX send-keys -t :view.0 -X select-output -a || exit 1
+[ "$($TMUX display-message -p -t :view.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :view.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$(printf 'view one\nview two')" ] || exit 1
+$TMUX send-keys -t :view.0 -X cancel || exit 1
 
 exit 0
