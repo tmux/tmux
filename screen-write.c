@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.323 2026/11/26 20:49:47 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.324 2026/11/28 16:24:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2612,6 +2612,19 @@ discard:
 	s->write_start = s->write_end = s->scroll_lines = 0;
 }
 
+/* Check if a line is already marked for a full redraw. */
+static int
+screen_write_collect_is_full_redraw(struct screen *s, u_int y)
+{
+	struct screen_write_citem	*ci;
+
+	ci = TAILQ_FIRST(&s->write_list[y].items);
+	return (ci != NULL &&
+	    ci->type == REDRAW &&
+	    ci->x == 0 &&
+	    ci->used == screen_size_x(s));
+}
+
 /* Insert an item. */
 static void
 screen_write_collect_insert(struct screen_write_ctx *ctx,
@@ -2640,6 +2653,8 @@ screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
 {
 	struct screen_write_citem	*ci = ctx->item;
 
+	if (screen_write_collect_is_full_redraw(ctx->s, py))
+		return;
 	if (nx != 0) {
 		ci->x = px;
 		ci->used = nx;
@@ -2666,6 +2681,8 @@ screen_write_collect_redraw(struct screen_write_ctx *ctx, u_int px, u_int py,
 	if (ny > sy - py)
 		ny = sy - py;
 	for (y = py; y < py + ny; y++) {
+		if (screen_write_collect_is_full_redraw(s, y))
+			continue;
 		ci = screen_write_get_citem();
 		ci->x = px;
 		ci->used = nx;
@@ -2733,13 +2750,15 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	struct grid_cell		 gc;
 	u_int				 px, bx, ex, i;
 	u_int				 start = s->cx, end = start + ci->used;
-	int				 check;
+	int				 check, redraw, changed;
 
 	if (ci->used == 0)
 		return;
 
 	ci->x = s->cx;
-	ctx->item = screen_write_get_citem();
+	redraw = screen_write_collect_is_full_redraw(s, s->cy);
+	if (!redraw)
+		ctx->item = screen_write_get_citem();
 
 	log_debug("%s: %u %.*s (at %u,%u)", __func__, ci->used,
 	    (int)ci->used, cl->data + ci->x, s->cx, s->cy);
@@ -2774,8 +2793,11 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		}
 	}
 
-	if (grid_view_set_cells(gd, &ci->x, s->cy, &ci->gc, cl->data + start,
-	    &ci->used, check))
+	changed = grid_view_set_cells(gd, &ci->x, s->cy, &ci->gc, cl->data + start,
+	    &ci->used, check);
+	if (redraw)
+		memset(ci, 0, sizeof *ci);
+	else if (changed)
 		screen_write_collect_insert(ctx, ci, s->cy);
 	else
 		screen_write_free_citem(ci);
