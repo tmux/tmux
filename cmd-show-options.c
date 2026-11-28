@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-show-options.c,v 1.77 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-show-options.c,v 1.78 2026/11/28 09:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -106,8 +106,10 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		scope = options_scope_from_flags(args, window, target, &oo,
 		    &cause);
 		if (scope == OPTIONS_TABLE_NONE) {
-			if (args_has(args, 'q'))
+			if (args_has(args, 'q')) {
+				free(cause);
 				return (CMD_RETURN_NORMAL);
+			}
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
@@ -138,8 +140,10 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	scope = options_scope_from_name(args, window, name, target, &oo,
 	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
-		if (args_has(args, 'q'))
+		if (args_has(args, 'q')) {
+			free(cause);
 			goto out;
+		}
 		cmdq_error(item, "%s", cause);
 		free(cause);
 		goto fail;

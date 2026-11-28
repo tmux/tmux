@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-set-option.c,v 1.147 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-set-option.c,v 1.148 2026/11/28 09:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -285,8 +285,10 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	scope = options_scope_from_name(args, window, name, target, &oo,
 	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
-		if (args_has(args, 'q'))
+		if (args_has(args, 'q')) {
+			free(cause);
 			goto out;
+		}
 		cmdq_error(item, "%s", cause);
 		free(cause);
 		goto fail;
