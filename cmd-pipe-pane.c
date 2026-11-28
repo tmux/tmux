@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-pipe-pane.c,v 1.65 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-pipe-pane.c,v 1.66 2026/11/28 17:19:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -142,7 +142,9 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		if (setpgid(0, 0) == -1)
 			_exit(1);
 
-		null_fd = open(_PATH_DEVNULL, O_WRONLY);
+		null_fd = open(_PATH_DEVNULL, O_RDWR);
+		if (null_fd == -1)
+			_exit(1);
 		if (out) {
 			if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
 				_exit(1);

@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.172 2026/11/27 23:12:25 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.173 2026/11/28 16:25:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -807,6 +807,14 @@ grid_set_cells(struct grid *gd, u_int *px, u_int py, const struct grid_cell *gc,
 	if (x + end > gl->cellused)
 		gl->cellused = x + end;
 
+	if (gce != NULL && (~gl->flags & GRID_LINE_EXTENDED)) {
+		dst = gl->celldata;
+		for (; i < end; i++) {
+			memcpy(&dst[x + i], &entry, sizeof entry);
+			dst[x + i].data.data = s[i];
+		}
+		return (1);
+	}
 	for (; i < end; i++) {
 		dst = &gl->celldata[x + i];
 		if (gce == NULL || (dst->flags & GRID_FLAG_EXTENDED)) {
@@ -901,7 +909,7 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 void
 grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 {
-	u_int	yy;
+	u_int	yy, n, fy, ey;
 
 	if (ny == 0 || py == dy)
 		return;
@@ -915,12 +923,23 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 	if (grid_check_y(gd, __func__, dy + ny - 1) != 0)
 		return;
 
-	/* Free any lines which are being replaced. */
-	for (yy = dy; yy < dy + ny; yy++) {
-		if (yy >= py && yy < py + ny)
-			continue;
-		grid_free_line(gd, yy);
+	if (dy < py) {
+		n = py - dy;
+		if (n > ny)
+			n = ny;
+		fy = dy;
+		ey = py + ny - n;
+	} else {
+		n = dy - py;
+		if (n > ny)
+			n = ny;
+		fy = dy + ny - n;
+		ey = py;
 	}
+
+	/* Free any lines which are being replaced. */
+	for (yy = 0; yy < n; yy++)
+		grid_free_line(gd, fy + yy);
 	if (dy != 0)
 		gd->linedata[dy - 1].flags &= ~GRID_LINE_WRAPPED;
 
@@ -931,10 +950,8 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 	 * Wipe any lines that have been moved (without freeing them - they are
 	 * still present).
 	 */
-	for (yy = py; yy < py + ny; yy++) {
-		if (yy < dy || yy >= dy + ny)
-			grid_empty_line(gd, yy, bg);
-	}
+	for (yy = 0; yy < n; yy++)
+		grid_empty_line(gd, ey + yy, bg);
 	if (py != 0 && (py < dy || py >= dy + ny))
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
 }

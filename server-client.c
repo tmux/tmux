@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.542 2026/11/26 15:59:01 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.543 2026/11/28 17:20:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -937,8 +937,8 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct window_pane		*wp, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
-	int				 ignore = 0;
-	int				 modal_drag = 0;
+	int				 ignore = 0, modal_drag = 0;
+	int				 have_pane_position = 0;
 	key_code			 key;
 	struct timeval			 tv;
 	struct style_range		*sr;
@@ -1070,6 +1070,7 @@ have_event:
 		}
 		px = px + m->ox;
 		py = py + m->oy;
+		have_pane_position = 1;
 		if (w->modal != NULL &&
 		    !window_pane_contains(w->modal, px, py)) {
 			if (lwp == w->modal &&
@@ -1220,7 +1221,7 @@ have_event:
 			if (c->tty.mouse_drag_status) {
 				c->tty.mouse_drag_x = x;
 				c->tty.mouse_drag_y = y;
-			} else {
+			} else if (have_pane_position) {
 				c->tty.mouse_drag_x = px;
 				c->tty.mouse_drag_y = py;
 			}
@@ -1228,8 +1229,10 @@ have_event:
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 
 		/* Change the pane if the drag did not start on status line. */
-		if (!c->tty.mouse_drag_status && lwp == NULL) {
-			lwp = wp = window_get_active_at(w, px, py);
+		if (!c->tty.mouse_drag_status &&
+		    have_pane_position &&
+		    lwp == NULL) {
+			wp = window_get_active_at(w, px, py);
 			if (wp != NULL)
 				c->tty.mouse_last_pane = wp->id;
 		}
@@ -1374,7 +1377,7 @@ server_client_is_assume_paste(struct client *c)
 {
 	struct session	*s = c->session;
 	struct timeval	 tv;
-	int		 t;
+	long long	 t;
 
 	if (c->flags & CLIENT_BRACKETPASTING)
 		return (0);

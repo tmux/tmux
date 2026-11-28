@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.169 2026/10/27 08:38:40 nicm Exp $ */
+/* $OpenBSD: client.c,v 1.170 2026/11/28 17:11:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -106,7 +106,7 @@ client_connect(struct event_base *base, const char *path, uint64_t flags)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
-	int			fd, lockfd = -1, locked = 0;
+	int			fd, lockfd = -1, locked = 0, saved_errno;
 	char		       *lockfile = NULL;
 
 	memset(&sa, 0, sizeof sa);
@@ -124,8 +124,9 @@ retry:
 
 	log_debug("trying connect");
 	if (connect(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
-		log_debug("connect failed: %s", strerror(errno));
-		if (errno != ECONNREFUSED && errno != ENOENT)
+		saved_errno = errno;
+		log_debug("connect failed: %s", strerror(saved_errno));
+		if (saved_errno != ECONNREFUSED && saved_errno != ENOENT)
 			goto failed;
 		if (flags & CLIENT_NOSTARTSERVER)
 			goto failed;
@@ -157,8 +158,10 @@ retry:
 		}
 
 		if (lockfd >= 0 && unlink(path) != 0 && errno != ENOENT) {
+			saved_errno = errno;
 			free(lockfile);
 			close(lockfd);
+			errno = saved_errno;
 			return (-1);
 		}
 		fd = server_start(client_proc, flags, base, lockfd, lockfile);
@@ -177,6 +180,7 @@ failed:
 		close(lockfd);
 	}
 	close(fd);
+	errno = saved_errno;
 	return (-1);
 }
 
