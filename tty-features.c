@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.57 2026/11/26 13:38:39 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.59 2026/11/27 22:38:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -637,40 +637,40 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
-			      "overline,"
-			      "usstyle,"
 			      "hyperlinks,"
-			      "progressbar"
+			      "overline,"
+			      "progressbar,"
+			      "usstyle"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,"
 			      "bpaste,"
 			      "ccolour,"
 			      "cstyle,"
+			      "ignorefkeys,"
 			      "mouse,"
-			      "title,"
-			      "ignorefkeys"
+			      "title"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
 			      "cstyle,"
 			      "extkeys,"
-			      "margins,"
-			      "usstyle,"
-			      "sync,"
-			      "osc7,"
 			      "hyperlinks,"
-			      "progressbar"
+			      "margins,"
+			      "osc7,"
+			      "progressbar,"
+			      "sync,"
+			      "usstyle"
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
 			      "ccolour,"
 			      "cstyle,"
 			      "extkeys,"
-			      "usstyle,"
-			      "sync,"
+			      "hyperlinks,"
 			      "osc7,"
-			      "hyperlinks"
+			      "sync,"
+			      "usstyle"
 		},
 		{ .name = "WezTerm",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -691,15 +691,15 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
-			      "imagescroll,"
-			      "margins,"
-			      "overline,"
 			      "hyperlinks,"
+			      "imagescroll,"
+			      "kittygraphics,"
+			      "margins,"
 			      "osc7,"
-			      "sync,"
-			      "usstyle,"
+			      "overline,"
 			      "progressbar,"
-			      "kittygraphics"
+			      "sync,"
+			      "usstyle"
 		},
 		{ .name = "kitty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -712,20 +712,20 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "osc7,"
 			      "progressbar,"
 			      "sync,"
-			      "usstyle,"
-			      "kittygraphics"
+			      "usstyle"
+		              "kittygraphics,"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
 			      "ccolour,"
 			      "cstyle,"
 			      "focus,"
-			      "overline,"
 			      "hyperlinks,"
 			      "osc7,"
+			      "overline,"
+			      "progressbar,"
 			      "sync,"
-			      "usstyle,"
-			      "progressbar"
+			      "usstyle"
 		},
 		{ .name = "XTerm",
 		  /*

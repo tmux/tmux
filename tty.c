@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.508 2026/11/27 21:15:15 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.509 2026/11/27 22:38:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -477,7 +477,7 @@ tty_send_requests(struct tty *tty)
 	else
 		tty->flags |= TTY_HAVEKITTYGRAPHICS;
 #else
-	tty->flags |= (TTY_HAVEKITTYGRAPHICS|TTY_HAVEKITTYZLIB);
+	tty->flags |= TTY_HAVEKITTYGRAPHICS;
 #endif
 
 	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
