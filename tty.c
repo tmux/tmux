@@ -83,6 +83,9 @@ static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 #define TTY_QUERY_TIMEOUT 5
 #define TTY_REQUEST_LIMIT 30
 
+#define TTY_KITTY_GRAPHICS_QUERY \
+	"\033_Gi=31,s=1,v=1,a=q,t=d,f=24,o=z;eJxjYGAAAAADAAE=\033\\"
+
 static struct tty_style_ctx tty_default_style_ctx = {
 	&grid_default_cell, NULL, 0, NULL
 };
@@ -472,10 +475,9 @@ tty_send_requests(struct tty *tty)
 		tty_puts(tty, "\033]7501;?\033\\");
 
 #ifdef ENABLE_IMAGES
-	if (tty_term_flag(term, TTYC_XT) && (~flags & TTY_HAVEKITTYGRAPHICS)) {
-		tty_puts(tty, "\033_Gi=31,s=1,v=1,a=q,t=d,f=24,o=z;"
-		    "eJxjYGAAAAADAAE=\033\\");
-	} else
+	if (tty_term_flag(term, TTYC_XT) && (~flags & TTY_HAVEKITTYGRAPHICS))
+		tty_puts(tty, TTY_KITTY_GRAPHICS_QUERY);
+	else
 		tty->flags |= TTY_HAVEKITTYGRAPHICS;
 #else
 	tty->flags |= TTY_HAVEKITTYGRAPHICS;
