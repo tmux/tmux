@@ -479,6 +479,13 @@ popup_job_update_cb(struct job *job)
 	c->overlay_check = popup_check_cb;
 	c->overlay_data = pd;
 
+	/*
+	 * Nothing is written to the tty while the window waits for a redraw,
+	 * so this output is lost unless the popup is redrawn with the window.
+	 */
+	if (c->flags & CLIENT_REDRAWWINDOW)
+		c->flags |= CLIENT_REDRAWOVERLAY;
+
 	evbuffer_drain(evb, size);
 }
 
