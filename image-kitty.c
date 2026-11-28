@@ -768,7 +768,7 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 	struct image			*im = image_find(ug->image_id);
 	char				 s[128], e[4097];
 	const char			*compression = "";
-	u_char				*p, *row, *p0, *pixels, *compressed;
+	u_char				*p, *row, *p0, *pixels, *c;
 	size_t				 offset, size, total;
 	size_t				 stride, source_stride;
 	u_int				 x, y, sx, sy;
@@ -813,16 +813,15 @@ kitty_upload(struct tty *tty, struct kitty_upload_cache *upload)
 	if (total <= ULONG_MAX) {
 		csize = compressBound(total);
 		if (csize >= total && csize <= SIZE_MAX) {
-			compressed = xmalloc(csize);
-			status = compress2(compressed, &csize, p, total,
-			    Z_BEST_SPEED);
+			c = xmalloc(csize);
+			status = compress2(c, &csize, p, total, Z_BEST_SPEED);
 			if (status == Z_OK && csize < total) {
 				free(p);
-				p = compressed;
+				p = c;
 				total = csize;
 				compression = "o=z,";
 			} else
-				free(compressed);
+				free(c);
 		}
 	}
 
