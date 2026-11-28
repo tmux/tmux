@@ -3073,7 +3073,7 @@ window_border_type_is_separate(struct window *w)
 {
 	int	type = options_get_number(w->options, "pane-border-type");
 
-	return (type != PANE_BORDER_TYPE_JOINED);
+	return (type != PANE_BORDER_TYPE_JOINED && type != PANE_BORDER_TYPE_JOINED_ACTIVE);
 }
 
 int
