@@ -6,13 +6,48 @@ set -e
 # Build/log text: tabs, varied line lengths, and wrapping.
 generate()
 {
-	awk 'BEGIN {
+	awk 'function pick(n) {
+		r = (r * 48271) % 2147483647
+		return 1 + r % n
+	}
+	BEGIN {
+		r = 1
+		split("core net cache storage parser ui jobs protocol", dirs)
+		split("worker connection table reader parser writer request index",
+		    files)
+		split("lookup decode flush resolve load save dispatch process",
+		    funcs)
+		split("request session record index module task entry connection",
+		    objects)
+		split("loaded saved updated removed validated queued completed retried",
+		    actions)
+		split("INFO WARN DEBUG ERROR", levels)
+		split("warning error note", diagnostics)
+		messages[1] = "unused variable"
+		messages[2] = "implicit declaration of function"
+		messages[3] = "incompatible pointer type"
+		messages[4] = "comparison of different signedness"
 		for (i = 0; i < 1100000; i++) {
-			printf "src/worker.c:%d:\tworker %d completed request %08x status=200 path=/api/items/%d",
-			    i % 997, i % 32, i, i
+			dir = dirs[pick(8)]
+			file = files[pick(8)]
+			func = funcs[pick(8)]
+			object = objects[pick(8)]
+			if (i % 3 == 0)
+				printf "cc -O2 -Wall -Wextra -Iinclude -Isrc -c " \
+				    "src/%s/%s.c -o obj/%s/%s.o", dir, file, dir, file
+			else if (i % 3 == 1)
+				printf "src/%s/%s.c:%d:%d:\t%s: %s " \
+				    "\047%s\047 in %s()", dir, file, pick(997),
+				    pick(80), diagnostics[pick(3)], messages[pick(4)],
+				    object, func
+			else
+				printf "[%s] worker %d %s %s/%s id=%08x bytes=%d",
+				    levels[pick(4)], pick(32), actions[pick(8)], dir,
+				    object, i, pick(65536)
 			if (i % 11 == 0) {
 				printf " detail="
-				for (j = 0; j < 24; j++) printf "argument "
+				for (j = 0; j < 24; j++)
+					printf "%s=%d ", objects[1 + j % 8], i + j
 			}
 			printf "\r\n"
 		}
