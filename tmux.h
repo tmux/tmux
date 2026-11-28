@@ -1290,6 +1290,7 @@ struct window_mode {
 	void		 (*free)(struct window_mode_entry *);
 	void		 (*resize)(struct window_mode_entry *, u_int, u_int);
 	void		 (*update)(struct window_mode_entry *);
+	void		 (*check_preview)(struct window_mode_entry *);
 	void		 (*style_changed)(struct window_mode_entry *);
 	void		 (*key)(struct window_mode_entry *, struct client *,
 			     struct session *, struct winlink *, key_code,
@@ -4134,6 +4135,7 @@ typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 typedef const char** (*mode_tree_help_cb)(u_int *, const char**);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
+int	 mode_tree_preview_visible(struct mode_tree_data *);
 const char *mode_tree_get_current_name(struct mode_tree_data *);
 void	 mode_tree_select_top(struct mode_tree_data *);
 void	 mode_tree_expand_current(struct mode_tree_data *);

@@ -2539,7 +2539,7 @@ server_client_redraw_timer(__unused int fd, __unused short events,
 
 /*
  * Check if modes need to be updated. Only modes in the current window are
- * updated and it is done when the status line is redrawn.
+ * checked; full updates happen when the status line is redrawn.
  */
 static void
 server_client_check_modes(struct client *c)
@@ -2550,12 +2550,15 @@ server_client_check_modes(struct client *c)
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
-	if (~c->flags & CLIENT_REDRAWSTATUS)
-		return;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wme = TAILQ_FIRST(&wp->modes);
-		if (wme != NULL && wme->mode->update != NULL)
+		if (wme == NULL)
+			continue;
+		if ((c->flags & CLIENT_REDRAWSTATUS) &&
+		    wme->mode->update != NULL)
 			wme->mode->update(wme);
+		else if (wme->mode->check_preview != NULL)
+			wme->mode->check_preview(wme);
 	}
 }
 
