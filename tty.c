@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.509 2026/11/27 22:38:14 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.510 2026/11/28 17:20:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -436,6 +436,9 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
 	tty->mouse_drag_release = NULL;
+	tty->mouse_scrolling_flag = 0;
+	tty->mouse_slider_mpos = -1;
+	tty->mouse_last_pane = -1;
 }
 
 void
